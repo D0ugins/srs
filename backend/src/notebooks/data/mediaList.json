@@ -1,0 +1,57 @@
+{
+    "media": [
+        {
+            "type": "video",
+            "subtype": "video",
+            "url": "http://172.26.203.118/DCIM/101_VIRB/VIRB0078.MP4",
+            "thumbUrl": "http://172.26.203.118/DCIM/101_VIRB/VIRB0078.THM",
+            "fav": "false",
+            "lowResVideoPath": "http://172.26.203.118/DCIM/101_VIRB/VIRB0078.GLV",
+            "fitURL": "http://172.26.203.118/GMetrix/2025-03-23-07-07-23.fit",
+            "name": "VIRB0078.MP4",
+            "fileSize": 4215868,
+            "date": 1742729358,
+            "duration": 1.000000
+        },
+        {
+            "type": "video",
+            "subtype": "video",
+            "url": "http://172.26.203.118/DCIM/101_VIRB/VIRB0079.MP4",
+            "thumbUrl": "http://172.26.203.118/DCIM/101_VIRB/VIRB0079.THM",
+            "fav": "false",
+            "lowResVideoPath": "http://172.26.203.118/DCIM/101_VIRB/VIRB0079.GLV",
+            "fitURL": "http://172.26.203.118/GMetrix/2025-03-23-07-07-23.fit",
+            "name": "VIRB0079.MP4",
+            "fileSize": 682714003,
+            "date": 1742730714,
+            "duration": 181.000000
+        },
+        {
+            "type": "video",
+            "subtype": "video",
+            "url": "http://172.26.203.118/DCIM/101_VIRB/VIRB0080.MP4",
+            "thumbUrl": "http://172.26.203.118/DCIM/101_VIRB/VIRB0080.THM",
+            "fav": "false",
+            "lowResVideoPath": "http://172.26.203.118/DCIM/101_VIRB/VIRB0080.GLV",
+            "fitURL": "http://172.26.203.118/GMetrix/2025-03-23-08-41-12.fit",
+            "name": "VIRB0080.MP4",
+            "fileSize": 890769965,
+            "date": 1757764712,
+            "duration": 236.000000
+        },
+        {
+            "type": "video",
+            "subtype": "video",
+            "url": "http://172.26.203.118/DCIM/101_VIRB/VIRB0087.MP4",
+            "thumbUrl": "http://172.26.203.118/DCIM/101_VIRB/VIRB0087.THM",
+            "fav": "false",
+            "lowResVideoPath": "http://172.26.203.118/DCIM/101_VIRB/VIRB0087.GLV",
+            "fitURL": "http://172.26.203.118/GMetrix/2025-09-14-08-19-11.fit",
+            "name": "VIRB0087.MP4",
+            "fileSize": 831318016,
+            "date": 1757852352,
+            "duration": 220.000000
+        }
+    ],
+    "result": 1
+}
