@@ -1,3 +1,6 @@
 videos
 tmp
 *.fit
+*.db
+*.mp4
+*.jpg
