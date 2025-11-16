@@ -1,11 +1,19 @@
 from fastapi import FastAPI, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from db import Roll, SessionDep
+import os
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/rolls")
 def get_rolls(
@@ -38,8 +46,6 @@ def get_rolls(
             roll_dict.pop(redundant_key, None)
         cleaned_rolls.append(roll_dict)
     return cleaned_rolls
-
-import os
 
 app.mount("/%thumbnails%", 
           StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../notebooks/data")), 
