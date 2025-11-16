@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "aiortc>=1.13.0",
     "dotenv>=0.9.9",
-    "fastapi>=0.116.2",
+    "fastapi[standard]>=0.116.2",
     "garmin-fit-sdk>=21.178.0",
     "jupyter>=1.1.1",
     "matplotlib>=3.10.6",
