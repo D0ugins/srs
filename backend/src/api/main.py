@@ -47,12 +47,22 @@ def get_rolls(
         cleaned_rolls.append(roll_dict)
     return cleaned_rolls
 
+@app.get('/roll/{roll_id}')
+def get_roll(roll_id: int, session: SessionDep):
+    roll = session.get(Roll, roll_id)
+    if not roll:
+        return {"error": "Roll not found"}
+    # roll_dict = jsonable_encoder(roll)
+    # for redundant_key in ("roll_date_id", "buggy_id", "driver_id"):
+    #     roll_dict.pop(redundant_key, None)
+    return roll
+
 app.mount("/%thumbnails%", 
-          StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../notebooks/data")), 
-          name="videos")
+          StaticFiles(directory='/app/data/virbs'), 
+          name="thumbnails")
 app.mount("/%fit%", 
-          StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../notebooks/data")), 
-          name="videos")
+          StaticFiles(directory=os.path.join(os.path.dirname(__file__), "/app/data/virbs")), 
+          name="fit")
 app.mount("/%videos%", 
-          StaticFiles(directory=os.path.join(os.path.dirname(__file__), "../../../videos")), 
+          StaticFiles(directory=os.path.join(os.path.dirname(__file__), "/app/data/videos")), 
           name="videos")

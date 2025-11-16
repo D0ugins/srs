@@ -1,0 +1,27 @@
+services:
+  backend:
+      build: ./backend
+      ports:
+        - "8000:8000"
+      command: uv run fastapi dev /app/src/api/main.py --host 0.0.0.0
+      volumes:
+        - ./data/db:/app/data/db
+        - ./data/videos:/app/data/videos
+        - ./data/virbs:/app/data/virbs
+      develop:
+        watch:
+          - action: sync
+            path: ./backend
+            target: /app
+  frontend:
+      build: ./frontend
+      ports:
+        - "3000:3000"
+      depends_on:
+        - backend
+      command: npm run dev
+      develop:
+        watch:
+          - action: sync
+            path: ./frontend
+            target: /app

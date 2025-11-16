@@ -3,7 +3,7 @@ import './RollsTable.css';
 
 function transformVideoUrl(url: string) {
     if (!url) return '';
-    return 'http://localhost:8000/' + url;
+    return `${import.meta.env.VITE_BACKEND_URL}/url`;
 }
 
 function formatDate(dateObj: { year: number; month: number; day: number }) {

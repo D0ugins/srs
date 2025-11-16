@@ -10,7 +10,7 @@ function RouteComponent() {
   const { data, isPending, isError } = useQuery({
     queryKey: ['rolls'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:8000/rolls')
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls`)
       if (!response.ok) {
         throw new Error('Network response was not ok')
       }
