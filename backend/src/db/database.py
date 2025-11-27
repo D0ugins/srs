@@ -6,7 +6,7 @@ from fastapi import Depends
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Index, CheckConstraint, Enum as SQLEnum, event
 from sqlalchemy.orm import declarative_base, relationship, Session
 
-DB_PATH = f'sqlite:///app/data/db/srs.db'
+DB_PATH = f'sqlite:////app/data/db/srs.db'
 engine = create_engine(DB_PATH, connect_args={"check_same_thread": False})
 
 Base = declarative_base()

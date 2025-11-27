@@ -13,6 +13,8 @@ services:
           - action: sync
             path: ./backend
             target: /app
+          - action: rebuild
+            path: ./backend/uv.lock
   frontend:
       build: ./frontend
       ports:
