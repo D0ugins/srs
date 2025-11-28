@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -49,12 +49,21 @@ def get_rolls(
 
 @app.get('/roll/{roll_id}')
 def get_roll(roll_id: int, session: SessionDep):
-    roll = session.get(Roll, roll_id)
+    query = select(Roll).options(
+        selectinload(Roll.driver),
+        selectinload(Roll.buggy),
+        selectinload(Roll.roll_files),
+        selectinload(Roll.roll_date),
+        selectinload(Roll.roll_events),
+        selectinload(Roll.roll_hills),
+    ).where(Roll.id == roll_id)
+    
+    roll = session.scalar(query)
     if not roll:
-        return {"error": "Roll not found"}
-    # roll_dict = jsonable_encoder(roll)
-    # for redundant_key in ("roll_date_id", "buggy_id", "driver_id"):
-    #     roll_dict.pop(redundant_key, None)
+        raise HTTPException(status_code=404, detail="Roll not found")
+    roll_dict = jsonable_encoder(roll)
+    for redundant_key in ("roll_date_id", "buggy_id", "driver_id"):
+        roll_dict.pop(redundant_key, None)
     return roll
 
 app.mount("/%thumbnails%", 
