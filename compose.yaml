@@ -8,6 +8,8 @@ services:
         - ./data/db:/app/data/db
         - ./data/videos:/app/data/videos
         - ./data/virbs:/app/data/virbs
+      environment:
+        - DB_PATH=/app/data/db/srs.db
       develop:
         watch:
           - action: sync
@@ -27,3 +29,11 @@ services:
           - action: sync
             path: ./frontend
             target: /app
+
+  create_db:
+      build: ./backend
+      command: uv run /app/src/db/database.py
+      volumes:
+        - ./data/db:/app/data/db
+      profiles:
+        - "create_db"

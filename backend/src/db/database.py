@@ -1,13 +1,14 @@
 import os
-from typing import Annotated, Optional, List
+from typing import Annotated
 from datetime import datetime, timezone
 from enum import Enum
 from fastapi import Depends
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Index, CheckConstraint, Enum as SQLEnum, event
 from sqlalchemy.orm import declarative_base, relationship, Session
 
-DB_PATH = f'sqlite:////app/data/db/srs.db'
-engine = create_engine(DB_PATH, connect_args={"check_same_thread": False})
+DB_PATH = os.getenv('DB_PATH', '/app/data/db/srs.db')
+DB_URI = f'sqlite:///{DB_PATH}'
+engine = create_engine(DB_URI, connect_args={"check_same_thread": False})
 
 Base = declarative_base()
 
