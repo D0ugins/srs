@@ -1,10 +1,7 @@
 import { useState } from 'react';
 import './RollsTable.css';
-
-function transformVideoUrl(url: string) {
-    if (!url) return '';
-    return `${import.meta.env.VITE_BACKEND_URL}/${url}`;
-}
+import { Link } from '@tanstack/react-router';
+import { transformMediaUrl } from '@/lib/url';
 
 function formatDate(dateObj: { year: number; month: number; day: number }) {
     return `${dateObj.year}-${String(dateObj.month).padStart(2, '0')}-${String(dateObj.day).padStart(2, '0')}`;
@@ -13,10 +10,10 @@ function formatDate(dateObj: { year: number; month: number; day: number }) {
 function RollTableRow(roll: any) {
     const [expanded, setExpanded] = useState(false);
     const [showVideo, setShowVideo] = useState(false);
-    const video_url = transformVideoUrl(
+    const video_url = transformMediaUrl(
         roll.roll_files.find((file: any) => file.type === 'video_preview')?.uri
     );
-    const thumb_url = transformVideoUrl(
+    const thumb_url = transformMediaUrl(
         roll.roll_files.find((file: any) => file.type === 'thumbnail')?.uri
     );
 
@@ -32,9 +29,9 @@ function RollTableRow(roll: any) {
         <div className="roll-row">
             <div className={`roll-header ${expanded ? 'expanded' : ''}`} onClick={handleRowClick}>
                 <div className="roll-info">
-                    <span >{roll.driver.name}</span>
+                    <span> {roll.driver.name}</span>
                     <span className="roll-separator">•</span>
-                    <span >{roll.buggy.name}</span>
+                    <span> {roll.buggy.name}</span>
                     <span className="roll-separator">•</span>
                     <span className="roll-datetime">
                         {roll.start_time ? (
@@ -45,6 +42,9 @@ function RollTableRow(roll: any) {
                             </>
                         )}
                     </span>
+                    <span className="roll-separator">•</span>
+                    <span> <Link to={`/recording/${roll.id}`}> Add events </Link></span>
+
                 </div>
                 <div className="expand-icon">{expanded ? '▼' : '▶'}</div>
             </div>

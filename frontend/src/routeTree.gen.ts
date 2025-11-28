@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RollsRouteImport } from './routes/rolls'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RecordingRollIdRouteImport } from './routes/recording.$rollId'
 
 const RollsRoute = RollsRouteImport.update({
   id: '/rolls',
@@ -22,31 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecordingRollIdRoute = RecordingRollIdRouteImport.update({
+  id: '/recording/$rollId',
+  path: '/recording/$rollId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/rolls': typeof RollsRoute
+  '/recording/$rollId': typeof RecordingRollIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/rolls': typeof RollsRoute
+  '/recording/$rollId': typeof RecordingRollIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/rolls': typeof RollsRoute
+  '/recording/$rollId': typeof RecordingRollIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/rolls'
+  fullPaths: '/' | '/rolls' | '/recording/$rollId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rolls'
-  id: '__root__' | '/' | '/rolls'
+  to: '/' | '/rolls' | '/recording/$rollId'
+  id: '__root__' | '/' | '/rolls' | '/recording/$rollId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   RollsRoute: typeof RollsRoute
+  RecordingRollIdRoute: typeof RecordingRollIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recording/$rollId': {
+      id: '/recording/$rollId'
+      path: '/recording/$rollId'
+      fullPath: '/recording/$rollId'
+      preLoaderRoute: typeof RecordingRollIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   RollsRoute: RollsRoute,
+  RecordingRollIdRoute: RecordingRollIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
