@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import RollTree from './RollTree'
-import { Link } from '@tanstack/react-router'
 
 export interface RollData {
     id: number
@@ -131,10 +130,10 @@ function buildRollTree(rolls: RollData[], groupings: RollOrderKey[],
     const leaves: Map<RollData, RollTreeLeaf> = new Map();
     for (const roll of rolls) {
         let name = '';
-        if (!groupings.includes('type')) name += `${roll.roll_date.type} `
-        if (!groupings.includes('date')) name += `${formatDate(roll.roll_date)} `
         if (!groupings.includes('driver')) name += `${roll.driver.name} `
         if (!groupings.includes('buggy')) name += `${roll.buggy.name} `
+        if (!groupings.includes('type')) name += `${roll.roll_date.type} `
+        if (!groupings.includes('date')) name += `${formatDate(roll.roll_date)} `
 
         leaves.set(roll, makeLeaf(roll, name.trim()));
     }
@@ -163,7 +162,7 @@ export default function RollSidebar({ updateId, selectedId }:
     if (isError) {
         return <div>Error loading rolls.</div>
     }
-    const groupings = ['type', 'driver', 'buggy'] as RollOrderKey[];
+    const groupings = ['type', 'driver'] as RollOrderKey[];
 
     const makeLeaf = (roll: RollData, name: string): RollTreeLeaf => ({
         kind: 'leaf' as const,
@@ -179,6 +178,6 @@ export default function RollSidebar({ updateId, selectedId }:
         </div>,
     });
 
-    const rollTrees = buildRollTree(data, ['type', 'driver', 'buggy'], [], [], makeLeaf);
+    const rollTrees = buildRollTree(data, groupings, [], [], makeLeaf);
     return <>{rollTrees.map(tree => (<RollTree rollTree={tree} />))}</>
 }

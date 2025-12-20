@@ -81,6 +81,13 @@ function RouteComponent() {
     });
 
     return <div className="flex h-full">
+        <div
+            ref={sidebarRef}
+            className="border-r overflow-y-auto p-2 overflow-x-hidden text-nowrap"
+            style={{ width: `${sidebarWidth}px`, display: isCollapsed ? 'none' : 'block' }}
+        >
+            <RollSidebar updateId={updateId} selectedId={rollId} />
+        </div>
         {isCollapsed ? (
             <button
                 onClick={() => { setIsCollapsed(false); setSidebarWidth(256); }}
@@ -92,19 +99,10 @@ function RouteComponent() {
                 </svg>
             </button>
         ) : (
-            <>
-                <div
-                    ref={sidebarRef}
-                    className="border-r overflow-y-auto p-2 overflow-x-hidden text-nowrap"
-                    style={{ width: `${sidebarWidth}px` }}
-                >
-                    <RollSidebar updateId={updateId} selectedId={rollId} />
-                </div>
-                <div
-                    className="w-2 hover:w-2 bg-transparent hover:bg-gray-200 cursor-col-resize transition-all"
-                    onMouseDown={() => setIsResizing(true)}
-                />
-            </>
+            <div
+                className="w-2 hover:w-2 bg-transparent hover:bg-gray-200 cursor-col-resize transition-all"
+                onMouseDown={() => setIsResizing(true)}
+            />
         )}
         <div className="flex-1">
             {rollId === undefined ? null
