@@ -14,13 +14,11 @@ export default function RollTree({ rollTree }: { rollTree: RollDataTree }) {
             <div className="cursor-pointer" onClick={() => setExpanded(!epanded)}>
                 {epanded ? '▼' : '▶'} {rollTree.header}
             </div>
-            {epanded && (
-                <div className="ml-[1em]">
-                    {rollTree.children.map((child, index) => (
-                        <RollTree key={index} rollTree={child} />
-                    ))}
-                </div>
-            )}
+            <div className="ml-[1em]" style={{ display: epanded ? 'block' : 'none' }}>
+                {rollTree.children.map((child, index) => (
+                    <RollTree key={index} rollTree={child} />
+                ))}
+            </div>
         </div>
     );
 }
