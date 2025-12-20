@@ -30,8 +30,8 @@ function RouteComponent() {
     });
 
     return <div className="flex h-full">
-        <div className="w-64 border-r overflow-y-auto">
-            <RollSidebar updateId={updateId} />
+        <div className="w-64 border-r overflow-y-auto p-2">
+            <RollSidebar updateId={updateId} selectedId={rollId} />
         </div>
         <div className="flex-1">
             {rollId === undefined ? null

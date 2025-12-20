@@ -119,7 +119,8 @@ function groupRolls(rolls: RollData[], leaves: Map<RollData, RollTreeLeaf>, grou
 }
 
 function buildRollTree(rolls: RollData[], groupings: RollOrderKey[],
-    _sort: unknown[] = [], _filters: unknown[] = [], updateId: (id: number) => void): RollDataTree[] {
+    _sort: unknown[] = [], _filters: unknown[] = [],
+    makeLeaf: (roll: RollData, name: string) => RollTreeLeaf): RollDataTree[] {
 
     // Filter
     // TODO
@@ -135,23 +136,14 @@ function buildRollTree(rolls: RollData[], groupings: RollOrderKey[],
         if (!groupings.includes('driver')) name += `${roll.driver.name} `
         if (!groupings.includes('buggy')) name += `${roll.buggy.name} `
 
-        leaves.set(roll, {
-            kind: 'leaf' as const,
-            element: <div className="text-gray-700" onClick={() => updateId(roll.id)}>
-                <span>{name} - </span><span>
-                    {roll.start_time
-                        ? roll.start_time.slice(-8, -3)
-                        : <> {formatDate(roll.roll_date)} Roll #{roll.roll_number} </>
-                    }
-                </span>
-            </div>,
-        });
+        leaves.set(roll, makeLeaf(roll, name.trim()));
     }
     return groupRolls(rolls, leaves, groupings);
 }
 
 
-export default function RollSidebar({ updateId }: { updateId: (id: number) => void }) {
+export default function RollSidebar({ updateId, selectedId }:
+    { updateId: (id: number) => void, selectedId: number | undefined }) {
     const { data, isPending, isError } = useQuery({
         queryKey: ['rolls'],
         queryFn: async () => {
@@ -171,7 +163,19 @@ export default function RollSidebar({ updateId }: { updateId: (id: number) => vo
     if (isError) {
         return <div>Error loading rolls.</div>
     }
+    console.debug(selectedId)
+    const makeLeaf = (roll: RollData, name: string): RollTreeLeaf => ({
+        kind: 'leaf' as const,
+        element: <div className={`text-gray-700 ${roll.id === selectedId ? 'bg-gray-200' : ''}`} onClick={() => updateId(roll.id)}>
+            <span>{name} - </span><span>
+                {roll.start_time
+                    ? roll.start_time.slice(-8, -3)
+                    : <> {formatDate(roll.roll_date)} Roll #{roll.roll_number} </>
+                }
+            </span>
+        </div>,
+    });
 
-    const rollTrees = buildRollTree(data, ['type', 'driver', 'buggy'], [], [], updateId);
+    const rollTrees = buildRollTree(data, ['type', 'driver', 'buggy'], [], [], makeLeaf);
     return <>{rollTrees.map(tree => (<RollTree rollTree={tree} />))}</>
 }
