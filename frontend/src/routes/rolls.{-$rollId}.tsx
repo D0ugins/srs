@@ -2,7 +2,7 @@ import { Recording } from '@/components/Recording';
 import RollSidebar from '@/components/RollSidebar';
 import { useQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export const Route = createFileRoute('/rolls/{-$rollId}')({
     component: RouteComponent,
@@ -17,6 +17,20 @@ function RouteComponent() {
         history.pushState(null, '', `/rolls/${id}`);
     };
 
+    useEffect(() => {
+        const handlePopState = () => {
+            const pathParts = window.location.pathname.split('/');
+            const newRollId = pathParts[pathParts.length - 1];
+            if (newRollId && !isNaN(+newRollId)) {
+                setRollId(+newRollId);
+            } else {
+                setRollId(undefined);
+            }
+        };
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
 
     const { data: roll, isLoading, error } = useQuery({
         queryKey: ['roll', rollId],
