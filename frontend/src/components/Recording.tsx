@@ -162,7 +162,7 @@ export function Recording({ roll }: RecordingProps) {
     };
 
     return (
-        <div className="p-4">
+        <div className="flex flex-col h-full p-4">
             <video
                 ref={videoRef}
                 className="w-1/2 cursor-pointer"
@@ -174,7 +174,7 @@ export function Recording({ roll }: RecordingProps) {
                 Your browser does not support the video tag.
             </video>
 
-            <div className="fixed bottom-8 left-8 right-8 bg-white border border-gray-300 rounded-lg shadow-lg p-4">
+            <div className="mt-auto bg-white border border-gray-300 rounded-lg shadow-lg p-4">
                 <div
                     ref={timelineRef}
                     className="relative h-8 bg-gray-800 rounded cursor-pointer"

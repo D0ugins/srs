@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import RollTree from './RollTree'
+import { Link } from '@tanstack/react-router'
 
 export interface RollData {
     id: number
@@ -117,7 +118,8 @@ function groupRolls(rolls: RollData[], leaves: Map<RollData, RollTreeLeaf>, grou
     return result;
 }
 
-function buildRollTree(rolls: RollData[], groupings: RollOrderKey[], _sort: unknown[] = [], _filters: unknown[] = []): RollDataTree[] {
+function buildRollTree(rolls: RollData[], groupings: RollOrderKey[],
+    _sort: unknown[] = [], _filters: unknown[] = [], updateId: (id: number) => void): RollDataTree[] {
 
     // Filter
     // TODO
@@ -135,19 +137,21 @@ function buildRollTree(rolls: RollData[], groupings: RollOrderKey[], _sort: unkn
 
         leaves.set(roll, {
             kind: 'leaf' as const,
-            element: <div className="text-gray-700"><span>{name} - </span><span>
-                {roll.start_time
-                    ? roll.start_time.slice(-8, -3)
-                    : <> {formatDate(roll.roll_date)} Roll #{roll.roll_number} </>
-                }
-            </span></div>,
+            element: <div className="text-gray-700" onClick={() => updateId(roll.id)}>
+                <span>{name} - </span><span>
+                    {roll.start_time
+                        ? roll.start_time.slice(-8, -3)
+                        : <> {formatDate(roll.roll_date)} Roll #{roll.roll_number} </>
+                    }
+                </span>
+            </div>,
         });
     }
     return groupRolls(rolls, leaves, groupings);
 }
 
 
-export default function RollSidebar() {
+export default function RollSidebar({ updateId }: { updateId: (id: number) => void }) {
     const { data, isPending, isError } = useQuery({
         queryKey: ['rolls'],
         queryFn: async () => {
@@ -168,6 +172,6 @@ export default function RollSidebar() {
         return <div>Error loading rolls.</div>
     }
 
-    const rollTrees = buildRollTree(data, ['type', 'driver', 'buggy']);
+    const rollTrees = buildRollTree(data, ['type', 'driver', 'buggy'], [], [], updateId);
     return <>{rollTrees.map(tree => (<RollTree rollTree={tree} />))}</>
 }
