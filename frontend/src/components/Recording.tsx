@@ -162,7 +162,7 @@ export function Recording({ roll }: RecordingProps) {
     };
 
     return (
-        <div className="flex flex-col h-full p-4">
+        <div className="flex flex-col h-full p-2">
             <video
                 ref={videoRef}
                 className="w-1/2 cursor-pointer"
