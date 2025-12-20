@@ -151,14 +151,25 @@ export function Recording({ roll }: RecordingProps) {
         return `${mins}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
     };
 
+    const handleVideoClick = () => {
+        if (videoRef.current) {
+            if (videoRef.current.paused) {
+                videoRef.current.play();
+            } else {
+                videoRef.current.pause();
+            }
+        }
+    };
+
     return (
         <div className="p-4">
             <video
                 ref={videoRef}
-                className="w-1/2"
+                className="w-1/2 cursor-pointer"
                 autoPlay
                 src={videoUrl}
                 onLoadedMetadata={handleLoadedMetadata}
+                onClick={handleVideoClick}
             >
                 Your browser does not support the video tag.
             </video>
