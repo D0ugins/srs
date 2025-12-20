@@ -163,10 +163,13 @@ export default function RollSidebar({ updateId, selectedId }:
     if (isError) {
         return <div>Error loading rolls.</div>
     }
-    console.debug(selectedId)
+    const groupings = ['type', 'driver', 'buggy'] as RollOrderKey[];
+
     const makeLeaf = (roll: RollData, name: string): RollTreeLeaf => ({
         kind: 'leaf' as const,
-        element: <div className={`text-gray-700 ${roll.id === selectedId ? 'bg-gray-200' : ''}`} onClick={() => updateId(roll.id)}>
+        element: <div className={`text-gray-700 ${roll.id === selectedId ? 'bg-gray-200' : ''}`}
+            style={roll.id === selectedId ? { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em`, } : {}}
+            onClick={() => updateId(roll.id)}>
             <span>{name} - </span><span>
                 {roll.start_time
                     ? roll.start_time.slice(-8, -3)
