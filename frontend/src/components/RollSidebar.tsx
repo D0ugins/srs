@@ -1,6 +1,8 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import RollTree from './RollTree'
+import { capitalize } from '@/lib/format'
+import SidebarFilters from './SidebarFilters'
 
 export interface RollData {
     id: number
@@ -72,7 +74,8 @@ function formatDate(dateObj: { year: number; month: number; day: number }): stri
     return `${dateObj.year}/${String(dateObj.month).padStart(2, '0')}/${String(dateObj.day).padStart(2, '0')}`;
 }
 
-export type RollOrderKey = 'type' | 'date' | 'driver' | 'buggy'
+export const ROLL_ORDER_KEYS = ['type', 'date', 'driver', 'buggy'] as const;
+export type RollOrderKey = typeof ROLL_ORDER_KEYS[number];
 
 function getGroupKey(roll: RollData, key: RollOrderKey): string {
     switch (key) {
@@ -109,7 +112,7 @@ function groupRolls(rolls: RollData[], leaves: Map<RollData, RollTreeLeaf>, grou
         const children = groupRolls(groupedRolls, leaves, groupings.slice(1));
         result.push({
             kind: 'node' as const,
-            header: key,
+            header: capitalize(key),
             children: children,
         });
     }
@@ -130,9 +133,9 @@ function buildRollTree(rolls: RollData[], groupings: RollOrderKey[],
     const leaves: Map<RollData, RollTreeLeaf> = new Map();
     for (const roll of rolls) {
         let name = '';
+        if (!groupings.includes('type')) name += `${capitalize(roll.roll_date.type)} `
         if (!groupings.includes('driver')) name += `${roll.driver.name} `
         if (!groupings.includes('buggy')) name += `${roll.buggy.name} `
-        if (!groupings.includes('type')) name += `${roll.roll_date.type} `
         if (!groupings.includes('date')) name += `${formatDate(roll.roll_date)} `
 
         leaves.set(roll, makeLeaf(roll, name.trim()));
@@ -153,7 +156,11 @@ export default function RollSidebar({ updateId, selectedId }:
             const data = await response.json() as RollData[];
             return data.sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
         },
-    })
+    });
+
+    const [groupings, setGroupings] = useState<RollOrderKey[]>(['type', 'driver']);
+    const [filters, setFilters] = useState<unknown[]>([]); // TODO
+    const [sort, setSort] = useState<unknown[]>([]); // TODO
 
     if (isPending) {
         return <div>Loading...</div>
@@ -162,14 +169,13 @@ export default function RollSidebar({ updateId, selectedId }:
     if (isError) {
         return <div>Error loading rolls.</div>
     }
-    const groupings = ['type', 'driver'] as RollOrderKey[];
 
     const makeLeaf = (roll: RollData, name: string): RollTreeLeaf => ({
         kind: 'leaf' as const,
         element: <div className={`text-gray-700 ${roll.id === selectedId ? 'bg-gray-200' : ''}`}
             style={roll.id === selectedId ? { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em`, } : {}}
             onClick={() => updateId(roll.id)}>
-            <span>{name} - </span><span>
+            <span>{name}{name !== "" ? " - " : ""}</span><span>
                 {roll.start_time
                     ? roll.start_time.slice(-8, -3)
                     : <> {formatDate(roll.roll_date)} Roll #{roll.roll_number} </>
@@ -179,5 +185,9 @@ export default function RollSidebar({ updateId, selectedId }:
     });
 
     const rollTrees = buildRollTree(data, groupings, [], [], makeLeaf);
-    return <>{rollTrees.map(tree => (<RollTree rollTree={tree} />))}</>
+    return <>
+        <SidebarFilters groupings={groupings} setGroupings={setGroupings} />
+        <hr />
+        {rollTrees.map(tree => (<RollTree rollTree={tree} />))}
+    </>
 }

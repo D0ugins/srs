@@ -12,7 +12,8 @@ function RouteComponent() {
     const { rollId: initiId } = Route.useParams();
 
     const [rollId, setRollId] = useState<number | undefined>(initiId ? +initiId : undefined);
-    const [sidebarWidth, setSidebarWidth] = useState(256); // 16rem = 256px
+    const DEFAULT_SIDEBAR_WIDTH = 320;
+    const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
     const [isResizing, setIsResizing] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const sidebarRef = useRef<HTMLDivElement>(null);
@@ -90,7 +91,7 @@ function RouteComponent() {
         </div>
         {isCollapsed ? (
             <button
-                onClick={() => { setIsCollapsed(false); setSidebarWidth(256); }}
+                onClick={() => { setIsCollapsed(false); setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); }}
                 className="w-4 border-r bg-gray-100 hover:bg-gray-300 flex items-center justify-center"
                 aria-label="Expand sidebar"
             >

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { transformMediaUrl } from "@/lib/url";
+import { transformMediaUrl } from "@/lib/format";
 
 interface RecordingProps {
     roll: any;
