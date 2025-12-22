@@ -17,7 +17,7 @@ export default function SidebarFilters({ groupings, setGroupings }:
                 className="mr-2 pl-[2px] pb-[2px] border rounded"
                 onChange={(e) => handleGroupingChange(index, e.target.value)}
             >
-                <option value="none">---</option>
+                <option key="none" value="none">---</option>
                 {
                     ROLL_ORDER_KEYS.filter(key => !groupings.slice(0, index).includes(key))
                         .map(key =>
