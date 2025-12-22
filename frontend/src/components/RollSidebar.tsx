@@ -120,14 +120,10 @@ function groupRolls(rolls: RollData[], leaves: Map<RollData, RollTreeLeaf>, grou
     return result;
 }
 
-function buildRollTree(rolls: RollData[], groupings: RollOrderKey[],
-    _sort: unknown[] = [], _filters: unknown[] = [],
+function buildRollTree(rolls: RollData[], groupings: RollOrderKey[], _filters: unknown[] = [],
     makeLeaf: (roll: RollData, name: string) => RollTreeLeaf): RollDataTree[] {
 
     // Filter
-    // TODO
-
-    // Sort
     // TODO
 
     const leaves: Map<RollData, RollTreeLeaf> = new Map();
@@ -154,13 +150,20 @@ export default function RollSidebar({ updateId, selectedId }:
                 throw new Error('Network response was not ok')
             }
             const data = await response.json() as RollData[];
-            return data.sort((a: any, b: any) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+            return data.sort((a, b) => {
+                if (a.roll_date.year !== b.roll_date.year) return b.roll_date.year - a.roll_date.year;
+                if (a.roll_date.month !== b.roll_date.month) return b.roll_date.month - a.roll_date.month;
+                if (a.roll_date.day !== b.roll_date.day) return b.roll_date.day - a.roll_date.day;
+
+                if (a.roll_number !== undefined && b.roll_number !== undefined) return b.roll_number - a.roll_number;
+                if (a.start_time && b.start_time) return b.start_time.localeCompare(a.start_time);
+                return b.updated_at.localeCompare(a.updated_at);
+            });
         },
     });
 
     const [groupings, setGroupings] = useState<RollOrderKey[]>(['type', 'driver']);
     const [filters, setFilters] = useState<unknown[]>([]); // TODO
-    const [sort, setSort] = useState<unknown[]>([]); // TODO
 
     if (isPending) {
         return <div>Loading...</div>
@@ -184,7 +187,7 @@ export default function RollSidebar({ updateId, selectedId }:
         </div>,
     });
 
-    const rollTrees = buildRollTree(data, groupings, [], [], makeLeaf);
+    const rollTrees = buildRollTree(data, groupings, [], makeLeaf);
     return <>
         <SidebarFilters groupings={groupings} setGroupings={setGroupings} />
         <hr />
