@@ -3,8 +3,8 @@ from typing import Annotated
 from datetime import datetime, timezone
 from enum import Enum
 from fastapi import Depends
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, ForeignKey, Index, CheckConstraint, Enum as SQLEnum, event
-from sqlalchemy.orm import declarative_base, relationship, Session
+from sqlalchemy import create_engine, Index, CheckConstraint, event, ForeignKey
+from sqlalchemy.orm import declarative_base, relationship, Session, Mapped, mapped_column
 
 DB_PATH = os.getenv('DB_PATH', '/app/data/db/srs.db')
 DB_URI = f'sqlite:///{DB_PATH}'
@@ -15,18 +15,18 @@ Base = declarative_base()
 class TimestampModel(Base):
     __abstract__ = True
     
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, nullable=False, 
+    created_at: Mapped[datetime] = mapped_column(nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(nullable=False, 
                         default=lambda: datetime.now(timezone.utc), 
                         onupdate=lambda: datetime.now(timezone.utc))
 
 class Driver(TimestampModel):
     __tablename__ = "driver"
     
-    id = Column(Integer, primary_key=True)
-    name = Column(String, unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(unique=True)
     
-    rolls = relationship("Roll", back_populates="driver")
+    rolls: Mapped[list["Roll"]] = relationship(back_populates="driver")
     
     def __repr__(self):
         return f"Driver(id={self.id}, name='{self.name}')"
@@ -39,11 +39,11 @@ class Gender(str, Enum):
 class Pusher(TimestampModel):
     __tablename__ = "pusher"
     
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=True)
-    gender = Column(SQLEnum(Gender), nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str | None] = mapped_column()
+    gender: Mapped[Gender | None] = mapped_column()
     
-    roll_hills = relationship("RollHill", back_populates="pusher")
+    roll_hills: Mapped[list["RollHill"]] = relationship(back_populates="pusher")
     
     def __repr__(self):
         return f"Pusher(id={self.id}, name='{self.name}', gender={self.gender})"
@@ -51,11 +51,11 @@ class Pusher(TimestampModel):
 class Buggy(TimestampModel):
     __tablename__ = "buggy"
     
-    id = Column(Integer, primary_key=True)
-    name = Column(String, nullable=False)
-    abbreviation = Column(String, unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column()
+    abbreviation: Mapped[str] = mapped_column(unique=True)
     
-    rolls = relationship("Roll", back_populates="buggy")
+    rolls: Mapped[list["Roll"]] = relationship(back_populates="buggy")
     
     def __repr__(self):
         return f"Buggy(id={self.id}, name='{self.name}', abbreviation='{self.abbreviation}')"
@@ -63,13 +63,13 @@ class Buggy(TimestampModel):
 class Sensor(TimestampModel):
     __tablename__ = "sensor"
     
-    id = Column(Integer, primary_key=True)
-    type = Column(String, nullable=False)
-    name = Column(String, nullable=False)
-    abbreviation = Column(String, unique=True, nullable=False)
-    uri = Column(String, nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[str] = mapped_column()
+    name: Mapped[str] = mapped_column()
+    abbreviation: Mapped[str] = mapped_column(unique=True)
+    uri: Mapped[str | None] = mapped_column()
     
-    roll_files = relationship("RollFile", back_populates="sensor")
+    roll_files: Mapped[list["RollFile"]] = relationship(back_populates="sensor")
     
     def __repr__(self):
         return f"Sensor(id={self.id}, name='{self.name}', type='{self.type}')"
@@ -81,18 +81,18 @@ class RollType(str, Enum):
 class RollDate(TimestampModel):
     __tablename__ = "rolldate"
     
-    id = Column(Integer, primary_key=True)
-    year = Column(Integer, nullable=False)
-    month = Column(Integer, nullable=False)
-    day = Column(Integer, nullable=False)
-    notes = Column(String, default="", nullable=False)
-    temperature = Column(Integer, nullable=True)
-    humidity = Column(Integer, nullable=True)
-    type = Column(SQLEnum(RollType), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    year: Mapped[int] = mapped_column()
+    month: Mapped[int] = mapped_column()
+    day: Mapped[int] = mapped_column()
+    notes: Mapped[str] = mapped_column(default="")
+    temperature: Mapped[int | None] = mapped_column()
+    humidity: Mapped[int | None] = mapped_column()
+    type: Mapped[RollType] = mapped_column()
     
     __table_args__ = (Index("idx_roll_date_ymd", "year", "month", "day", "type", unique=True),)
     
-    rolls = relationship("Roll", back_populates="roll_date")
+    rolls: Mapped[list["Roll"]] = relationship(back_populates="roll_date")
     
     def __repr__(self):
         return f"RollDate(id={self.id}, date={self.year}-{self.month:02d}-{self.day:02d}, type={self.type})"
@@ -101,23 +101,23 @@ class RollDate(TimestampModel):
 class Roll(TimestampModel):
     __tablename__ = "roll"
     
-    id = Column(Integer, primary_key=True)
-    driver_id = Column(Integer, ForeignKey("driver.id"), nullable=False, index=True)
-    buggy_id = Column(Integer, ForeignKey("buggy.id"), nullable=False, index=True)
-    roll_date_id = Column(Integer, ForeignKey("rolldate.id"), nullable=False, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    driver_id: Mapped[int] = mapped_column(ForeignKey("driver.id"), index=True)
+    buggy_id: Mapped[int] = mapped_column(ForeignKey("buggy.id"), index=True)
+    roll_date_id: Mapped[int] = mapped_column(ForeignKey("rolldate.id"), index=True)
     
-    roll_number = Column(Integer, nullable=True)
-    start_time = Column(DateTime, nullable=True)
-    driver_notes = Column(String, default="", nullable=False)
-    mech_notes = Column(String, default="", nullable=False)
-    pusher_notes = Column(String, default="", nullable=False)
+    roll_number: Mapped[int | None] = mapped_column()
+    start_time: Mapped[datetime | None] = mapped_column()
+    driver_notes: Mapped[str] = mapped_column(default="")
+    mech_notes: Mapped[str] = mapped_column(default="")
+    pusher_notes: Mapped[str] = mapped_column(default="")
     
-    driver = relationship("Driver", back_populates="rolls")
-    buggy = relationship("Buggy", back_populates="rolls")
-    roll_date = relationship("RollDate", back_populates="rolls")
-    roll_files = relationship("RollFile", back_populates="roll")
-    roll_events = relationship("RollEvent", back_populates="roll")
-    roll_hills = relationship("RollHill", back_populates="roll")
+    driver: Mapped["Driver"] = relationship(back_populates="rolls")
+    buggy: Mapped["Buggy"] = relationship(back_populates="rolls")
+    roll_date: Mapped["RollDate"] = relationship(back_populates="rolls")
+    roll_files: Mapped[list["RollFile"]] = relationship(back_populates="roll")
+    roll_events: Mapped[list["RollEvent"]] = relationship(back_populates="roll")
+    roll_hills: Mapped[list["RollHill"]] = relationship(back_populates="roll")
     
     __table_args__ = (
         CheckConstraint(
@@ -133,14 +133,14 @@ class Roll(TimestampModel):
 class RollFile(TimestampModel):
     __tablename__ = "rollfile"
     
-    id = Column(Integer, primary_key=True)
-    roll_id = Column(Integer, ForeignKey("roll.id"), nullable=False, index=True)
-    type = Column(String, nullable=False)
-    uri = Column(String, nullable=False)
-    sensor_id = Column(Integer, ForeignKey("sensor.id"), nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
+    type: Mapped[str] = mapped_column()
+    uri: Mapped[str] = mapped_column()
+    sensor_id: Mapped[int | None] = mapped_column(ForeignKey("sensor.id"))
     
-    roll = relationship("Roll", back_populates="roll_files")
-    sensor = relationship("Sensor", back_populates="roll_files")
+    roll: Mapped["Roll"] = relationship(back_populates="roll_files")
+    sensor: Mapped["Sensor"] = relationship(back_populates="roll_files")
     
     def __repr__(self):
         return f"RollFile(id={self.id}, roll_id={self.roll_id}, type='{self.type}')"
@@ -148,14 +148,14 @@ class RollFile(TimestampModel):
 class RollEvent(TimestampModel):
     __tablename__ = "rollevent"
     
-    id = Column(Integer, primary_key=True)
-    roll_id = Column(Integer, ForeignKey("roll.id"), nullable=False, index=True)
-    type = Column(String, nullable=False)
-    tag = Column(String, nullable=True)
-    timestamp_ms = Column(Integer, nullable=False)
-    raw_timestamp = Column(DateTime, nullable=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
+    type: Mapped[str] = mapped_column()
+    tag: Mapped[str | None] = mapped_column()
+    timestamp_ms: Mapped[int] = mapped_column()
+    raw_timestamp: Mapped[datetime | None] = mapped_column()
     
-    roll = relationship("Roll", back_populates="roll_events")
+    roll: Mapped["Roll"] = relationship(back_populates="roll_events")
     
     def __repr__(self):
         return f"RollEvent(id={self.id}, roll_id={self.roll_id}, type='{self.type}', timestamp_ms={self.timestamp_ms})"
@@ -163,12 +163,12 @@ class RollEvent(TimestampModel):
 class RollHill(TimestampModel):
     __tablename__ = "rollhill"
     
-    id = Column(Integer, primary_key=True)
-    roll_id = Column(Integer, ForeignKey("roll.id"), nullable=False, index=True)
-    pusher_id = Column(Integer, ForeignKey("pusher.id"), nullable=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
+    pusher_id: Mapped[int | None] = mapped_column(ForeignKey("pusher.id"), index=True)
     
-    roll = relationship("Roll", back_populates="roll_hills")
-    pusher = relationship("Pusher", back_populates="roll_hills")
+    roll: Mapped["Roll"] = relationship(back_populates="roll_hills")
+    pusher: Mapped["Pusher"] = relationship(back_populates="roll_hills")
     
     def __repr__(self):
         return f"RollHill(id={self.id}, roll_id={self.roll_id}, pusher_id={self.pusher_id})"
