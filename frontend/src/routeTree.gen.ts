@@ -11,7 +11,6 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RollsChar123RollIdChar125RouteImport } from './routes/rolls.{-$rollId}'
-import { Route as RecordingRollIdRouteImport } from './routes/recording.$rollId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,39 +23,30 @@ const RollsChar123RollIdChar125Route =
     path: '/rolls/{-$rollId}',
     getParentRoute: () => rootRouteImport,
   } as any)
-const RecordingRollIdRoute = RecordingRollIdRouteImport.update({
-  id: '/recording/$rollId',
-  path: '/recording/$rollId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/recording/$rollId': typeof RecordingRollIdRoute
   '/rolls/{-$rollId}': typeof RollsChar123RollIdChar125Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/recording/$rollId': typeof RecordingRollIdRoute
   '/rolls/{-$rollId}': typeof RollsChar123RollIdChar125Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/recording/$rollId': typeof RecordingRollIdRoute
   '/rolls/{-$rollId}': typeof RollsChar123RollIdChar125Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/recording/$rollId' | '/rolls/{-$rollId}'
+  fullPaths: '/' | '/rolls/{-$rollId}'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/recording/$rollId' | '/rolls/{-$rollId}'
-  id: '__root__' | '/' | '/recording/$rollId' | '/rolls/{-$rollId}'
+  to: '/' | '/rolls/{-$rollId}'
+  id: '__root__' | '/' | '/rolls/{-$rollId}'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  RecordingRollIdRoute: typeof RecordingRollIdRoute
   RollsChar123RollIdChar125Route: typeof RollsChar123RollIdChar125Route
 }
 
@@ -76,19 +66,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RollsChar123RollIdChar125RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/recording/$rollId': {
-      id: '/recording/$rollId'
-      path: '/recording/$rollId'
-      fullPath: '/recording/$rollId'
-      preLoaderRoute: typeof RecordingRollIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  RecordingRollIdRoute: RecordingRollIdRoute,
   RollsChar123RollIdChar125Route: RollsChar123RollIdChar125Route,
 }
 export const routeTree = rootRouteImport
