@@ -24,7 +24,7 @@ class Driver(TimestampModel):
     __tablename__ = "driver"
     
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(unique=True)
+    name: Mapped[str] = mapped_column(unique=True, index=True)
     
     rolls: Mapped[list["Roll"]] = relationship(back_populates="driver")
     
@@ -40,7 +40,7 @@ class Pusher(TimestampModel):
     __tablename__ = "pusher"
     
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str | None] = mapped_column()
+    name: Mapped[str] = mapped_column(unique=True, index=True)
     gender: Mapped[Gender | None] = mapped_column()
     
     roll_hills: Mapped[list["RollHill"]] = relationship(back_populates="pusher")
@@ -53,7 +53,7 @@ class Buggy(TimestampModel):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
-    abbreviation: Mapped[str] = mapped_column(unique=True)
+    abbreviation: Mapped[str] = mapped_column(unique=True, index=True)
     
     rolls: Mapped[list["Roll"]] = relationship(back_populates="buggy")
     
@@ -77,6 +77,7 @@ class Sensor(TimestampModel):
 class RollType(str, Enum):
     WEEKEND = "weekend"
     MIDNIGHT = "midnight"
+    RACEDAY = "raceday"
     
 class RollDate(TimestampModel):
     __tablename__ = "rolldate"
@@ -142,6 +143,8 @@ class RollFile(TimestampModel):
     roll: Mapped["Roll"] = relationship(back_populates="roll_files")
     sensor: Mapped["Sensor"] = relationship(back_populates="roll_files")
     
+    __table_args__ = (Index("idx_rollfile_roll_type_uri", "roll_id", "type", "uri", unique=True),)
+    
     def __repr__(self):
         return f"RollFile(id={self.id}, roll_id={self.roll_id}, type='{self.type}')"
 
@@ -165,10 +168,19 @@ class RollHill(TimestampModel):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
-    pusher_id: Mapped[int | None] = mapped_column(ForeignKey("pusher.id"), index=True)
+    pusher_id: Mapped[int] = mapped_column(ForeignKey("pusher.id"), index=True)
+    hill_number: Mapped[int] = mapped_column()
     
     roll: Mapped["Roll"] = relationship(back_populates="roll_hills")
     pusher: Mapped["Pusher"] = relationship(back_populates="roll_hills")
+    
+    __table_args__ = (
+        CheckConstraint(
+            "hill_number >= 1 AND hill_number <= 5",
+            name="ck_rollhill_hill_number_range",
+        ),
+        Index("idx_rollhill_roll_pusher_hillnum", "roll_id", "pusher_id", "hill_number", unique=True),
+    )
     
     def __repr__(self):
         return f"RollHill(id={self.id}, roll_id={self.roll_id}, pusher_id={self.pusher_id})"
