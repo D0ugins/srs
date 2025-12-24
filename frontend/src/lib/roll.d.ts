@@ -1,0 +1,97 @@
+export interface RollDataBase {
+    id: number;
+    roll_number?: number;
+    start_time?: string;
+
+    driver: {
+        id: number;
+        name: string;
+
+        created_at: string;
+        updated_at: string;
+    };
+
+    buggy: {
+        id: number;
+        name: string;
+        abbreviation: string;
+
+        created_at: string;
+        updated_at: string;
+    };
+
+    roll_date: {
+        id: number;
+        year: number;
+        month: number;
+        day: number;
+
+        temperature?: number;
+        humidity?: number;
+        type: "weekend" | "midnight" | "raceday";
+
+        notes: string;
+    };
+
+    roll_files: {
+        id: number;
+        uri: string;
+        sensor_id: number;
+        type: string;
+
+        created_at: string;
+        updated_at: string;
+    }[];
+
+    driver_notes: string;
+    mech_notes: string;
+    pusher_notes: string;
+
+    created_at: string;
+    updated_at: string;
+}
+
+export interface RollDetails extends RollDataBase {
+    roll_files: {
+        id: number;
+        uri: string;
+        sensor: {
+            id: number;
+            name: string;
+            type: string;
+
+            created_at: string;
+            updated_at: string;
+        };
+        type: string;
+
+        created_at: string;
+        updated_at: string;
+    }[];
+
+    roll_events: {
+        id: number;
+        event_type: string;
+        timestamp: string;
+        description: string;
+
+        created_at: string;
+        updated_at: string;
+    }[];
+
+    roll_hills: {
+        id: number;
+        hill_name: string;
+        speed_mph: number;
+        pusher: {
+            id: number;
+            name: string;
+
+            created_at: string;
+            updated_at: string;
+        } | null;
+
+        created_at: string;
+        updated_at: string;
+    }[];
+}

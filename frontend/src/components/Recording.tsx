@@ -1,13 +1,11 @@
 import { useRef, useState, useEffect } from "react";
 import { transformMediaUrl } from "@/lib/format";
+import type { RollDetails } from "@/lib/roll";
 
-interface RecordingProps {
-    roll: any;
-}
 
-export function Recording({ roll }: RecordingProps) {
+export function Recording({ roll }: { roll: RollDetails }) {
     const videoUrl = transformMediaUrl(
-        roll.roll_files.find((file: any) => file.type === 'video_preview')?.uri
+        roll.roll_files.find((file) => file.type === 'video_preview')?.uri
     );
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);

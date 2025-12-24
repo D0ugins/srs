@@ -3,59 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import RollTree from './RollTree'
 import { capitalize } from '@/lib/format'
 import SidebarFilters from './SidebarFilters'
-
-export interface RollData {
-    id: number
-    roll_number?: number
-    start_time?: string
-
-    driver: {
-        id: number
-        name: string
-
-        created_at: string
-        updated_at: string
-    }
-
-    buggy: {
-        id: number
-        name: string
-        abbreviation: string
-
-        created_at: string
-        updated_at: string
-    }
-
-    roll_date: {
-        id: number
-        year: number
-        month: number
-        day: number
-
-        temperature?: number
-        humidity?: number
-        type: "weekend" | "midnight"
-
-        notes: string
-    }
-
-    roll_files: {
-        id: number
-        uri: string
-        sensor_id: number
-        type: string
-
-        created_at: string
-        updated_at: string
-    }[]
-
-    driver_notes: string
-    mech_notes: string
-    pusher_notes: string
-
-    created_at: string
-    updated_at: string
-}
+import type { RollDataBase } from '@/lib/roll'
 
 interface RollTreeLeaf {
     kind: 'leaf'
@@ -77,7 +25,7 @@ function formatDate(dateObj: { year: number; month: number; day: number }): stri
 export const ROLL_ORDER_KEYS = ['type', 'date', 'driver', 'buggy'] as const;
 export type RollOrderKey = typeof ROLL_ORDER_KEYS[number];
 
-function getGroupKey(roll: RollData, key: RollOrderKey): string {
+function getGroupKey(roll: RollDataBase, key: RollOrderKey): string {
     switch (key) {
         case 'type':
             return roll.roll_date.type;
@@ -93,13 +41,13 @@ function getGroupKey(roll: RollData, key: RollOrderKey): string {
     }
 }
 
-function groupRolls(rolls: RollData[], leaves: Map<RollData, RollTreeLeaf>, groupings: RollOrderKey[]): RollDataTree[] {
+function groupRolls(rolls: RollDataBase[], leaves: Map<RollDataBase, RollTreeLeaf>, groupings: RollOrderKey[]): RollDataTree[] {
     if (groupings.length === 0) {
         return rolls.map(roll => leaves.get(roll)!);
     }
 
     const groupingKey = groupings[0];
-    const grouped: Map<string, RollData[]> = new Map();
+    const grouped: Map<string, RollDataBase[]> = new Map();
 
     for (const roll of rolls) {
         const key = getGroupKey(roll, groupingKey);
@@ -120,13 +68,13 @@ function groupRolls(rolls: RollData[], leaves: Map<RollData, RollTreeLeaf>, grou
     return result;
 }
 
-function buildRollTree(rolls: RollData[], groupings: RollOrderKey[], _filters: unknown[] = [],
-    makeLeaf: (roll: RollData, name: string) => RollTreeLeaf): RollDataTree[] {
+function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filters: unknown[] = [],
+    makeLeaf: (roll: RollDataBase, name: string) => RollTreeLeaf): RollDataTree[] {
 
     // Filter
     // TODO
 
-    const leaves: Map<RollData, RollTreeLeaf> = new Map();
+    const leaves: Map<RollDataBase, RollTreeLeaf> = new Map();
     for (const roll of rolls) {
         let name = '';
         if (!groupings.includes('type')) name += `${capitalize(roll.roll_date.type)} `
@@ -149,7 +97,7 @@ export default function RollSidebar({ updateId, selectedId }:
             if (!response.ok) {
                 throw new Error('Network response was not ok')
             }
-            const data = await response.json() as RollData[];
+            const data = await response.json() as RollDataBase[];
             return data.sort((a, b) => {
                 if (a.roll_date.year !== b.roll_date.year) return b.roll_date.year - a.roll_date.year;
                 if (a.roll_date.month !== b.roll_date.month) return b.roll_date.month - a.roll_date.month;
@@ -173,7 +121,7 @@ export default function RollSidebar({ updateId, selectedId }:
         return <div>Error loading rolls.</div>
     }
 
-    const makeLeaf = (roll: RollData, name: string): RollTreeLeaf => ({
+    const makeLeaf = (roll: RollDataBase, name: string): RollTreeLeaf => ({
         kind: 'leaf' as const,
         element: <div className={`text-gray-700 ${roll.id === selectedId ? 'bg-gray-200' : ''}`}
             style={roll.id === selectedId ? { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em`, } : {}}
