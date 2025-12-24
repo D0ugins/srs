@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { transformMediaUrl } from "@/lib/format";
-import type { RollDetails, RollUpdate, Driver, Buggy } from "@/lib/roll";
+import type { RollDetails, RollUpdate, Driver, Buggy, Sensor, Pusher } from "@/lib/roll";
+import { Autocomplete } from "./Autocomplete";
 
 
 function RollView({ roll }: { roll: RollDetails }) {
@@ -247,6 +248,67 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
         }
     });
 
+    const { data: sensors, isLoading: sensorsLoading } = useQuery({
+        queryKey: ['sensors'],
+        queryFn: async () => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/sensors`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch sensors');
+            }
+            return response.json() as Promise<Sensor[]>;
+        }
+    });
+
+    const { data: pushers, isLoading: pushersLoading } = useQuery({
+        queryKey: ['pushers'],
+        queryFn: async () => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/pushers`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch pushers');
+            }
+            return response.json() as Promise<Pusher[]>;
+        }
+    });
+
+    const addRollFile = () => {
+        setFormData({
+            ...formData,
+            roll_files: [...formData.roll_files, { type: '', uri: '', sensor_abbreviation: undefined }]
+        });
+    };
+
+    const removeRollFile = (index: number) => {
+        setFormData({
+            ...formData,
+            roll_files: formData.roll_files.filter((_, i) => i !== index)
+        });
+    };
+
+    const updateRollFile = (index: number, field: keyof RollUpdate['roll_files'][0], value: string | undefined) => {
+        const updatedFiles = [...formData.roll_files];
+        updatedFiles[index] = { ...updatedFiles[index], [field]: value };
+        setFormData({
+            ...formData,
+            roll_files: updatedFiles
+        });
+    };
+
+    const updateRollHill = (hillNumber: number, pusherName: string) => {
+        const updatedHills = [...formData.roll_hills];
+        const existingIndex = updatedHills.findIndex(h => h.hill_number === hillNumber);
+
+        if (existingIndex >= 0) {
+            updatedHills[existingIndex] = { hill_number: hillNumber, pusher_name: pusherName };
+        } else {
+            updatedHills.push({ hill_number: hillNumber, pusher_name: pusherName });
+        }
+
+        setFormData({
+            ...formData,
+            roll_hills: updatedHills
+        });
+    };
+
     return <div className="overflow-y-auto">
         <div className="mb-4 p-4 border border-gray-300 rounded">
             {/* <h2 className="text-xl font-semibold mb-3">Roll Info</h2> */}
@@ -326,7 +388,7 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                             <label className="block text-sm font-medium mb-1">Start Time</label>
                             <input
                                 type="time"
-                                value={formData.start_time ? new Date(formData.start_time).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }) : ''}
+                                value={formData.start_time ? new Date(formData.roll_date.year, formData.roll_date.month - 1, formData.roll_date.day, new Date(formData.start_time).getHours(), new Date(formData.start_time).getMinutes()).toISOString().substr(11, 5) : ''}
                                 onChange={(e) => {
                                     if (e.target.value) {
                                         const [hours, minutes] = e.target.value.split(':');
@@ -387,6 +449,84 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                 </div>
             </div>
         </div>
+
+        <div className="flex gap-4 mb-4">
+            <div className="p-4 border border-gray-300 rounded w-1/2">
+                <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-xl font-semibold">Roll Files</h2>
+                    <button
+                        onClick={addRollFile}
+                        className="px-3 py-1 bg-gray-300 rounded hover:bg-gray-500"
+                    >
+                        + Add File
+                    </button>
+                </div>
+                <div className="space-y-2">
+                    {formData.roll_files.map((file, index) => (
+                        <div key={index} className="flex gap-2 items-center">
+                            <input
+                                type="text"
+                                value={file.type}
+                                onChange={(e) => updateRollFile(index, 'type', e.target.value)}
+                                placeholder="Type"
+                                className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                            <input
+                                type="text"
+                                value={file.uri}
+                                onChange={(e) => updateRollFile(index, 'uri', e.target.value)}
+                                placeholder="URI"
+                                className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                            <select
+                                value={file.sensor_abbreviation || ''}
+                                onChange={(e) => updateRollFile(index, 'sensor_abbreviation', e.target.value || undefined)}
+                                disabled={sensorsLoading}
+                                className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                            >
+                                <option value="">Unknown</option>
+                                {sensors?.map((sensor) => (
+                                    <option key={sensor.id} value={sensor.abbreviation}>
+                                        {sensor.abbreviation}
+                                    </option>
+                                ))}
+                            </select>
+                            <button
+                                onClick={() => removeRollFile(index)}
+                                className="px-1.5 py-1.5 bg-red-300 rounded hover:bg-red-400"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div className="p-4 border border-gray-300 rounded w-1/2">
+                <div className="space-y-2">
+                    {[1, 2, 3, 4, 5].map((hillNumber) => {
+                        const hill = formData.roll_hills.find(h => h.hill_number === hillNumber);
+
+                        return (
+                            <div key={hillNumber} className="flex gap-2 items-center">
+                                <span className="w-20 px-2 py-1 text-sm font-medium">Hill {hillNumber}</span>
+                                <Autocomplete
+                                    value={hill?.pusher_name || ''}
+                                    onChange={(value) => updateRollHill(hillNumber, value)}
+                                    options={pushers || []}
+                                    getOptionLabel={(pusher) => pusher.name}
+                                    placeholder="Pusher name"
+                                    disabled={pushersLoading}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -414,7 +554,7 @@ export function Recording({ roll }: { roll: RollDetails }) {
             sensor_abbreviation: rf.sensor?.name
         })),
         roll_hills: roll.roll_hills.map(rh => ({
-            hill_number: rh.id,
+            hill_number: rh.hill_number,
             pusher_name: rh.pusher?.name || ''
         }))
     });
