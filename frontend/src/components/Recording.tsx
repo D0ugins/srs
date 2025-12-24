@@ -159,8 +159,21 @@ export function Recording({ roll }: { roll: RollDetails }) {
         }
     };
 
+    //TODO mute button
     return (
         <div className="flex flex-col h-full p-2">
+            <div className="mb-4 pb-2 border-b border-gray-300">
+                <h1 className="text-2xl">
+                    {roll.driver.name} - {roll.buggy.name} - {' '}
+                    {roll.roll_date.month}/{roll.roll_date.day}/{roll.roll_date.year}{' '}
+                    {roll.roll_number && `Roll #${roll.roll_number} `}
+                    {roll.start_time && (
+                        <span className="text-base text-gray-500">
+                            ({new Date(roll.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                        </span>
+                    )}
+                </h1>
+            </div>
             <div className="flex gap-4">
                 <video
                     ref={videoRef}
@@ -193,6 +206,7 @@ export function Recording({ roll }: { roll: RollDetails }) {
                                     </tr>
                                 );
                             })}
+                            {/* TODO: freeroll, overall, transitions (expandable? selectable?) */}
                         </tbody>
                     </table>
                 </div>

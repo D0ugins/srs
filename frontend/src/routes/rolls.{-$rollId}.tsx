@@ -9,9 +9,9 @@ export const Route = createFileRoute('/rolls/{-$rollId}')({
 })
 
 function RouteComponent() {
-    const { rollId: initiId } = Route.useParams();
+    const { rollId: initId } = Route.useParams(); //TODO: add start time in params
 
-    const [rollId, setRollId] = useState<number | undefined>(initiId ? +initiId : undefined);
+    const [rollId, setRollId] = useState<number | undefined>(initId ? +initId : undefined);
     const DEFAULT_SIDEBAR_WIDTH = 320;
     const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
     const [isResizing, setIsResizing] = useState(false);
@@ -73,6 +73,8 @@ function RouteComponent() {
     const { data: roll, isLoading, error } = useQuery({
         queryKey: ['roll', rollId],
         queryFn: async () => {
+            if (rollId === undefined) return null;
+
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/roll/${rollId}`);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
@@ -80,6 +82,11 @@ function RouteComponent() {
             return response.json();
         },
     });
+
+    let rollElement = <div>Select a roll :)</div>;
+    if (isLoading) rollElement = <div>Loading...</div>;
+    else if (error) rollElement = <div>Error loading roll data</div>;
+    else if (roll) rollElement = <Recording roll={roll} />;
 
     return <div className="flex h-full">
         <div
@@ -95,8 +102,8 @@ function RouteComponent() {
                 className="w-4 border-r bg-gray-100 hover:bg-gray-300 flex items-center justify-center"
                 aria-label="Expand sidebar"
             >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                 </svg>
             </button>
         ) : (
@@ -106,11 +113,7 @@ function RouteComponent() {
             />
         )}
         <div className="flex-1">
-            {rollId === undefined ? null
-                : isLoading ? <div>Loading...</div>
-                    : error ? <div>Error loading roll data</div>
-                        : <Recording roll={roll} />
-            }
+            {rollElement}
         </div>
     </div>
 
