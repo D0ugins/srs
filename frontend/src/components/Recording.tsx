@@ -161,16 +161,42 @@ export function Recording({ roll }: { roll: RollDetails }) {
 
     return (
         <div className="flex flex-col h-full p-2">
-            <video
-                ref={videoRef}
-                className="w-1/2 cursor-pointer"
-                autoPlay
-                src={videoUrl}
-                onLoadedMetadata={handleLoadedMetadata}
-                onClick={handleVideoClick}
-            >
-                Your browser does not support the video tag.
-            </video>
+            <div className="flex gap-4">
+                <video
+                    ref={videoRef}
+                    className="w-1/2 cursor-pointer"
+                    autoPlay
+                    src={videoUrl}
+                    onLoadedMetadata={handleLoadedMetadata}
+                    onClick={handleVideoClick}
+                >
+                    Your browser does not support the video tag.
+                </video>
+
+                <div className="flex-1">
+                    <table className="w-full border-collapse border-t border-b">
+                        <thead>
+                            <tr className="border-b">
+                                <th className="text-left py-2 w-16 border-l border-r px-2 font-normal">Hill</th>
+                                <th className="text-left py-2 border-r px-2 font-normal">Pusher</th>
+                                <th className="text-left py-2 border-r px-2 font-normal">Time</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {[1, 2, 3, 4, 5].map((hillNumber) => {
+                                const rollHill = roll.roll_hills[hillNumber - 1];
+                                return (
+                                    <tr key={hillNumber} className="border-b last:border-b-0">
+                                        <td className="py-2 w-16 border-l border-r px-2">{hillNumber}</td>
+                                        <td className="py-2 border-r px-2">{rollHill?.pusher?.name || ''}</td>
+                                        <td className="py-2 w-24 border-r px-2">---</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
             <div className="mt-auto bg-white border border-gray-300 rounded-lg shadow-lg p-4">
                 <div
