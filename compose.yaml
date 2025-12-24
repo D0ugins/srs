@@ -29,7 +29,8 @@ services:
           - action: sync
             path: ./frontend
             target: /app
-
+          - action: rebuild
+            path: ./frontend/package-lock.json
   create_db:
       build: ./backend
       command: uv run /app/src/db/database.py
