@@ -1,4 +1,4 @@
-from db.database import Pusher, RollDate, RollFile, RollHill, RollType, Sensor
+from db.database import Buggy, Driver, Pusher, RollDate, RollFile, RollHill, RollType, Sensor
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.encoders import jsonable_encoder
 from fastapi.staticfiles import StaticFiles
@@ -93,6 +93,8 @@ class RollUpdate(BaseModel):
     mech_notes: str
     pusher_notes: str
     
+    buggy_abbreviation: str
+    driver_name: str
     roll_number: int | None = None
     start_time: datetime | None = None
     
@@ -197,6 +199,19 @@ def update_roll(roll_id: int, roll_data: RollUpdate, session: SessionDep):
     roll.pusher_notes = roll_data.pusher_notes
     roll.roll_number = roll_data.roll_number
     roll.start_time = roll_data.start_time
+    
+    driver = session.execute(
+        select(Driver).where(Driver.name == roll_data.driver_name)
+    ).scalar_one_or_none()
+    if not driver:
+        raise HTTPException(status_code=404, detail="Driver not found")
+    roll.driver = driver
+    buggy = session.execute(
+        select(Buggy).where(Buggy.abbreviation == roll_data.buggy_abbreviation)
+    ).scalar_one_or_none()
+    if not buggy:
+        raise HTTPException(status_code=404, detail="Buggy not found")
+    roll.buggy = buggy
     
     rolldate = get_or_create_rolldate(session, roll_data.roll_date)
     roll.roll_date = rolldate
