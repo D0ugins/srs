@@ -527,6 +527,50 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                 </div>
             </div>
         </div>
+
+        <div className="mb-4 p-4 border border-gray-300 rounded">
+            <div className="grid grid-cols-3 gap-4">
+                <div>
+                    <label className="block text-sm font-medium mb-1">Driver Notes</label>
+                    <textarea
+                        value={formData.driver_notes}
+                        onChange={(e) => setFormData({
+                            ...formData,
+                            driver_notes: e.target.value
+                        })}
+                        placeholder="Driver notes..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm resize-none"
+                        rows={4}
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Mech Notes</label>
+                    <textarea
+                        value={formData.mech_notes}
+                        onChange={(e) => setFormData({
+                            ...formData,
+                            mech_notes: e.target.value
+                        })}
+                        placeholder="Mech notes..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm resize-none"
+                        rows={4}
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium mb-1">Pusher Notes</label>
+                    <textarea
+                        value={formData.pusher_notes}
+                        onChange={(e) => setFormData({
+                            ...formData,
+                            pusher_notes: e.target.value
+                        })}
+                        placeholder="Pusher notes..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm resize-none"
+                        rows={4}
+                    />
+                </div>
+            </div>
+        </div>
     </div>
 }
 
