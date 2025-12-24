@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { transformMediaUrl } from "@/lib/format";
-import type { RollDetails, RollUpdate } from "@/lib/roll";
+import type { RollDetails, RollUpdate, Driver, Buggy } from "@/lib/roll";
 
 
 function RollView({ roll }: { roll: RollDetails }) {
@@ -224,6 +225,28 @@ function RollView({ roll }: { roll: RollDetails }) {
 }
 
 function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData: (rollData: RollUpdate) => void }) {
+    const { data: drivers, isLoading: driversLoading } = useQuery({
+        queryKey: ['drivers'],
+        queryFn: async () => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/drivers`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch drivers');
+            }
+            return response.json() as Promise<Driver[]>;
+        }
+    });
+
+    const { data: buggies, isLoading: buggiesLoading } = useQuery({
+        queryKey: ['buggies'],
+        queryFn: async () => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/buggies`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch buggies');
+            }
+            return response.json() as Promise<Buggy[]>;
+        }
+    });
+
     return <div className="overflow-y-auto">
         <div className="mb-4 p-4 border border-gray-300 rounded">
             {/* <h2 className="text-xl font-semibold mb-3">Roll Info</h2> */}
@@ -327,27 +350,39 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                 <div className="w-1/3">
                     <div className="mb-4">
                         <label className="block text-sm font-medium mb-1">Driver</label>
-                        <input
-                            type="text"
+                        <select
                             value={formData.driver_name || ''}
                             onChange={(e) => setFormData({
                                 ...formData,
                                 driver_name: e.target.value
                             })}
+                            disabled={driversLoading}
                             className="w-full px-3 py-2 border border-gray-300 rounded"
-                        />
+                        >
+                            {drivers?.map((driver) => (
+                                <option key={driver.id} value={driver.name}>
+                                    {driver.name}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Buggy</label>
-                        <input
-                            type="text"
+                        <select
                             value={formData.buggy_abbreviation || ''}
                             onChange={(e) => setFormData({
                                 ...formData,
                                 buggy_abbreviation: e.target.value
                             })}
+                            disabled={buggiesLoading}
                             className="w-full px-3 py-2 border border-gray-300 rounded"
-                        />
+                        >
+                            {buggies?.map((buggy) => (
+                                <option key={buggy.id} value={buggy.abbreviation}>
+                                    {buggy.abbreviation}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>
