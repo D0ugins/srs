@@ -75,7 +75,7 @@ function RouteComponent() {
         queryFn: async () => {
             if (rollId === undefined) return null;
 
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/roll/${rollId}`);
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls/${rollId}`);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
