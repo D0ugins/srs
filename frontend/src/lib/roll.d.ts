@@ -1,24 +1,49 @@
+export interface Driver {
+    id: number;
+    name: string;
+    
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Buggy {
+    id: number;
+    name: string;
+    abbreviation: string;
+    
+    created_at: string;
+    updated_at: string;
+}
+
+export type Gender = "M" | "F" | "AG";
+
+export interface Pusher {
+    id: number;
+    name: string;
+    gender?: Gender;
+
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Sensor {
+    id: number;
+    name: string;
+    type: string;
+    abbreviation: string;
+    uri?: string;
+
+    created_at: string;
+    updated_at: string;
+}
+
 export interface RollDataBase {
     id: number;
     roll_number?: number;
     start_time?: string;
 
-    driver: {
-        id: number;
-        name: string;
-
-        created_at: string;
-        updated_at: string;
-    };
-
-    buggy: {
-        id: number;
-        name: string;
-        abbreviation: string;
-
-        created_at: string;
-        updated_at: string;
-    };
+    driver: Driver
+    buggy: Buggy;
 
     roll_date: {
         id: number;
