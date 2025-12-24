@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { transformMediaUrl } from "@/lib/format";
+import { formatDate, transformMediaUrl } from "@/lib/format";
 import type { RollDetails, RollUpdate, Driver, Buggy, Sensor, Pusher } from "@/lib/roll";
 import { Autocomplete } from "./Autocomplete";
 
@@ -308,13 +308,13 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
             roll_hills: updatedHills
         });
     };
-
+    console.debug(formData.start_time);
     return <div className="overflow-y-auto">
-        <div className="mb-4 p-4 border border-gray-300 rounded">
+        <div className="mb-4 px-4 py-2 border border-gray-300 rounded">
             {/* <h2 className="text-xl font-semibold mb-3">Roll Info</h2> */}
             <div className="flex gap-8">
                 <div className="w-2/3">
-                    <div className="grid grid-cols-4 gap-4 mb-4">
+                    <div className="grid grid-cols-4 gap-2 mb-2">
                         <div>
                             <label className="block text-sm font-medium mb-1">Type</label>
                             <select
@@ -331,7 +331,7 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1">Year</label>
+                            <label className="block text-sm font-medium mb-0.5">Year</label>
                             <input
                                 type="number"
                                 value={formData.roll_date.year}
@@ -343,7 +343,7 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1">Month</label>
+                            <label className="block text-sm font-medium mb-0.5">Month</label>
                             <input
                                 type="number"
                                 min="1"
@@ -357,7 +357,7 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1">Day</label>
+                            <label className="block text-sm font-medium mb-0.5">Day</label>
                             <input
                                 type="number"
                                 min="1"
@@ -385,17 +385,15 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium mb-1">Start Time</label>
+                            <label className="block text-sm font-medium mb-1">Start Time (EST)</label>
                             <input
                                 type="time"
-                                value={formData.start_time ? new Date(formData.roll_date.year, formData.roll_date.month - 1, formData.roll_date.day, new Date(formData.start_time).getHours(), new Date(formData.start_time).getMinutes()).toISOString().substr(11, 5) : ''}
+                                value={formData.start_time?.slice(11, 16) || ''}
                                 onChange={(e) => {
                                     if (e.target.value) {
-                                        const [hours, minutes] = e.target.value.split(':');
-                                        const date = new Date(formData.roll_date.year, formData.roll_date.month - 1, formData.roll_date.day, parseInt(hours), parseInt(minutes));
                                         setFormData({
                                             ...formData,
-                                            start_time: date.toISOString()
+                                            start_time: `${formatDate(formData.roll_date)}T${e.target.value}:00`
                                         });
                                     } else {
                                         setFormData({
@@ -410,7 +408,7 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                     </div>
                 </div>
                 <div className="w-1/3">
-                    <div className="mb-4">
+                    <div className="mb-2">
                         <label className="block text-sm font-medium mb-1">Driver</label>
                         <select
                             value={formData.driver_name || ''}
@@ -617,10 +615,10 @@ export function Recording({ roll }: { roll: RollDetails }) {
             </h1>
             {
                 editing ? <div className="flex gap-2">
-                    <button onClick={() => setEditing(!editing)} className="px-1.5 py-1.5 bg-green-300 rounded hover:bg-green-400">
+                    <button onClick={() => setEditing(!editing)} className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400">
                         Save
                     </button>
-                    <button onClick={() => setEditing(!editing)} className="px-1.5 py-1.5 bg-red-300 rounded hover:bg-red-400">
+                    <button onClick={() => setEditing(!editing)} className="px-4 py-1.5 bg-red-300 rounded hover:bg-red-400">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>

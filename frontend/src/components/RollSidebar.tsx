@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import RollTree from './RollTree'
-import { capitalize } from '@/lib/format'
+import { capitalize, formatDate } from '@/lib/format'
 import SidebarFilters from './SidebarFilters'
 import type { RollDataBase } from '@/lib/roll'
 
@@ -17,10 +17,6 @@ interface RollTreeNode {
 }
 
 export type RollDataTree = RollTreeNode | RollTreeLeaf
-
-function formatDate(dateObj: { year: number; month: number; day: number }): string {
-    return `${dateObj.year}/${String(dateObj.month).padStart(2, '0')}/${String(dateObj.day).padStart(2, '0')}`;
-}
 
 export const ROLL_ORDER_KEYS = ['type', 'date', 'driver', 'buggy'] as const;
 export type RollOrderKey = typeof ROLL_ORDER_KEYS[number];
