@@ -95,3 +95,39 @@ export interface RollDetails extends RollDataBase {
         updated_at: string;
     }[];
 }
+
+export interface RollDateInput {
+    year: number;
+    month: number;
+    day: number;
+    temperature?: number;
+    humidity?: number;
+    type: "weekend" | "midnight" | "raceday";
+}
+
+export interface RollFileInput {
+    type: string;
+    uri: string;
+    sensor_abbreviation?: string;
+}
+
+export interface RollHillInput {
+    hill_number: number;
+    pusher_name: string;
+}
+
+export interface RollUpdate {
+    driver_notes: string;
+    mech_notes: string;
+    pusher_notes: string;
+
+    roll_number?: number;
+    start_time?: string;
+
+    buggy_abbreviation: string;
+    driver_name: string;
+
+    roll_date: RollDateInput;
+    roll_files: RollFileInput[];
+    roll_hills: RollHillInput[];
+}
