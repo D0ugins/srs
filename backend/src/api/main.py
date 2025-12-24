@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from api.routers import rolls
+from api.routers import rolls, drivers, buggies, pushers, sensors
 
 app = FastAPI()
 app.add_middleware(
@@ -13,6 +13,10 @@ app.add_middleware(
 )
 
 app.include_router(rolls.router)
+app.include_router(drivers.router)
+app.include_router(buggies.router)
+app.include_router(pushers.router)
+app.include_router(sensors.router)
 
 app.mount("/%thumbnails%", 
           StaticFiles(directory='/app/data/virbs'), 
