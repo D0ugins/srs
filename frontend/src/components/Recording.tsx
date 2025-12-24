@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatDate, transformMediaUrl } from "@/lib/format";
 import type { RollDetails, RollUpdate, Driver, Buggy, Sensor, Pusher } from "@/lib/roll";
 import { Autocomplete } from "./Autocomplete";
@@ -308,7 +308,7 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
             roll_hills: updatedHills
         });
     };
-    console.debug(formData.start_time);
+
     return <div className="overflow-y-auto">
         <div className="mb-4 px-4 py-2 border border-gray-300 rounded">
             {/* <h2 className="text-xl font-semibold mb-3">Roll Info</h2> */}
@@ -573,6 +573,7 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
 }
 
 export function Recording({ roll }: { roll: RollDetails }) {
+    const queryClient = useQueryClient();
     const [editing, setEditing] = useState(false);
     const [formData, setFormData] = useState<RollUpdate>({
         driver_notes: roll.driver_notes,
@@ -601,6 +602,32 @@ export function Recording({ roll }: { roll: RollDetails }) {
         }))
     });
 
+    const saveRollMutation = useMutation({
+        mutationFn: async (updatedRoll: RollUpdate) => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls/${roll.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updatedRoll)
+            });
+            if (!response.ok) {
+                throw new Error('Failed to update roll');
+            }
+            return response.json() as Promise<RollDetails>;
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['rolls'] });
+            queryClient.invalidateQueries({ queryKey: ['roll', roll.id] });
+            setEditing(false);
+            console.log('Roll updated successfully', data);
+        },
+        onError: (error) => {
+            console.error('Error updating roll:', error);
+        }
+    });
+
+
     return <div className="flex flex-col h-full p-2">
         <div className="mb-4 pb-2 border-b border-gray-300 flex justify-between items-center">
             <h1 className="text-2xl">
@@ -615,7 +642,7 @@ export function Recording({ roll }: { roll: RollDetails }) {
             </h1>
             {
                 editing ? <div className="flex gap-2">
-                    <button onClick={() => setEditing(!editing)} className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400">
+                    <button onClick={() => saveRollMutation.mutate(formData)} className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400">
                         Save
                     </button>
                     <button onClick={() => setEditing(!editing)} className="px-4 py-1.5 bg-red-300 rounded hover:bg-red-400">
