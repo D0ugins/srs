@@ -139,6 +139,6 @@ export default function RollSidebar({ updateId, selectedId }:
     return <>
         <SidebarFilters groupings={groupings} setGroupings={setGroupings} />
         <hr />
-        {rollTrees.map(tree => (<RollTree rollTree={tree} />))}
+        {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} />))}
     </>
 }

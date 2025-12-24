@@ -16,12 +16,14 @@ export default function SidebarFilters({ groupings, setGroupings }:
             [...Array(4)].map((_, index) => <select
                 className="mr-2 pl-[2px] pb-[2px] border rounded"
                 onChange={(e) => handleGroupingChange(index, e.target.value)}
+                value={index < groupings.length ? groupings[index] : 'none'}
+                key={index}
             >
                 <option key="none" value="none">---</option>
                 {
                     ROLL_ORDER_KEYS.filter(key => !groupings.slice(0, index).includes(key))
                         .map(key =>
-                            <option key={key} value={key} selected={groupings[index] === key}>{capitalize(key)}</option>)
+                            <option key={key} value={key}>{capitalize(key)}</option>)
                 }
             </select>)
         }
