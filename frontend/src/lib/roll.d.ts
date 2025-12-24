@@ -106,8 +106,7 @@ export interface RollDetails extends RollDataBase {
 
     roll_hills: {
         id: number;
-        hill_name: string;
-        speed_mph: number;
+        hill_number: number;
         pusher: {
             id: number;
             name: string;
