@@ -32,7 +32,7 @@ export function rollToRollUpdate(roll: RollDetails): RollUpdate {
     };
 }
 
-export function RecordingEdit({ formData, setFormData }: { formData: RollUpdate, setFormData: (rollData: RollUpdate) => void }) {
+export default function RecordingEdit({ formData, setFormData }: { formData: RollUpdate, setFormData: (rollData: RollUpdate) => void }) {
     const pusherInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     const { data: drivers, isLoading: driversLoading } = useQuery({
