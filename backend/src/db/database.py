@@ -116,9 +116,9 @@ class Roll(TimestampModel):
     driver: Mapped["Driver"] = relationship(back_populates="rolls")
     buggy: Mapped["Buggy"] = relationship(back_populates="rolls")
     roll_date: Mapped["RollDate"] = relationship(back_populates="rolls")
-    roll_files: Mapped[list["RollFile"]] = relationship(back_populates="roll")
-    roll_events: Mapped[list["RollEvent"]] = relationship(back_populates="roll")
-    roll_hills: Mapped[list["RollHill"]] = relationship(back_populates="roll")
+    roll_files: Mapped[list["RollFile"]] = relationship(back_populates="roll", cascade="delete, delete-orphan")
+    roll_events: Mapped[list["RollEvent"]] = relationship(back_populates="roll", cascade="delete, delete-orphan")
+    roll_hills: Mapped[list["RollHill"]] = relationship(back_populates="roll", cascade="delete, delete-orphan")
     
     __table_args__ = (
         CheckConstraint(
@@ -174,13 +174,7 @@ class RollHill(TimestampModel):
     roll: Mapped["Roll"] = relationship(back_populates="roll_hills")
     pusher: Mapped["Pusher"] = relationship(back_populates="roll_hills")
     
-    __table_args__ = (
-        CheckConstraint(
-            "hill_number >= 1 AND hill_number <= 5",
-            name="ck_rollhill_hill_number_range",
-        ),
-        Index("idx_rollhill_roll_pusher_hillnum", "roll_id", "pusher_id", "hill_number", unique=True),
-    )
+    __table_args__ = (Index("idx_rollhill_roll_pusher_hillnum", "roll_id", "pusher_id", "hill_number", unique=True),)
     
     def __repr__(self):
         return f"RollHill(id={self.id}, roll_id={self.roll_id}, pusher_id={self.pusher_id})"
