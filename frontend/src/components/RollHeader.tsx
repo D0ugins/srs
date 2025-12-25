@@ -1,6 +1,6 @@
 import type { RollDataBase, RollDetails } from "@/lib/roll";
 
-export default function RecordingHeader({ roll }: { roll: RollDetails | RollDataBase }) {
+export default function RollHeader({ roll }: { roll: RollDetails | RollDataBase }) {
     return <h1 className="text-2xl">
         {roll.driver.name} - {roll.buggy.name} - {' '}
         {roll.roll_date.month}/{roll.roll_date.day}/{roll.roll_date.year}{' '}

@@ -2,8 +2,8 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RollDetails, RollUpdate } from "@/lib/roll";
-import RecordingEdit, { rollToRollUpdate } from "@/components/RecordingEdit";
-import RecordingHeader from "@/components/RecordingHeader";
+import RollEdit, { rollToRollUpdate } from "@/components/RollEdit";
+import RollHeader from "@/components/RollHeader";
 
 export const Route = createFileRoute('/rolls/$rollId/edit')({
     component: RouteComponent,
@@ -77,7 +77,7 @@ function RouteComponent() {
     return (
         <div className="flex flex-col h-full p-2">
             <div className="mb-4 pb-2 border-b border-gray-300 flex justify-between items-center">
-                <RecordingHeader roll={roll} />
+                <RollHeader roll={roll} />
                 <div className="flex gap-2">
                     <button onClick={() => saveRollMutation.mutate(formData)} className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400">
                         Save
@@ -94,7 +94,7 @@ function RouteComponent() {
                     {errorMessage}
                 </div>
             )}
-            <RecordingEdit formData={formData} setFormData={setFormData} />
+            <RollEdit formData={formData} setFormData={setFormData} />
         </div>
     );
 }
