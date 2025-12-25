@@ -83,6 +83,8 @@ export interface RollDetails extends RollDataBase {
         sensor: {
             id: number;
             name: string;
+            abbreviation: string;
+            uri?: string;
             type: string;
 
             created_at: string;

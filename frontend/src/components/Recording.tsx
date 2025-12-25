@@ -602,7 +602,7 @@ function rollToRollUpdate(roll: RollDetails): RollUpdate {
         roll_files: roll.roll_files.map(rf => ({
             type: rf.type,
             uri: rf.uri,
-            sensor_abbreviation: rf.sensor?.name
+            sensor_abbreviation: rf.sensor?.abbreviation
         })),
         roll_hills: roll.roll_hills.map(rh => ({
             hill_number: rh.hill_number,
