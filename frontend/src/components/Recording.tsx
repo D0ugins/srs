@@ -226,6 +226,8 @@ function RollView({ roll }: { roll: RollDetails }) {
 }
 
 function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData: (rollData: RollUpdate) => void }) {
+    const pusherInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
     const { data: drivers, isLoading: driversLoading } = useQuery({
         queryKey: ['drivers'],
         queryFn: async () => {
@@ -307,6 +309,13 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
             ...formData,
             roll_hills: updatedHills
         });
+    };
+
+    const focusNextPusherInput = (currentHillNumber: number) => {
+        const nextIndex = currentHillNumber; // currentHillNumber is 1-5, array is 0-4
+        if (nextIndex < pusherInputRefs.current.length) {
+            pusherInputRefs.current[nextIndex]?.focus();
+        }
     };
 
     return <div className="overflow-y-auto">
@@ -513,11 +522,13 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                                 <Autocomplete
                                     value={hill?.pusher_name || ''}
                                     onChange={(value) => updateRollHill(hillNumber, value)}
+                                    inputRef={(el) => { pusherInputRefs.current[hillNumber - 1] = el }}
                                     options={pushers || []}
                                     getOptionLabel={(pusher) => pusher.name}
                                     placeholder="Pusher name"
                                     disabled={pushersLoading}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                    onEnterKey={() => focusNextPusherInput(hillNumber)}
                                 />
                             </div>
                         );

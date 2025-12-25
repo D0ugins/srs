@@ -8,6 +8,8 @@ interface AutocompleteProps<T> {
     placeholder?: string;
     disabled?: boolean;
     className?: string;
+    onEnterKey?: () => void;
+    inputRef?: React.RefCallback<HTMLInputElement | null>;
 }
 
 export function Autocomplete<T>({
@@ -17,11 +19,12 @@ export function Autocomplete<T>({
     getOptionLabel,
     placeholder = "",
     disabled = false,
-    className = ""
+    className = "",
+    onEnterKey,
+    inputRef
 }: AutocompleteProps<T>) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
-    const inputRef = useRef<HTMLInputElement>(null);
 
     const filteredOptions = options.filter(option =>
         getOptionLabel(option).toLowerCase().includes(searchTerm.toLowerCase())
@@ -60,13 +63,13 @@ export function Autocomplete<T>({
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && isOpen) {
+        if (e.key === 'Enter') {
             e.preventDefault();
-            if (filteredOptions.length > 0) {
-                handleSelect(filteredOptions[0]);
-            } else if (showCreateOption) {
-                handleCreateNew();
+            if (isOpen) {
+                if (filteredOptions.length > 0) handleSelect(filteredOptions[0]);
+                else if (showCreateOption) handleCreateNew();
             }
+            if (onEnterKey) onEnterKey();
         }
     };
 
