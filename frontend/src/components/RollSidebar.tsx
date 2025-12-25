@@ -4,6 +4,7 @@ import RollTree from './RollTree'
 import { capitalize, formatDate } from '@/lib/format'
 import SidebarFilters from './SidebarFilters'
 import type { RollDataBase } from '@/lib/roll'
+import { Link } from '@tanstack/react-router'
 
 interface RollTreeLeaf {
     kind: 'leaf'
@@ -84,8 +85,8 @@ function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filter
 }
 
 
-export default function RollSidebar({ updateId, selectedId }:
-    { updateId: (id: number) => void, selectedId: number | undefined }) {
+export default function RollSidebar() {
+    const selectedId = undefined; // TODO
     const { data, isPending, isError } = useQuery({
         queryKey: ['rolls'],
         queryFn: async () => {
@@ -119,16 +120,18 @@ export default function RollSidebar({ updateId, selectedId }:
 
     const makeLeaf = (roll: RollDataBase, name: string): RollTreeLeaf => ({
         kind: 'leaf' as const,
-        element: <div className={`text-gray-700 ${roll.id === selectedId ? 'bg-gray-200' : ''}`}
+        element: <Link className={`text-gray-700 block ${roll.id === selectedId ? 'bg-gray-200' : ''}`}
             style={roll.id === selectedId ? { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em`, } : {}}
-            onClick={() => updateId(roll.id)}>
+            to="/rolls/$rollId"
+            params={{ rollId: roll.id.toString() }}
+        >
             <span>{name}{name !== "" ? " - " : ""}</span><span>
                 {roll.start_time
                     ? roll.start_time.slice(-8, -3)
                     : <> {formatDate(roll.roll_date)} Roll #{roll.roll_number} </>
                 }
             </span>
-        </div>,
+        </Link>,
     });
 
     const rollTrees = buildRollTree(data, groupings, [], makeLeaf);

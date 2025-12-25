@@ -9,49 +9,72 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as RollsRouteImport } from './routes/rolls'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as RollsChar123RollIdChar125RouteImport } from './routes/rolls.{-$rollId}'
+import { Route as RollsIndexRouteImport } from './routes/rolls/index'
+import { Route as RollsRollIdRouteImport } from './routes/rolls/$rollId'
 
+const RollsRoute = RollsRouteImport.update({
+  id: '/rolls',
+  path: '/rolls',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RollsChar123RollIdChar125Route =
-  RollsChar123RollIdChar125RouteImport.update({
-    id: '/rolls/{-$rollId}',
-    path: '/rolls/{-$rollId}',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const RollsIndexRoute = RollsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RollsRoute,
+} as any)
+const RollsRollIdRoute = RollsRollIdRouteImport.update({
+  id: '/$rollId',
+  path: '/$rollId',
+  getParentRoute: () => RollsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/rolls/{-$rollId}': typeof RollsChar123RollIdChar125Route
+  '/rolls': typeof RollsRouteWithChildren
+  '/rolls/$rollId': typeof RollsRollIdRoute
+  '/rolls/': typeof RollsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/rolls/{-$rollId}': typeof RollsChar123RollIdChar125Route
+  '/rolls/$rollId': typeof RollsRollIdRoute
+  '/rolls': typeof RollsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/rolls/{-$rollId}': typeof RollsChar123RollIdChar125Route
+  '/rolls': typeof RollsRouteWithChildren
+  '/rolls/$rollId': typeof RollsRollIdRoute
+  '/rolls/': typeof RollsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/rolls/{-$rollId}'
+  fullPaths: '/' | '/rolls' | '/rolls/$rollId' | '/rolls/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rolls/{-$rollId}'
-  id: '__root__' | '/' | '/rolls/{-$rollId}'
+  to: '/' | '/rolls/$rollId' | '/rolls'
+  id: '__root__' | '/' | '/rolls' | '/rolls/$rollId' | '/rolls/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  RollsChar123RollIdChar125Route: typeof RollsChar123RollIdChar125Route
+  RollsRoute: typeof RollsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/rolls': {
+      id: '/rolls'
+      path: '/rolls'
+      fullPath: '/rolls'
+      preLoaderRoute: typeof RollsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -59,19 +82,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rolls/{-$rollId}': {
-      id: '/rolls/{-$rollId}'
-      path: '/rolls/{-$rollId}'
-      fullPath: '/rolls/{-$rollId}'
-      preLoaderRoute: typeof RollsChar123RollIdChar125RouteImport
-      parentRoute: typeof rootRouteImport
+    '/rolls/': {
+      id: '/rolls/'
+      path: '/'
+      fullPath: '/rolls/'
+      preLoaderRoute: typeof RollsIndexRouteImport
+      parentRoute: typeof RollsRoute
+    }
+    '/rolls/$rollId': {
+      id: '/rolls/$rollId'
+      path: '/$rollId'
+      fullPath: '/rolls/$rollId'
+      preLoaderRoute: typeof RollsRollIdRouteImport
+      parentRoute: typeof RollsRoute
     }
   }
 }
 
+interface RollsRouteChildren {
+  RollsRollIdRoute: typeof RollsRollIdRoute
+  RollsIndexRoute: typeof RollsIndexRoute
+}
+
+const RollsRouteChildren: RollsRouteChildren = {
+  RollsRollIdRoute: RollsRollIdRoute,
+  RollsIndexRoute: RollsIndexRoute,
+}
+
+const RollsRouteWithChildren = RollsRoute._addFileChildren(RollsRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  RollsChar123RollIdChar125Route: RollsChar123RollIdChar125Route,
+  RollsRoute: RollsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
