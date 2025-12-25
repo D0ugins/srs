@@ -1,8 +1,7 @@
 import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { formatDate } from "@/lib/format";
 import type { RollDetails, RollUpdate, Driver, Buggy, Sensor, Pusher } from "@/lib/roll";
-import { Autocomplete } from "./Autocomplete";
+import Autocomplete from "./Autocomplete";
 
 export function rollToRollUpdate(roll: RollDetails): RollUpdate {
     return {

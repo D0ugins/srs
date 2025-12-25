@@ -11,7 +11,7 @@ interface AutocompleteProps {
     inputRef?: React.RefCallback<HTMLInputElement | null>;
 }
 
-export function Autocomplete({
+export default function Autocomplete({
     value,
     onChange,
     options,

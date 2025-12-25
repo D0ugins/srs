@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { transformMediaUrl } from "@/lib/format";
 import type { RollDetails } from "@/lib/roll";
 
-export function RecordingView({ roll }: { roll: RollDetails }) {
+export default function RecordingView({ roll }: { roll: RollDetails }) {
     const videoUrl = transformMediaUrl(
         roll.roll_files.find((file) => file.type === 'video_preview')?.uri
     );
