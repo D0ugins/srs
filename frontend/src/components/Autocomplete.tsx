@@ -1,10 +1,9 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 
-interface AutocompleteProps<T> {
+interface AutocompleteProps {
     value: string;
     onChange: (value: string) => void;
-    options: T[];
-    getOptionLabel: (option: T) => string;
+    options: string[];
     placeholder?: string;
     disabled?: boolean;
     className?: string;
@@ -12,26 +11,25 @@ interface AutocompleteProps<T> {
     inputRef?: React.RefCallback<HTMLInputElement | null>;
 }
 
-export function Autocomplete<T>({
+export function Autocomplete({
     value,
     onChange,
     options,
-    getOptionLabel,
     placeholder = "",
     disabled = false,
     className = "",
     onEnterKey,
     inputRef
-}: AutocompleteProps<T>) {
+}: AutocompleteProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
 
     const filteredOptions = options.filter(option =>
-        getOptionLabel(option).toLowerCase().includes(searchTerm.toLowerCase())
+        option.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const exactMatch = filteredOptions.some(option =>
-        getOptionLabel(option).toLowerCase() === searchTerm.toLowerCase()
+        option.toLowerCase() === searchTerm.toLowerCase()
     );
 
     const showCreateOption = searchTerm.trim() !== '' && !exactMatch;
@@ -51,9 +49,8 @@ export function Autocomplete<T>({
         setSearchTerm(newValue);
     };
 
-    const handleSelect = (option: T) => {
-        const label = getOptionLabel(option);
-        onChange(label);
+    const handleSelect = (option: string) => {
+        onChange(option);
         setIsOpen(false);
     };
 
@@ -98,7 +95,7 @@ export function Autocomplete<T>({
                                 handleSelect(option);
                             }}
                         >
-                            {getOptionLabel(option)}
+                            {option}
                         </div>
                     ))}
                     {showCreateOption && (

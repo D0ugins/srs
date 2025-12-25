@@ -523,8 +523,7 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
                                     value={hill?.pusher_name || ''}
                                     onChange={(value) => updateRollHill(hillNumber, value)}
                                     inputRef={(el) => { pusherInputRefs.current[hillNumber - 1] = el }}
-                                    options={pushers || []}
-                                    getOptionLabel={(pusher) => pusher.name}
+                                    options={pushers?.map(p => p.name) || []}
                                     placeholder="Pusher name"
                                     disabled={pushersLoading}
                                     className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
