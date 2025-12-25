@@ -85,8 +85,10 @@ function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filter
 }
 
 
-export default function RollSidebar() {
-    const selectedId = undefined; // TODO
+export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
+    expandedNodes: Set<string>;
+    setExpandedNodes: React.Dispatch<React.SetStateAction<Set<string>>>;
+}) {
     const { data, isPending, isError } = useQuery({
         queryKey: ['rolls'],
         queryFn: async () => {
@@ -120,8 +122,12 @@ export default function RollSidebar() {
 
     const makeLeaf = (roll: RollDataBase, name: string): RollTreeLeaf => ({
         kind: 'leaf' as const,
-        element: <Link className={`text-gray-700 block ${roll.id === selectedId ? 'bg-gray-200' : ''}`}
-            style={roll.id === selectedId ? { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em`, } : {}}
+        element: <Link
+            className="text-gray-700 block"
+            activeProps={{
+                className: 'text-gray-700 block bg-gray-200',
+                style: { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em` }
+            }}
             to="/rolls/$rollId"
             params={{ rollId: roll.id.toString() }}
         >
@@ -138,6 +144,6 @@ export default function RollSidebar() {
     return <>
         <SidebarFilters groupings={groupings} setGroupings={setGroupings} />
         <hr />
-        {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} />))}
+        {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} path="" expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />))}
     </>
 }

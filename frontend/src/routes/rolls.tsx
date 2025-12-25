@@ -11,6 +11,7 @@ function RouteComponent() {
     const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
     const [isResizing, setIsResizing] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
     const sidebarRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -47,13 +48,7 @@ function RouteComponent() {
 
 
     return <div className="flex h-full">
-        <div
-            ref={sidebarRef}
-            className="border-r overflow-y-auto p-2 overflow-x-hidden text-nowrap"
-            style={{ width: `${sidebarWidth}px`, display: isCollapsed ? 'none' : 'block' }}
-        >
-            <RollSidebar />
-        </div>
+
         {isCollapsed ? (
             <button
                 onClick={() => { setIsCollapsed(false); setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); }}
@@ -64,12 +59,19 @@ function RouteComponent() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                 </svg>
             </button>
-        ) : (
+        ) : <>
+            <div
+                ref={sidebarRef}
+                className="border-r overflow-y-auto p-2 overflow-x-hidden text-nowrap"
+                style={{ width: `${sidebarWidth}px` }}
+            >
+                <RollSidebar expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />
+            </div>
             <div
                 className="w-2 hover:w-2 bg-transparent hover:bg-gray-200 cursor-col-resize transition-all"
                 onMouseDown={() => setIsResizing(true)}
             />
-        )}
+        </>}
         <div className="flex-1">
             <Outlet />
         </div>
