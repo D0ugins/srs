@@ -110,7 +110,6 @@ def get_or_create_rollhill(session: SessionDep,
     pusher = get_or_create_pusher(session, roll_hill_input.pusher_name)
     query = select(RollHill).where(
         RollHill.hill_number == roll_hill_input.hill_number,
-        RollHill.pusher_id == pusher.id,
         RollHill.roll_id == roll_id
     )
     roll_hill = session.scalar(query)
@@ -122,6 +121,8 @@ def get_or_create_rollhill(session: SessionDep,
         )
         session.add(roll_hill)
         session.flush()
+    else:
+        roll_hill.pusher = pusher
     return roll_hill
 
 
@@ -170,7 +171,7 @@ def get_roll(roll_id: int, session: SessionDep):
 
 @router.put("/{roll_id}")
 def update_roll(roll_id: int, roll_data: RollUpdate, session: SessionDep):
-    print(roll_data)
+    # print(roll_data)
     roll = session.get(Roll, roll_id)
     if not roll:
         raise HTTPException(status_code=404, detail="Roll not found")
