@@ -154,7 +154,8 @@ export function RecordingEdit({ formData, setFormData }: { formData: RollUpdate,
                                     value={formData.roll_date.year}
                                     onChange={(e) => setFormData({
                                         ...formData,
-                                        roll_date: { ...formData.roll_date, year: parseInt(e.target.value) }
+                                        roll_date: { ...formData.roll_date, year: parseInt(e.target.value) },
+                                        start_time: formData.start_time ? `${e.target.value}-${String(formData.roll_date.month).padStart(2, '0')}-${String(formData.roll_date.day).padStart(2, '0')}${formData.start_time.slice(10)}` : undefined
                                     })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded"
                                 />
@@ -168,7 +169,8 @@ export function RecordingEdit({ formData, setFormData }: { formData: RollUpdate,
                                     value={formData.roll_date.month}
                                     onChange={(e) => setFormData({
                                         ...formData,
-                                        roll_date: { ...formData.roll_date, month: parseInt(e.target.value) }
+                                        roll_date: { ...formData.roll_date, month: parseInt(e.target.value) },
+                                        start_time: formData.start_time ? `${formData.roll_date.year}-${String(e.target.value).padStart(2, '0')}-${String(formData.roll_date.day).padStart(2, '0')}${formData.start_time.slice(10)}` : undefined
                                     })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded"
                                 />
@@ -182,7 +184,8 @@ export function RecordingEdit({ formData, setFormData }: { formData: RollUpdate,
                                     value={formData.roll_date.day}
                                     onChange={(e) => setFormData({
                                         ...formData,
-                                        roll_date: { ...formData.roll_date, day: parseInt(e.target.value) }
+                                        roll_date: { ...formData.roll_date, day: parseInt(e.target.value) },
+                                        start_time: formData.start_time ? `${formData.roll_date.year}-${String(formData.roll_date.month).padStart(2, '0')}-${String(e.target.value).padStart(2, '0')}${formData.start_time.slice(10)}` : undefined
                                     })}
                                     className="w-full px-3 py-2 border border-gray-300 rounded"
                                 />
@@ -210,7 +213,7 @@ export function RecordingEdit({ formData, setFormData }: { formData: RollUpdate,
                                         if (e.target.value) {
                                             setFormData({
                                                 ...formData,
-                                                start_time: `${formatDate(formData.roll_date)}T${e.target.value}:00`
+                                                start_time: `${formData.roll_date.year}-${String(formData.roll_date.month).padStart(2, '0')}-${String(formData.roll_date.day).padStart(2, '0')}T${e.target.value}:00`
                                             });
                                         } else {
                                             setFormData({
