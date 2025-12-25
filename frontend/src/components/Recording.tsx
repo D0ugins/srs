@@ -583,10 +583,8 @@ function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData
     </div>
 }
 
-export function Recording({ roll }: { roll: RollDetails }) {
-    const queryClient = useQueryClient();
-    const [editing, setEditing] = useState(false);
-    const [formData, setFormData] = useState<RollUpdate>({
+function rollToRollUpdate(roll: RollDetails): RollUpdate {
+    return {
         driver_notes: roll.driver_notes,
         mech_notes: roll.mech_notes,
         pusher_notes: roll.pusher_notes,
@@ -611,7 +609,13 @@ export function Recording({ roll }: { roll: RollDetails }) {
             hill_number: rh.hill_number,
             pusher_name: rh.pusher?.name || ''
         }))
-    });
+    };
+}
+
+export function Recording({ roll }: { roll: RollDetails }) {
+    const queryClient = useQueryClient();
+    const [editing, setEditing] = useState(false);
+    const [formData, setFormData] = useState<RollUpdate>(rollToRollUpdate(roll));
 
     const saveRollMutation = useMutation({
         mutationFn: async (updatedRoll: RollUpdate) => {
@@ -656,12 +660,12 @@ export function Recording({ roll }: { roll: RollDetails }) {
                     <button onClick={() => saveRollMutation.mutate(formData)} className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400">
                         Save
                     </button>
-                    <button onClick={() => setEditing(!editing)} className="px-4 py-1.5 bg-red-300 rounded hover:bg-red-400">
+                    <button onClick={() => setEditing(false)} className="px-4 py-1.5 bg-red-300 rounded hover:bg-red-400">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
-                </div> : <button onClick={() => setEditing(!editing)} className="px-1.5 py-1.5 bg-gray-300 rounded hover:bg-gray-400">
+                </div> : <button onClick={() => { setFormData(rollToRollUpdate(roll)); setEditing(true) }} className="px-1.5 py-1.5 bg-gray-300 rounded hover:bg-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                     </svg>
