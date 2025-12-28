@@ -65,8 +65,10 @@ function RouteComponent() {
             const details = error.data?.detail?.[0];
             if (error.status === 422 && details?.msg) {
                 setErrorMessage(`${details.loc?.slice(1).join('.')}: ${details.msg}`);
+            } else if (typeof error.data.detail === 'string') {
+                setErrorMessage(`Failed to create roll: ${error.data.detail}`);
             } else {
-                setErrorMessage('Failed to update roll. Please try again.');
+                setErrorMessage('Failed to create roll: Unknown error');
             }
         }
     });
