@@ -144,6 +144,17 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
     return <>
         <SidebarFilters groupings={groupings} setGroupings={setGroupings} />
         <hr />
-        {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} path="" expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />))}
+        <div className="relative">
+            <Link
+                to="/rolls/new"
+                className="absolute top-1.25 right-0 px-0.5 py-0.5 bg-green-200 rounded hover:bg-green-300 z-10"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+
+            </Link>
+            {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} path="" expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />))}
+        </div>
     </>
 }

@@ -42,7 +42,14 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
             if (!response.ok) {
                 throw new Error('Failed to fetch drivers');
             }
-            return response.json() as Promise<Driver[]>;
+            const data: Driver[] = await response.json();
+            if (!formData.driver_name) {
+                setFormData({
+                    ...formData,
+                    driver_name: data[0]?.name || ''
+                });
+            }
+            return data;
         }
     });
 
@@ -53,7 +60,14 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
             if (!response.ok) {
                 throw new Error('Failed to fetch buggies');
             }
-            return response.json() as Promise<Buggy[]>;
+            const data: Buggy[] = await response.json();
+            if (!formData.buggy_abbreviation) {
+                setFormData({
+                    ...formData,
+                    buggy_abbreviation: data[0]?.abbreviation || ''
+                });
+            }
+            return data;
         }
     });
 

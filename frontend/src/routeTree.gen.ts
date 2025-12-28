@@ -12,7 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as RollsRouteImport } from './routes/rolls'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RollsIndexRouteImport } from './routes/rolls/index'
-import { Route as RollsRollIdRouteImport } from './routes/rolls/$rollId'
+import { Route as RollsNewRouteImport } from './routes/rolls/new'
 import { Route as RollsRollIdIndexRouteImport } from './routes/rolls/$rollId.index'
 import { Route as RollsRollIdEditRouteImport } from './routes/rolls/$rollId.edit'
 
@@ -31,32 +31,33 @@ const RollsIndexRoute = RollsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RollsRoute,
 } as any)
-const RollsRollIdRoute = RollsRollIdRouteImport.update({
-  id: '/$rollId',
-  path: '/$rollId',
+const RollsNewRoute = RollsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
   getParentRoute: () => RollsRoute,
 } as any)
 const RollsRollIdIndexRoute = RollsRollIdIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => RollsRollIdRoute,
+  id: '/$rollId/',
+  path: '/$rollId/',
+  getParentRoute: () => RollsRoute,
 } as any)
 const RollsRollIdEditRoute = RollsRollIdEditRouteImport.update({
-  id: '/edit',
-  path: '/edit',
-  getParentRoute: () => RollsRollIdRoute,
+  id: '/$rollId/edit',
+  path: '/$rollId/edit',
+  getParentRoute: () => RollsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/rolls': typeof RollsRouteWithChildren
-  '/rolls/$rollId': typeof RollsRollIdRouteWithChildren
+  '/rolls/new': typeof RollsNewRoute
   '/rolls/': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
-  '/rolls/$rollId/': typeof RollsRollIdIndexRoute
+  '/rolls/$rollId': typeof RollsRollIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/rolls/new': typeof RollsNewRoute
   '/rolls': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
   '/rolls/$rollId': typeof RollsRollIdIndexRoute
@@ -65,7 +66,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/rolls': typeof RollsRouteWithChildren
-  '/rolls/$rollId': typeof RollsRollIdRouteWithChildren
+  '/rolls/new': typeof RollsNewRoute
   '/rolls/': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
   '/rolls/$rollId/': typeof RollsRollIdIndexRoute
@@ -75,17 +76,17 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/rolls'
-    | '/rolls/$rollId'
+    | '/rolls/new'
     | '/rolls/'
     | '/rolls/$rollId/edit'
-    | '/rolls/$rollId/'
+    | '/rolls/$rollId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rolls' | '/rolls/$rollId/edit' | '/rolls/$rollId'
+  to: '/' | '/rolls/new' | '/rolls' | '/rolls/$rollId/edit' | '/rolls/$rollId'
   id:
     | '__root__'
     | '/'
     | '/rolls'
-    | '/rolls/$rollId'
+    | '/rolls/new'
     | '/rolls/'
     | '/rolls/$rollId/edit'
     | '/rolls/$rollId/'
@@ -119,52 +120,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RollsIndexRouteImport
       parentRoute: typeof RollsRoute
     }
-    '/rolls/$rollId': {
-      id: '/rolls/$rollId'
-      path: '/$rollId'
-      fullPath: '/rolls/$rollId'
-      preLoaderRoute: typeof RollsRollIdRouteImport
+    '/rolls/new': {
+      id: '/rolls/new'
+      path: '/new'
+      fullPath: '/rolls/new'
+      preLoaderRoute: typeof RollsNewRouteImport
       parentRoute: typeof RollsRoute
     }
     '/rolls/$rollId/': {
       id: '/rolls/$rollId/'
-      path: '/'
-      fullPath: '/rolls/$rollId/'
+      path: '/$rollId'
+      fullPath: '/rolls/$rollId'
       preLoaderRoute: typeof RollsRollIdIndexRouteImport
-      parentRoute: typeof RollsRollIdRoute
+      parentRoute: typeof RollsRoute
     }
     '/rolls/$rollId/edit': {
       id: '/rolls/$rollId/edit'
-      path: '/edit'
+      path: '/$rollId/edit'
       fullPath: '/rolls/$rollId/edit'
       preLoaderRoute: typeof RollsRollIdEditRouteImport
-      parentRoute: typeof RollsRollIdRoute
+      parentRoute: typeof RollsRoute
     }
   }
 }
 
-interface RollsRollIdRouteChildren {
+interface RollsRouteChildren {
+  RollsNewRoute: typeof RollsNewRoute
+  RollsIndexRoute: typeof RollsIndexRoute
   RollsRollIdEditRoute: typeof RollsRollIdEditRoute
   RollsRollIdIndexRoute: typeof RollsRollIdIndexRoute
 }
 
-const RollsRollIdRouteChildren: RollsRollIdRouteChildren = {
+const RollsRouteChildren: RollsRouteChildren = {
+  RollsNewRoute: RollsNewRoute,
+  RollsIndexRoute: RollsIndexRoute,
   RollsRollIdEditRoute: RollsRollIdEditRoute,
   RollsRollIdIndexRoute: RollsRollIdIndexRoute,
-}
-
-const RollsRollIdRouteWithChildren = RollsRollIdRoute._addFileChildren(
-  RollsRollIdRouteChildren,
-)
-
-interface RollsRouteChildren {
-  RollsRollIdRoute: typeof RollsRollIdRouteWithChildren
-  RollsIndexRoute: typeof RollsIndexRoute
-}
-
-const RollsRouteChildren: RollsRouteChildren = {
-  RollsRollIdRoute: RollsRollIdRouteWithChildren,
-  RollsIndexRoute: RollsIndexRoute,
 }
 
 const RollsRouteWithChildren = RollsRoute._addFileChildren(RollsRouteChildren)
