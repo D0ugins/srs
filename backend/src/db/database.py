@@ -136,7 +136,7 @@ class RollFile(TimestampModel):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
-    type: Mapped[str] = mapped_column()
+    type: Mapped[str] = mapped_column(index=True)
     uri: Mapped[str] = mapped_column()
     sensor_id: Mapped[int | None] = mapped_column(ForeignKey("sensor.id"))
     

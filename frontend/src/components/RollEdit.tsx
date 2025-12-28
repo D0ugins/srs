@@ -79,6 +79,17 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
         }
     });
 
+    const { data: fileTypes, isLoading: fileTypesLoading } = useQuery({
+        queryKey: ['fileTypes'],
+        queryFn: async () => {
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/files/types`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch file types');
+            }
+            return response.json() as Promise<string[]>;
+        }
+    });
+
     const addRollFile = () => {
         setFormData({
             ...formData,
@@ -281,13 +292,16 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
                     <div className="space-y-2">
                         {formData.roll_files.map((file, index) => (
                             <div key={index} className="flex gap-2 items-center">
-                                <input
-                                    type="text"
-                                    value={file.type}
-                                    onChange={(e) => updateRollFile(index, 'type', e.target.value)}
-                                    placeholder="Type"
-                                    className="w-32 px-2 py-1 border border-gray-300 rounded text-sm"
-                                />
+                                <div className="w-32 flex-shrink-0">
+                                    <Autocomplete
+                                        value={file.type}
+                                        onChange={(value) => updateRollFile(index, 'type', value)}
+                                        options={fileTypes || []}
+                                        placeholder="Type"
+                                        disabled={fileTypesLoading}
+                                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                    />
+                                </div>
                                 <input
                                     type="text"
                                     value={file.uri}
