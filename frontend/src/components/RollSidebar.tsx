@@ -134,7 +134,7 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
             <span>{name}{name !== "" ? " - " : ""}</span><span>
                 {roll.start_time
                     ? roll.start_time.slice(-8, -3)
-                    : <> {formatDate(roll.roll_date)} Roll #{roll.roll_number} </>
+                    : <> Roll #{roll.roll_number} </>
                 }
             </span>
         </Link>,
