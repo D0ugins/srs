@@ -1,7 +1,8 @@
 from db import Roll, SessionDep
 from db.database import Buggy, Driver, Pusher, RollDate, RollFile, RollHill, RollType, Sensor
-from lib.fit import get_angular_velocity, get_gps_data, get_sensor_data, load_fit_file
+from lib.fit import get_angular_velocity, get_camera_ends, get_camera_starts, get_gps_data, get_sensor_data, load_fit_file
 from lib.geo import get_elevations
+import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
@@ -277,7 +278,7 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
             'lat': gps_data.position_lat,
             'long': gps_data.position_long,
             'elevation': get_elevations(gps_data, snap_to_course=True),
-            'speed': gps_data.enhanced_speed,
+            'speed': np.linalg.norm(np.array(gps_data.velocity.to_list()), axis=1),
         }).to_dict(orient='list')
         angular_velocity = get_angular_velocity(gps_data)
         response['angular_velocity'] = pd.DataFrame({
@@ -314,5 +315,6 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
                                              {'x': 'mag_x', 'y': 'mag_y', 'z': 'mag_z'},
                                              decimation=20)
             response['magnetometer'] = mag_data.to_dict(orient='list')
-            
+    response['camera_starts'] = get_camera_starts(messages)
+    response['camera_ends'] = get_camera_ends(messages)
     return response

@@ -41,6 +41,13 @@ def get_camera_starts(messages: FitMessages) -> list[int]:
     return [m['timestamp'] * 1000 + m['timestamp_ms']
               for m in messages.get('camera_event_mesgs', []) if m.get('camera_event_type', '') == 'video_start']
     
+def get_camera_ends(messages: FitMessages) -> list[int]:
+    """
+    Returns list of timestamps (in ms) of video_stop events. Returns empty list if none found.
+    """
+    return [m['timestamp'] * 1000 + m['timestamp_ms']
+              for m in messages.get('camera_event_mesgs', []) if m.get('camera_event_type', '') == 'video_end']
+    
 def get_gps_data(messages: FitMessages) -> pd.DataFrame | None:
     """
     Get gps data from fit file messagges.
