@@ -1,10 +1,14 @@
+from db import Roll, SessionDep
 from db.database import Buggy, Driver, Pusher, RollDate, RollFile, RollHill, RollType, Sensor
+from lib.fit import get_angular_velocity, get_gps_data, get_sensor_data, load_fit_file
+from lib.geo import get_elevations
+import pandas as pd
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from db import Roll, SessionDep
 from datetime import datetime
 from pydantic import BaseModel
+
 
 router = APIRouter(prefix="/rolls", tags=["rolls"])
 
@@ -246,3 +250,69 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
     session.refresh(roll)
     
     return get_roll(roll.id, session)
+
+@router.get("/{roll_id}/graphs")
+def get_roll_graphs(roll_id: int, session: SessionDep):
+    roll = session.scalar(
+        select(Roll).options(selectinload(Roll.roll_files)).where(Roll.id == roll_id)
+    )    
+    if not roll:
+        raise HTTPException(status_code=404, detail="Roll not found")
+    
+    fit_files = [rf for rf in roll.roll_files if rf.type == 'fit']
+    if not fit_files:
+        raise HTTPException(status_code=404, detail="No fit files for this roll")
+    fit_file = fit_files[0].uri.replace('%fit%', 'virbs')
+    try:
+        messages = load_fit_file(fit_file)
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=f"Error loading fit file: {e}")
+    
+    response = {}
+    gps_data = get_gps_data(messages)
+    if gps_data is not None:
+        response['gps_data'] = pd.DataFrame({
+            'timestamp': gps_data.index,
+            'lat': gps_data.position_lat,
+            'long': gps_data.position_long,
+            'elevation': get_elevations(gps_data, snap_to_course=True),
+            'speed': gps_data.enhanced_speed,
+        }).to_dict(orient='list')
+        angular_velocity = get_angular_velocity(gps_data)
+        response['angular_velocity'] = pd.DataFrame({
+            'timestamp': angular_velocity.index,
+            'angular_velocity': angular_velocity
+        }).to_dict(orient='list')
+        
+    
+    # TODO: handle multiple calibration messages (for gyro)
+    if 'three_d_sensor_calibration_mesgs' in messages:
+        calibration_mesgs = messages['three_d_sensor_calibration_mesgs']
+        calibration_data = { m['sensor_type']: m for m in calibration_mesgs }
+        if 'accelerometer' in calibration_data and 'accelerometer_data_mesgs' in messages:
+            accel_cal = calibration_data['accelerometer']
+            _, accel_data, _ = get_sensor_data(accel_cal, 
+                                               messages['accelerometer_data_mesgs'], # type: ignore
+                                               {'x': 'accel_x', 'y': 'accel_y', 'z': 'accel_z'},
+                                               decimation=20)
+            # makes these positive for forward facing virb
+            accel_data.x *= -1
+            accel_data.y *= -1
+            response['accelerometer'] = accel_data.to_dict(orient='list')
+        if 'gyroscope' in calibration_data and 'gyroscope_data_mesgs' in messages:
+            gyro_cal = calibration_data['gyroscope']
+            _, gyro_data, _ = get_sensor_data(gyro_cal, 
+                                              messages['gyroscope_data_mesgs'], # type: ignore
+                                              {'x': 'gyro_x', 'y': 'gyro_y', 'z': 'gyro_z'},
+                                              decimation=20)
+            response['gyroscope'] = gyro_data.to_dict(orient='list')
+        if 'compass' in calibration_data and 'magnetometer_data_mesgs' in messages:
+            mag_cal = calibration_data['compass']
+            _, mag_data, _ = get_sensor_data(mag_cal, 
+                                             messages['magnetometer_data_mesgs'], # type: ignore
+                                             {'x': 'mag_x', 'y': 'mag_y', 'z': 'mag_z'},
+                                             decimation=20)
+            response['magnetometer'] = mag_data.to_dict(orient='list')
+            
+    return response

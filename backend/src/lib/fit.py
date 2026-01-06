@@ -1,24 +1,47 @@
 from garmin_fit_sdk import Decoder, Stream
+from lib.signal import unfiorm_sample
 import pandas as pd
 import numpy as np
+from scipy import signal
+import orjson
+import json
+from functools import lru_cache
+from typing import List, TypedDict
+import os
+
 FIT_EPOCH_S = 631065600
+DATA_PATH = os.getenv('DATA_PATH', '/app/data')
 
+type FitMessages = dict[str, list[dict]]
 
-def decode_fit_file(file_path: str) -> dict[str, list[dict]]:
-    stream = Stream.from_file(file_path)
-    decoder = Decoder(stream)
-    messages, errors = decoder.read(convert_datetimes_to_dates=False)
-    if errors: raise ValueError(f"Errors encountered while decoding FIT file: {errors}")
+@lru_cache(maxsize=16)
+def load_fit_file(file_path: str) -> FitMessages:
+    rel_path = file_path
+    if file_path.startswith(DATA_PATH):
+        rel_path = file_path[len(DATA_PATH)+1:]
+    
+    try:
+        with open(f'{DATA_PATH}/cache/{rel_path.replace("/", "_").replace('.fit', '')}.json', 'r') as f:
+            messages = orjson.loads(f.read())
+    except Exception as e:
+        stream = Stream.from_file(f'{DATA_PATH}/{rel_path}')
+        decoder = Decoder(stream)
+        messages, errors = decoder.read(convert_datetimes_to_dates=False)
+        if errors: raise ValueError(f"Errors encountered while decoding FIT file: {errors}")
+        print(f'Caching {rel_path.replace("/", "_").replace('.fit', '')}.json')
+        with open(f'{DATA_PATH}/cache/{rel_path.replace("/", "_").replace('.fit', '')}.json', 'w') as f:
+            json.dump(messages, f, default=str)
+    
     return messages
 
-def get_camera_starts(messages: dict[str, list[dict]]) -> list[int]:
+def get_camera_starts(messages: FitMessages) -> list[int]:
     """
     Returns list of timestamps (in ms) of video_start events. Returns empty list if none found.
     """
     return [m['timestamp'] * 1000 + m['timestamp_ms']
               for m in messages.get('camera_event_mesgs', []) if m.get('camera_event_type', '') == 'video_start']
     
-def get_gps_data(messages: dict[str, list[dict]]) -> pd.DataFrame | None:
+def get_gps_data(messages: FitMessages) -> pd.DataFrame | None:
     """
     Get gps data from fit file messagges.
     Returns None if no gps data present. Else dataframe with these columns
@@ -45,10 +68,19 @@ def get_gps_data(messages: dict[str, list[dict]]) -> pd.DataFrame | None:
     
     return gps_data
 
+class SensorMessage(TypedDict): 
+    """extra_items=list[int]"""
+    timestamp: int
+    timestamp_ms: int
+    sample_time_offset: list[int]
+    
+    
 # TODO: handle multiple calibration messages (for gyro)
-def get_sensor_data(calibration, messages, fields):
+def get_sensor_data(calibration: dict, sensor_messages: List[SensorMessage], fields: dict[str, str], decimation: int = 1) \
+    -> tuple[pd.DataFrame, pd.DataFrame, float]:
+    # note: can be made ~30% faster by using lists instead of dicts for constructing raw
     raw_list = []
-    for group in messages:
+    for group in sensor_messages:
         base_timestamp = group['timestamp'] * 1000 + group['timestamp_ms']
         for i, offset in enumerate(group['sample_time_offset']):
             entry = {
@@ -62,7 +94,30 @@ def get_sensor_data(calibration, messages, fields):
     data = np.array(calibration['orientation_matrix']).reshape(3, 3) @ ((raw.to_numpy() \
     - calibration['level_shift'] - calibration['offset_cal']) * \
     (calibration['calibration_factor'] / calibration['calibration_divisor'])).T
-    data = data.T
-    data = pd.DataFrame(data, columns=['x', 'y', 'z'], index=raw.index)
-    fs = 1000 / np.mean(np.diff(data.index))
-    return raw, data, fs
+    data = pd.DataFrame(data.T, columns=list(fields.keys()), index=raw.index)
+    fs = 1000 / np.median(np.diff(data.index))
+    
+    if decimation > 1:
+        uniform_data = unfiorm_sample(data)
+        decimated_data = signal.decimate(uniform_data.to_numpy().T, decimation).T
+        data = pd.DataFrame(decimated_data, columns=list(fields.keys()),
+                            index=uniform_data.index[::decimation])
+        fs = fs / decimation
+    
+    data['timestamp'] = data.index
+    return raw, data, float(fs)
+
+
+def get_angular_velocity(gps_data: pd.DataFrame) -> pd.Series:
+    """
+    Compute angular velocity (in rad/s) from gps heading data.
+    Returns pd.Series indexed by timestamp (ms).
+    Filters out data where speed < 2 m/s.
+    """
+    heading = gps_data.heading[gps_data.enhanced_speed >= 2]
+    # Account for wrap arounds
+    offsets = np.array([heading.shift(1) - heading, heading.shift(1) - heading - 360, heading.shift(1) - heading + 360])
+    mins = np.argmin(np.abs(offsets), axis=0)
+    heading_diffs = pd.Series(offsets[mins, np.arange(len(mins))], index=heading.index)
+    
+    return ((heading_diffs * (np.pi / 180)) / (heading_diffs.index.to_series().diff() / 1000)).dropna()

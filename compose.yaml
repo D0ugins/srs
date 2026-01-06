@@ -5,9 +5,11 @@ services:
         - "8000:8000"
       command: uv run fastapi dev /app/src/api/main.py --host 0.0.0.0
       volumes:
+        - ./data/geo:/app/data/geo
         - ./data/db:/app/data/db
         - ./data/videos:/app/data/videos
         - ./data/virbs:/app/data/virbs
+        - ./data/cache:/app/data/cache
       environment:
         - DB_PATH=/app/data/db/srs.db
       develop:
