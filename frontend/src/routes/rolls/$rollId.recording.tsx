@@ -1,3 +1,4 @@
+import RollAnalysis from "@/components/RollAnalysis";
 import RollHeader from "@/components/RollHeader";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
@@ -34,10 +35,10 @@ function RouteComponent() {
         },
     });
 
-    if (isLoading) {
+    if (rollLoading) {
         return <div>Loading...</div>
     }
-    if (error) {
+    if (rollError) {
         return <div>Error loading recording data.</div>
     }
 
@@ -56,7 +57,7 @@ function RouteComponent() {
                     </Link>
                 </div>
             </div>
-            <pre>{JSON.stringify(graphs, null, 2)}</pre>
+            {isLoading ? 'Loading...' : error ? 'Error loading graphs.' : <RollAnalysis roll={roll} graphs={graphs} />}
         </div>
     );
 }

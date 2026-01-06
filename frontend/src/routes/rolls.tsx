@@ -72,7 +72,7 @@ function RouteComponent() {
                 onMouseDown={() => setIsResizing(true)}
             />
         </>}
-        <div className="flex-1">
+        <div className="flex-1 overflow-x-hidden">
             <Outlet />
         </div>
     </div>

@@ -157,3 +157,37 @@ export interface RollUpdate {
     roll_files: RollFileInput[];
     roll_hills: RollHillInput[];
 }
+
+export interface RollGraphs {
+    camera_starts: number[];
+    camera_ends: number[];
+    gps_data?: {
+        timestamp: number[];
+        lat: number[];
+        lon: number[];
+        elevation: number[];
+        speed: number[];
+    }
+    angular_velocity?: {
+        timestamp: number[];
+        angular_velocity: number[];
+    }
+    accelerometer?: {
+        timestamp: number[];
+        x: number[];
+        y: number[];
+        z: number[];
+    }
+    gyroscope?: {
+        timestamp: number[];
+        x: number[];
+        y: number[];
+        z: number[];
+    }
+    magnetometer?: {
+        timestamp: number[];
+        x: number[];
+        y: number[];
+        z: number[];
+    }
+}

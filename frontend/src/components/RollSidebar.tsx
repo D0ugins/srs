@@ -4,7 +4,7 @@ import RollTree from './RollTree'
 import { capitalize, formatDate } from '@/lib/format'
 import SidebarFilters from './SidebarFilters'
 import type { RollDataBase } from '@/lib/roll'
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 
 interface RollTreeLeaf {
     kind: 'leaf'
@@ -112,6 +112,8 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
     const [groupings, setGroupings] = useState<RollOrderKey[]>(['type', 'driver']);
     const [filters, setFilters] = useState<unknown[]>([]); // TODO
 
+    const location = useLocation();
+
     if (isPending) {
         return <div>Loading...</div>
     }
@@ -120,25 +122,30 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
         return <div>Error loading rolls.</div>
     }
 
-    const makeLeaf = (roll: RollDataBase, name: string): RollTreeLeaf => ({
-        kind: 'leaf' as const,
-        element: <Link
-            className="text-gray-700 block"
-            activeProps={{
-                className: 'text-gray-700 block bg-gray-200',
-                style: { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em` }
-            }}
-            to="/rolls/$rollId"
-            params={{ rollId: roll.id.toString() }}
-        >
-            <span>{name}{name !== "" ? " - " : ""}</span><span>
-                {roll.start_time
-                    ? roll.start_time.slice(-8, -3)
-                    : <> Roll #{roll.roll_number} </>
-                }
-            </span>
-        </Link>,
-    });
+
+    const makeLeaf = (roll: RollDataBase, name: string): RollTreeLeaf => {
+        const pathParts = location.pathname.split('/');
+        pathParts[2] = roll.id.toString();
+        return {
+            kind: 'leaf' as const,
+            element: <Link
+                className="text-gray-700 block"
+                activeProps={{
+                    className: 'text-gray-700 block bg-gray-200',
+                    style: { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em` }
+                }}
+                to={pathParts.join('/')}
+                params={{ rollId: roll.id.toString() }}
+            >
+                <span>{name}{name !== "" ? " - " : ""}</span><span>
+                    {roll.start_time
+                        ? roll.start_time.slice(-8, -3)
+                        : <> Roll #{roll.roll_number} </>
+                    }
+                </span>
+            </Link>,
+        }
+    };
 
     const rollTrees = buildRollTree(data, groupings, [], makeLeaf);
     return <>
