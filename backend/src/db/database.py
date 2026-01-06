@@ -6,7 +6,8 @@ from fastapi import Depends
 from sqlalchemy import create_engine, Index, CheckConstraint, event, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, Session, Mapped, mapped_column
 
-DB_PATH = os.getenv('DB_PATH', '/app/data/db/srs.db')
+DATA_PATH = os.getenv('DATA_PATH', '/app/data')
+DB_PATH = os.getenv('DB_PATH', f'{DATA_PATH}/db/srs.db')
 DB_URI = f'sqlite:///{DB_PATH}'
 engine = create_engine(DB_URI, connect_args={"check_same_thread": False})
 
