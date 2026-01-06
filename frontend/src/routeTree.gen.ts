@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as RollsIndexRouteImport } from './routes/rolls/index'
 import { Route as RollsNewRouteImport } from './routes/rolls/new'
 import { Route as RollsRollIdIndexRouteImport } from './routes/rolls/$rollId.index'
+import { Route as RollsRollIdRecordingRouteImport } from './routes/rolls/$rollId.recording'
 import { Route as RollsRollIdEditRouteImport } from './routes/rolls/$rollId.edit'
 
 const RollsRoute = RollsRouteImport.update({
@@ -41,6 +42,11 @@ const RollsRollIdIndexRoute = RollsRollIdIndexRouteImport.update({
   path: '/$rollId/',
   getParentRoute: () => RollsRoute,
 } as any)
+const RollsRollIdRecordingRoute = RollsRollIdRecordingRouteImport.update({
+  id: '/$rollId/recording',
+  path: '/$rollId/recording',
+  getParentRoute: () => RollsRoute,
+} as any)
 const RollsRollIdEditRoute = RollsRollIdEditRouteImport.update({
   id: '/$rollId/edit',
   path: '/$rollId/edit',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/rolls/new': typeof RollsNewRoute
   '/rolls/': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
+  '/rolls/$rollId/recording': typeof RollsRollIdRecordingRoute
   '/rolls/$rollId': typeof RollsRollIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -60,6 +67,7 @@ export interface FileRoutesByTo {
   '/rolls/new': typeof RollsNewRoute
   '/rolls': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
+  '/rolls/$rollId/recording': typeof RollsRollIdRecordingRoute
   '/rolls/$rollId': typeof RollsRollIdIndexRoute
 }
 export interface FileRoutesById {
@@ -69,6 +77,7 @@ export interface FileRoutesById {
   '/rolls/new': typeof RollsNewRoute
   '/rolls/': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
+  '/rolls/$rollId/recording': typeof RollsRollIdRecordingRoute
   '/rolls/$rollId/': typeof RollsRollIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -79,9 +88,16 @@ export interface FileRouteTypes {
     | '/rolls/new'
     | '/rolls/'
     | '/rolls/$rollId/edit'
+    | '/rolls/$rollId/recording'
     | '/rolls/$rollId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/rolls/new' | '/rolls' | '/rolls/$rollId/edit' | '/rolls/$rollId'
+  to:
+    | '/'
+    | '/rolls/new'
+    | '/rolls'
+    | '/rolls/$rollId/edit'
+    | '/rolls/$rollId/recording'
+    | '/rolls/$rollId'
   id:
     | '__root__'
     | '/'
@@ -89,6 +105,7 @@ export interface FileRouteTypes {
     | '/rolls/new'
     | '/rolls/'
     | '/rolls/$rollId/edit'
+    | '/rolls/$rollId/recording'
     | '/rolls/$rollId/'
   fileRoutesById: FileRoutesById
 }
@@ -134,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RollsRollIdIndexRouteImport
       parentRoute: typeof RollsRoute
     }
+    '/rolls/$rollId/recording': {
+      id: '/rolls/$rollId/recording'
+      path: '/$rollId/recording'
+      fullPath: '/rolls/$rollId/recording'
+      preLoaderRoute: typeof RollsRollIdRecordingRouteImport
+      parentRoute: typeof RollsRoute
+    }
     '/rolls/$rollId/edit': {
       id: '/rolls/$rollId/edit'
       path: '/$rollId/edit'
@@ -148,6 +172,7 @@ interface RollsRouteChildren {
   RollsNewRoute: typeof RollsNewRoute
   RollsIndexRoute: typeof RollsIndexRoute
   RollsRollIdEditRoute: typeof RollsRollIdEditRoute
+  RollsRollIdRecordingRoute: typeof RollsRollIdRecordingRoute
   RollsRollIdIndexRoute: typeof RollsRollIdIndexRoute
 }
 
@@ -155,6 +180,7 @@ const RollsRouteChildren: RollsRouteChildren = {
   RollsNewRoute: RollsNewRoute,
   RollsIndexRoute: RollsIndexRoute,
   RollsRollIdEditRoute: RollsRollIdEditRoute,
+  RollsRollIdRecordingRoute: RollsRollIdRecordingRoute,
   RollsRollIdIndexRoute: RollsRollIdIndexRoute,
 }
 
