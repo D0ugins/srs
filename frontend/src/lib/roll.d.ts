@@ -168,9 +168,9 @@ export interface RollGraphs {
         elevation: number[];
         speed: number[];
     }
-    angular_velocity?: {
+    centripetal?: {
         timestamp: number[];
-        angular_velocity: number[];
+        values: number[];
     }
     accelerometer?: {
         timestamp: number[];

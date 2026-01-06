@@ -2,35 +2,36 @@ import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Grid } from "@visx/grid";
-import { LinePath } from "@visx/shape";
+import { Line, LinePath } from "@visx/shape";
 
 interface GraphData {
-    timestamps: number[];
+    timestamp: number[];
     values: number[];
 }
 
 const margin = { top: 25, right: 30, bottom: 30, left: 50 };
 
 
-export default function RollGraph({ parentWidth, parentHeight, data }:
-    { parentWidth: number, parentHeight: number, data: GraphData }) {
+export default function RollGraph({ parentWidth, parentHeight, data, title, top = 0 }:
+    { parentWidth: number, parentHeight: number, data: GraphData, title: string, top?: number }) {
     const width = parentWidth - margin.left - margin.right;
     const height = parentHeight - margin.top - margin.bottom;
     const xScale = scaleLinear({
-        domain: [Math.min(...data.timestamps), Math.max(...data.timestamps)],
+        domain: [0, Math.max(...data.timestamp)],
         range: [0, width],
     })
+    let min = Math.min(...data.values);
     const yScale = scaleLinear({
-        domain: [0, Math.max(...data.values) * 1.1],
+        domain: [min, Math.max(...data.values) * 1.1],
         range: [height, 0],
     })
 
     const X_TICKS = 9;
     const Y_TICKS = 7;
 
-    return <Group top={margin.top} left={margin.left} >
+    return <Group top={top + margin.top} left={margin.left} >
         <text x={0} y={-5} fontSize={14}>
-            Speed (m/s)
+            {title}
         </text>
         <Grid
             width={width}
@@ -47,11 +48,18 @@ export default function RollGraph({ parentWidth, parentHeight, data }:
         />
         <AxisLeft<typeof yScale> scale={yScale} numTicks={Y_TICKS} />
         <LinePath
-            data={data.timestamps.map((t, i) => ({ x: t, y: data.values[i] }))}
+            data={data.timestamp.map((t, i) => ({ x: t, y: data.values[i] }))}
             x={d => xScale(d.x)}
             y={d => yScale(d.y)}
             stroke="#7777ffff"
             strokeWidth={2}
         />
+        {min < 0 && <Line
+            from={{ x: 0, y: yScale(0) }}
+            to={{ x: width, y: yScale(0) }}
+            stroke="#000"
+            opacity={0.5}
+            strokeWidth={2}
+        />}
     </Group>
 }

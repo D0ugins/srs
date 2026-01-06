@@ -252,8 +252,16 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
     
     return get_roll(roll.id, session)
 
+# TMP: for dev
+cached_id = None
+cached = None
+
 @router.get("/{roll_id}/graphs")
 def get_roll_graphs(roll_id: int, session: SessionDep):
+    global cached_id, cached
+    if roll_id == cached_id and cached is not None:
+        return cached
+    
     roll = session.scalar(
         select(Roll).options(selectinload(Roll.roll_files)).where(Roll.id == roll_id)
     )    
@@ -273,17 +281,18 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
     response = {}
     gps_data = get_gps_data(messages)
     if gps_data is not None:
+        speed = pd.Series(np.linalg.norm(np.array(gps_data.velocity.to_list()), axis=1), index=gps_data.index)
         response['gps_data'] = pd.DataFrame({
             'timestamp': gps_data.index,
             'lat': gps_data.position_lat,
             'long': gps_data.position_long,
             'elevation': get_elevations(gps_data, snap_to_course=True),
-            'speed': np.linalg.norm(np.array(gps_data.velocity.to_list()), axis=1),
+            'speed': speed,
         }).to_dict(orient='list')
-        angular_velocity = get_angular_velocity(gps_data)
-        response['angular_velocity'] = pd.DataFrame({
+        angular_velocity = get_angular_velocity(gps_data, 1)
+        response['centripetal'] = pd.DataFrame({
             'timestamp': angular_velocity.index,
-            'angular_velocity': angular_velocity
+            'values': angular_velocity * speed.loc[angular_velocity.index]  # v^2 / r = v * omega
         }).to_dict(orient='list')
         
     
@@ -317,4 +326,6 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
             response['magnetometer'] = mag_data.to_dict(orient='list')
     response['camera_starts'] = get_camera_starts(messages)
     response['camera_ends'] = get_camera_ends(messages)
+    cached_id = roll_id
+    cached = response
     return response

@@ -115,13 +115,14 @@ def get_sensor_data(calibration: dict, sensor_messages: List[SensorMessage], fie
     return raw, data, float(fs)
 
 
-def get_angular_velocity(gps_data: pd.DataFrame) -> pd.Series:
+def get_angular_velocity(gps_data: pd.DataFrame, cutoff: float = 2.0) -> pd.Series:
     """
     Compute angular velocity (in rad/s) from gps heading data.
     Returns pd.Series indexed by timestamp (ms).
-    Filters out data where speed < 2 m/s.
+    Filters out data where speed < cutoff
     """
-    heading = gps_data.heading[gps_data.enhanced_speed >= 2]
+    
+    heading = gps_data.heading[np.linalg.norm(np.array(gps_data.velocity.to_list()), axis=1) >= cutoff]
     # Account for wrap arounds
     offsets = np.array([heading.shift(1) - heading, heading.shift(1) - heading - 360, heading.shift(1) - heading + 360])
     mins = np.argmin(np.abs(offsets), axis=0)

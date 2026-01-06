@@ -4,20 +4,26 @@ import RollGraph from "./RollGraph";
 
 
 export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, graphs: RollGraphs }) {
+
+
     return (
-        <div>
-            {graphs.gps_data &&
-                <div className="mb-2 h-64 relative"><ParentSize>
-                    {(parent) => <svg width={parent.width} height={parent.height}>
-                        <RollGraph parentWidth={parent.width} parentHeight={parent.height} data={{
-                            timestamps: graphs.gps_data!.timestamp,
+        <div className="mb-2 h-full relative">
+            <ParentSize>
+                {(parent) => <svg width={parent.width} height={parent.height}>
+                    {graphs.gps_data &&
+                        <RollGraph parentWidth={parent.width} parentHeight={parent.height / 4} title="Speed (m/s)" data={{
+                            timestamp: graphs.gps_data!.timestamp,
                             values: graphs.gps_data!.speed
                         }} />
-                    </svg>
                     }
-                </ParentSize></div>
-            }
-            {/* <div>{JSON.stringify(graphs, null, 2)}</div> */}
+                    {graphs.centripetal &&
+                        <RollGraph parentWidth={parent.width} parentHeight={parent.height / 4} top={parent.height / 4}
+                            title="Centripetal Acceleration (m/s²)" data={graphs.centripetal} />
+                    }
+                </svg>
+                }
+            </ParentSize>
         </div>
+
     );
 }
