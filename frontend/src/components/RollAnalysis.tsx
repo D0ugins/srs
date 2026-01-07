@@ -263,7 +263,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     setCurrentTime={setCurrentTime}
                 />
             </div>
-            <div className="flex-[2] h-full">
+            <div className="flex-[2] h-full min-w-0">
                 <RollGraphsContainer
                     data={{
                         speed: speedData.timestamp.length > 0 ? speedData : undefined,
