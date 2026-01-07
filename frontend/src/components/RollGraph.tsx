@@ -11,12 +11,15 @@ import { bisector } from "d3-array";
 import { useMemo } from "react";
 import { GRAPH_MARGIN } from "./RollAnalysis";
 
-interface GraphData {
+export interface GraphData {
     timestamp: number[];
     values: number[];
 }
 
-
+export interface TooltipData {
+    timestamp: number;
+    values: { label: string; value: number }[];
+}
 
 const bisectTimestamp = bisector<{ x: number; y: number }, number>(d => d.x).left;
 
