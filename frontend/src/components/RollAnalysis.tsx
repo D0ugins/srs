@@ -23,11 +23,14 @@ interface RollGraphsProps {
     tooltipLeft?: number;
     tooltipTop?: number;
     tooltipData?: TooltipData;
+    videoTime?: number;
     showTooltip: (args: any) => void;
     handleMouseLeave: () => void;
 }
 
-function RollGraphs({ speedData, centripetalData, tooltipLeft, tooltipTop, tooltipData, showTooltip, handleMouseLeave }: RollGraphsProps) {
+function RollGraphs({ speedData, centripetalData,
+    tooltipLeft, tooltipTop, tooltipData, showTooltip, handleMouseLeave,
+    videoTime }: RollGraphsProps) {
     return <div className="h-full relative">
         <ParentSize>
             {(parent) => {
@@ -58,7 +61,8 @@ function RollGraphs({ speedData, centripetalData, tooltipLeft, tooltipTop, toolt
                 >{
                         (zoom) => <div className="relative">
                             <svg width={parent.width} height={parent.height}
-                                style={{ cursor: zoom.isDragging ? 'grabbing' : 'grab', touchAction: 'none' }}
+                                // Transform ensures pixel alignment
+                                style={{ cursor: zoom.isDragging ? 'grabbing' : 'grab', touchAction: 'none', transform: 'translate(0, 0)' }}
                                 ref={zoom.containerRef}>
                                 {speedData &&
                                     <RollGraph
@@ -67,6 +71,7 @@ function RollGraphs({ speedData, centripetalData, tooltipLeft, tooltipTop, toolt
                                         title="Speed (m/s)"
                                         zoom={zoom}
                                         data={speedData}
+                                        videoTime={videoTime}
                                         onMouseLeave={handleMouseLeave}
                                         showTooltip={showTooltip}
                                     />
@@ -77,8 +82,9 @@ function RollGraphs({ speedData, centripetalData, tooltipLeft, tooltipTop, toolt
                                         parentHeight={parent.height / 4}
                                         top={parent.height / 4}
                                         title="Centripetal Acceleration (m/s²)"
-                                        data={centripetalData}
                                         zoom={zoom}
+                                        data={centripetalData}
+                                        videoTime={videoTime}
                                         onMouseLeave={handleMouseLeave}
                                         showTooltip={showTooltip}
                                     />
@@ -193,6 +199,9 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
         hideTooltip();
     }, [hideTooltip]);
 
+    const cameraStart = graphs.camera_starts[0];
+    const timeStamp = cameraStart ? currentTime * 1000 + cameraStart : undefined;
+
     return (
         <div className="flex h-full gap-4">
             <div className="flex-[1]">
@@ -209,6 +218,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     tooltipLeft={tooltipLeft}
                     tooltipTop={tooltipTop}
                     tooltipData={tooltipData}
+                    videoTime={timeStamp}
                     showTooltip={showTooltip}
                     handleMouseLeave={handleMouseLeave}
                 />

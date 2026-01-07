@@ -31,6 +31,19 @@ function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, never>):
     });
 }
 
+interface RollGraphProps {
+    parentWidth: number;
+    parentHeight: number;
+    data: GraphData;
+    title: string;
+    top?: number;
+    zoom: ZoomState
+    videoTime?: number;
+    onMouseMove?: (event: React.MouseEvent | React.TouchEvent) => void;
+    onMouseLeave?: () => void;
+    showTooltip?: (args: any) => void;
+}
+
 export default function RollGraph({
     parentWidth,
     parentHeight,
@@ -38,20 +51,11 @@ export default function RollGraph({
     title,
     top = 0,
     zoom,
+    videoTime,
     onMouseMove,
     onMouseLeave,
     showTooltip,
-}: {
-    parentWidth: number;
-    parentHeight: number;
-    data: GraphData;
-    title: string;
-    zoom: ZoomState
-    top?: number;
-    onMouseMove?: (event: React.MouseEvent | React.TouchEvent) => void;
-    onMouseLeave?: () => void;
-    showTooltip?: (args: any) => void;
-}) {
+}: RollGraphProps) {
     const width = parentWidth - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
     const height = parentHeight - GRAPH_MARGIN.top - GRAPH_MARGIN.bottom;
 
@@ -130,6 +134,14 @@ export default function RollGraph({
             stroke="#000"
             opacity={0.5}
             strokeWidth={2}
+        />}
+        {videoTime && <Line
+            from={{ x: xScale(videoTime), y: 0 }}
+            to={{ x: xScale(videoTime), y: height }}
+            stroke="#ff0000"
+            strokeWidth={2}
+            shapeRendering="geometricPrecision"
+            pointerEvents="none"
         />}
         <rect
             y={-GRAPH_MARGIN.top}
