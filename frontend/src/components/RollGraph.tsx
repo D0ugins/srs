@@ -87,7 +87,13 @@ export default function RollGraph({
     };
 
     return <Group top={top + GRAPH_MARGIN.top} left={GRAPH_MARGIN.left} >
-        <text x={0} y={-8} fontSize={14}>
+        <text
+            x={-height / 2}
+            y={-32}
+            fontSize={10}
+            transform="rotate(-90)"
+            textAnchor="middle"
+        >
             {title}
         </text>
         <Grid

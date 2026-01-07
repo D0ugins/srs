@@ -98,7 +98,7 @@ function RollGraphs({ data,
                     />
                 )}
                 {
-                    videoTime && <Group top={GRAPH_MARGIN.top} left={GRAPH_MARGIN.left}
+                    videoTime && <Group top={GRAPH_MARGIN.top - 16} left={GRAPH_MARGIN.left}
                         shapeRendering="geometricPrecision" pointerEvents="none" opacity={0.75}>
                         <Line
                             from={{ x: xScale(videoTime), y: 0 }}
