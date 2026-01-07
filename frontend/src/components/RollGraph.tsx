@@ -1,20 +1,32 @@
 import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
+import type { ScaleLinear } from "d3-scale";
 import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Grid } from "@visx/grid";
 import { Line, LinePath } from "@visx/shape";
 import { localPoint } from "@visx/event";
+import { RectClipPath } from "@visx/clip-path";
+import type { ZoomState } from "@visx/zoom";
 import { bisector } from "d3-array";
 import { useMemo } from "react";
+import { GRAPH_MARGIN } from "./RollAnalysis";
 
 interface GraphData {
     timestamp: number[];
     values: number[];
 }
 
-const margin = { top: 25, right: 30, bottom: 30, left: 50 };
+
 
 const bisectTimestamp = bisector<{ x: number; y: number }, number>(d => d.x).left;
+
+function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, never>): ScaleLinear<number, number, never> {
+    const newDomain = scale.range().map(d => scale.invert(d - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX);
+    return scaleLinear({
+        domain: newDomain,
+        range: scale.range(),
+    });
+}
 
 export default function RollGraph({
     parentWidth,
@@ -22,6 +34,7 @@ export default function RollGraph({
     data,
     title,
     top = 0,
+    zoom,
     onMouseMove,
     onMouseLeave,
     showTooltip,
@@ -30,22 +43,25 @@ export default function RollGraph({
     parentHeight: number;
     data: GraphData;
     title: string;
+    zoom: ZoomState
     top?: number;
     onMouseMove?: (event: React.MouseEvent | React.TouchEvent) => void;
     onMouseLeave?: () => void;
     showTooltip?: (args: any) => void;
 }) {
-    const width = parentWidth - margin.left - margin.right;
-    const height = parentHeight - margin.top - margin.bottom;
-    const xScale = scaleLinear({
+    const width = parentWidth - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
+    const height = parentHeight - GRAPH_MARGIN.top - GRAPH_MARGIN.bottom;
+
+    const xScale = useMemo(() => zoomXScale(zoom, scaleLinear({
         domain: [0, Math.max(...data.timestamp)],
         range: [0, width],
-    })
+    })), [data, width, zoom]);
+
     let min = Math.min(...data.values);
-    const yScale = scaleLinear({
+    const yScale = useMemo(() => scaleLinear({
         domain: [min, Math.max(...data.values) * 1.1],
         range: [height, 0],
-    })
+    }), [data, height,]);
 
     const X_TICKS = 9;
     const Y_TICKS = 7;
@@ -54,10 +70,9 @@ export default function RollGraph({
 
     const handleLocalMouseMove = (event: React.MouseEvent | React.TouchEvent) => {
         const point = localPoint(event);
-        console.debug(point)
         if (!point || !showTooltip) return;
 
-        const x = point.x - margin.left;
+        const x = point.x - GRAPH_MARGIN.left;
         const timestamp = xScale.invert(x);
         const index = bisectTimestamp(dataPoints, timestamp, 1);
         const d0 = dataPoints[index - 1];
@@ -72,14 +87,14 @@ export default function RollGraph({
                 timestamp: d.x,
                 values: [{ label: title, value: d.y }],
             },
-            tooltipLeft: xScale(d.x) + margin.left,
+            tooltipLeft: xScale(d.x) + GRAPH_MARGIN.left,
             tooltipTop: point.y,
         });
 
         onMouseMove?.(event);
     };
 
-    return <Group top={top + margin.top} left={margin.left} >
+    return <Group top={top + GRAPH_MARGIN.top} left={GRAPH_MARGIN.left} >
         <text x={0} y={-5} fontSize={14}>
             {title}
         </text>
@@ -97,12 +112,14 @@ export default function RollGraph({
             numTicks={X_TICKS} tickFormat={(value) => (+value / 1000).toFixed(3)}
         />
         <AxisLeft<typeof yScale> scale={yScale} numTicks={Y_TICKS} />
+        <RectClipPath id="graph-clip-path" width={width} height={height} />
         <LinePath
             data={dataPoints}
             x={d => xScale(d.x)}
             y={d => yScale(d.y)}
             stroke="#7777ffff"
             strokeWidth={2}
+            clipPath="url(#graph-clip-path)"
         />
         {min < 0 && <Line
             from={{ x: 0, y: yScale(0) }}
@@ -112,9 +129,9 @@ export default function RollGraph({
             strokeWidth={2}
         />}
         <rect
-            y={-margin.top}
+            y={-GRAPH_MARGIN.top}
             width={width}
-            height={height + margin.bottom + margin.top}
+            height={height + GRAPH_MARGIN.bottom + GRAPH_MARGIN.top}
             fill="transparent"
             onMouseMove={handleLocalMouseMove}
             onMouseLeave={onMouseLeave}
