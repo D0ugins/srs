@@ -6,7 +6,6 @@ import { Grid } from "@visx/grid";
 import { Line, LinePath } from "@visx/shape";
 import { localPoint } from "@visx/event";
 import { RectClipPath } from "@visx/clip-path";
-import type { ZoomState } from "@visx/zoom";
 import { bisector } from "d3-array";
 import { useMemo } from "react";
 import { GRAPH_MARGIN } from "./RollAnalysis";
@@ -23,13 +22,6 @@ export interface TooltipData {
 
 const bisectTimestamp = bisector<{ x: number; y: number }, number>(d => d.x).left;
 
-function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, never>): ScaleLinear<number, number, never> {
-    const newDomain = scale.range().map(d => scale.invert(d - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX);
-    return scaleLinear({
-        domain: newDomain,
-        range: scale.range(),
-    });
-}
 
 interface RollGraphProps {
     parentWidth: number;
@@ -37,8 +29,7 @@ interface RollGraphProps {
     data: GraphData;
     title: string;
     top?: number;
-    zoom: ZoomState
-    videoTime?: number;
+    xScale: ScaleLinear<number, number, never>;
     onMouseMove?: (event: React.MouseEvent | React.TouchEvent) => void;
     onMouseLeave?: () => void;
     showTooltip?: (args: any) => void;
@@ -50,19 +41,13 @@ export default function RollGraph({
     data,
     title,
     top = 0,
-    zoom,
-    videoTime,
+    xScale,
     onMouseMove,
     onMouseLeave,
     showTooltip,
 }: RollGraphProps) {
     const width = parentWidth - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
     const height = parentHeight - GRAPH_MARGIN.top - GRAPH_MARGIN.bottom;
-
-    const xScale = useMemo(() => zoomXScale(zoom, scaleLinear({
-        domain: [0, Math.max(...data.timestamp)],
-        range: [0, width],
-    })), [data, width, zoom]);
 
     let min = Math.min(...data.values);
     const yScale = useMemo(() => scaleLinear({
@@ -102,7 +87,7 @@ export default function RollGraph({
     };
 
     return <Group top={top + GRAPH_MARGIN.top} left={GRAPH_MARGIN.left} >
-        <text x={0} y={-5} fontSize={14}>
+        <text x={0} y={-8} fontSize={14}>
             {title}
         </text>
         <Grid
@@ -135,14 +120,7 @@ export default function RollGraph({
             opacity={0.5}
             strokeWidth={2}
         />}
-        {videoTime && <Line
-            from={{ x: xScale(videoTime), y: 0 }}
-            to={{ x: xScale(videoTime), y: height }}
-            stroke="#ff0000"
-            strokeWidth={2}
-            shapeRendering="geometricPrecision"
-            pointerEvents="none"
-        />}
+
         <rect
             y={-GRAPH_MARGIN.top}
             width={width}

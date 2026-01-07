@@ -2,10 +2,14 @@ import type { RollDetails, RollGraphs } from "@/lib/roll";
 import { useMemo, useCallback, useRef, useState } from "react";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
-import { Line } from "@visx/shape";
-import { applyMatrixToPoint, Zoom, type TransformMatrix } from "@visx/zoom";
+import { Line, Polygon } from "@visx/shape";
+import { applyMatrixToPoint, Zoom, type TransformMatrix, type ZoomProps, type ZoomState } from "@visx/zoom";
 import RollGraph, { type GraphData, type TooltipData } from "./RollGraph";
 import { transformMediaUrl } from "@/lib/format";
+import { Group } from "@visx/group";
+import { scaleLinear } from "@visx/scale";
+import type { ScaleLinear } from "d3-scale";
+type ZoomType = ZoomProps<SVGSVGElement>['children'] extends (zoom: infer U) => any ? U : never;
 
 const tooltipStyles = {
     ...defaultStyles,
@@ -18,8 +22,10 @@ const tooltipStyles = {
 export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 30, left: 50 };
 
 interface RollGraphsProps {
-    speedData?: GraphData;
-    centripetalData?: GraphData;
+    data: {
+        speed?: GraphData;
+        centripetal?: GraphData;
+    }
     tooltipLeft?: number;
     tooltipTop?: number;
     tooltipData?: TooltipData;
@@ -28,9 +34,113 @@ interface RollGraphsProps {
     handleMouseLeave: () => void;
 }
 
-function RollGraphs({ speedData, centripetalData,
-    tooltipLeft, tooltipTop, tooltipData, showTooltip, handleMouseLeave,
-    videoTime }: RollGraphsProps) {
+function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, never>): ScaleLinear<number, number, never> {
+    const newDomain = scale.range().map(d => scale.invert(d - zoom.transformMatrix.translateX) / zoom.transformMatrix.scaleX);
+    return scaleLinear({
+        domain: newDomain,
+        range: scale.range(),
+    });
+}
+
+function RollGraphs({ data,
+    tooltipLeft, tooltipTop, tooltipData,
+    showTooltip, handleMouseLeave,
+    videoTime, zoom, parent }: RollGraphsProps & { zoom: ZoomType, parent: { width: number; height: number } }) {
+    {
+        const width = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
+        const xScale = useMemo(() => {
+            // Determine the overall time range
+            const allTimestamps = Object.values(data).flatMap(d => d.timestamp);
+            const maxTime = Math.max(...allTimestamps);
+            return zoomXScale(zoom, scaleLinear({
+                domain: [0, maxTime],
+                range: [0, width],
+            }))
+        }, [data, zoom]);
+
+        const videoPosition = videoTime ? xScale(videoTime) + GRAPH_MARGIN.left : undefined;
+        return <div className="relative">
+            <svg width={parent.width} height={parent.height}
+                // Transform ensures pixel alignment
+                style={{ cursor: zoom.isDragging ? 'grabbing' : 'grab', touchAction: 'none', transform: 'translate(0, 0)' }}
+                ref={zoom.containerRef}>
+                {data.speed &&
+                    <RollGraph
+                        parentWidth={parent.width}
+                        parentHeight={parent.height / 4}
+                        title="Speed (m/s)"
+                        xScale={xScale}
+                        data={data.speed}
+                        onMouseLeave={handleMouseLeave}
+                        showTooltip={showTooltip}
+                    />
+                }
+                {data.centripetal &&
+                    <RollGraph
+                        parentWidth={parent.width}
+                        parentHeight={parent.height / 4}
+                        top={parent.height / 4}
+                        title="Centripetal Acceleration (m/s²)"
+                        xScale={xScale}
+                        data={data.centripetal}
+                        onMouseLeave={handleMouseLeave}
+                        showTooltip={showTooltip}
+                    />
+                }
+                {tooltipLeft !== undefined && (
+                    <Line
+                        from={{ x: tooltipLeft, y: 0 }}
+                        to={{ x: tooltipLeft, y: parent.height }}
+                        stroke="#666"
+                        strokeWidth={1}
+                        pointerEvents="none"
+                        strokeDasharray="4,2"
+                    />
+                )}
+                {
+                    videoTime && <Group top={GRAPH_MARGIN.top} left={GRAPH_MARGIN.left}
+                        shapeRendering="geometricPrecision" pointerEvents="none" opacity={0.75}>
+                        <Line
+                            from={{ x: xScale(videoTime), y: 0 }}
+                            to={{ x: xScale(videoTime), y: parent.height }}
+                            stroke="#ff0000"
+                            strokeWidth={2}
+                            shapeRendering="geometricPrecision"
+                        />
+                        <Polygon
+                            points={[
+                                [xScale(videoTime), 12],
+                                [xScale(videoTime) - 6, 4],
+                                [xScale(videoTime) - 6, -2],
+                                [xScale(videoTime) + 6, -2],
+                                [xScale(videoTime) + 6, 4],
+                            ]}
+                            fill="#ff0000"
+                        />
+                    </Group>
+                }
+            </svg>
+            {tooltipData && (
+                <TooltipWithBounds
+                    top={tooltipTop}
+                    left={tooltipLeft}
+                    style={tooltipStyles}
+                >
+                    <div>
+                        <strong>Time: {(tooltipData.timestamp / 1000).toFixed(3)}s</strong>
+                        {tooltipData.values.map((v, i) => (
+                            <div key={i}>
+                                {v.label}: {v.value.toFixed(2)}
+                            </div>
+                        ))}
+                    </div>
+                </TooltipWithBounds>
+            )}
+        </div>
+    }
+}
+
+function RollGraphsContainer(props: RollGraphsProps) {
     return <div className="h-full relative">
         <ParentSize>
             {(parent) => {
@@ -58,65 +168,7 @@ function RollGraphs({ speedData, centripetalData,
                         }
                         return transformMatrix;
                     }}
-                >{
-                        (zoom) => <div className="relative">
-                            <svg width={parent.width} height={parent.height}
-                                // Transform ensures pixel alignment
-                                style={{ cursor: zoom.isDragging ? 'grabbing' : 'grab', touchAction: 'none', transform: 'translate(0, 0)' }}
-                                ref={zoom.containerRef}>
-                                {speedData &&
-                                    <RollGraph
-                                        parentWidth={parent.width}
-                                        parentHeight={parent.height / 4}
-                                        title="Speed (m/s)"
-                                        zoom={zoom}
-                                        data={speedData}
-                                        videoTime={videoTime}
-                                        onMouseLeave={handleMouseLeave}
-                                        showTooltip={showTooltip}
-                                    />
-                                }
-                                {centripetalData &&
-                                    <RollGraph
-                                        parentWidth={parent.width}
-                                        parentHeight={parent.height / 4}
-                                        top={parent.height / 4}
-                                        title="Centripetal Acceleration (m/s²)"
-                                        zoom={zoom}
-                                        data={centripetalData}
-                                        videoTime={videoTime}
-                                        onMouseLeave={handleMouseLeave}
-                                        showTooltip={showTooltip}
-                                    />
-                                }
-                                {tooltipLeft !== undefined && (
-                                    <Line
-                                        from={{ x: tooltipLeft, y: 0 }}
-                                        to={{ x: tooltipLeft, y: parent.height }}
-                                        stroke="#666"
-                                        strokeWidth={1}
-                                        pointerEvents="none"
-                                        strokeDasharray="4,2"
-                                    />
-                                )}
-                            </svg>
-                            {tooltipData && (
-                                <TooltipWithBounds
-                                    top={tooltipTop}
-                                    left={tooltipLeft}
-                                    style={tooltipStyles}
-                                >
-                                    <div>
-                                        <strong>Time: {(tooltipData.timestamp / 1000).toFixed(3)}s</strong>
-                                        {tooltipData.values.map((v, i) => (
-                                            <div key={i}>
-                                                {v.label}: {v.value.toFixed(2)}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </TooltipWithBounds>
-                            )}
-                        </div>}
+                >{(zoom) => <RollGraphs zoom={zoom} parent={parent} {...props} />}
                 </Zoom>
             }}
         </ParentSize>
@@ -212,9 +264,11 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                 />
             </div>
             <div className="flex-[2] h-full">
-                <RollGraphs
-                    speedData={speedData.timestamp.length > 0 ? speedData : undefined}
-                    centripetalData={centripetalData.timestamp.length > 0 ? centripetalData : undefined}
+                <RollGraphsContainer
+                    data={{
+                        speed: speedData.timestamp.length > 0 ? speedData : undefined,
+                        centripetal: centripetalData.timestamp.length > 0 ? centripetalData : undefined,
+                    }}
                     tooltipLeft={tooltipLeft}
                     tooltipTop={tooltipTop}
                     tooltipData={tooltipData}
