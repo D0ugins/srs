@@ -1,7 +1,7 @@
 import type { RollDetails, RollGraphs } from "@/lib/roll";
+import { useMemo, useCallback } from "react";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
-import { localPoint } from "@visx/event";
 import { Line } from "@visx/shape";
 import RollGraph from "./RollGraph";
 
@@ -22,6 +22,17 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
         hideTooltip,
     } = useTooltip<{ timestamp: number; values: { label: string; value: number }[] }>();
 
+    const speedData = useMemo(() => ({
+        timestamp: graphs.gps_data?.timestamp ?? [],
+        values: graphs.gps_data?.speed ?? []
+    }), [graphs.gps_data]);
+
+    const centripetalData = useMemo(() => graphs.centripetal, [graphs.centripetal]);
+
+    const handleMouseLeave = useCallback(() => {
+        hideTooltip();
+    }, [hideTooltip]);
+
     return (
         <div className="mb-2 h-full relative">
             <ParentSize>
@@ -32,22 +43,19 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                                 parentWidth={parent.width}
                                 parentHeight={parent.height / 4}
                                 title="Speed (m/s)"
-                                data={{
-                                    timestamp: graphs.gps_data!.timestamp,
-                                    values: graphs.gps_data!.speed
-                                }}
-                                onMouseLeave={hideTooltip}
+                                data={speedData}
+                                onMouseLeave={handleMouseLeave}
                                 showTooltip={showTooltip}
                             />
                         }
-                        {graphs.centripetal &&
+                        {centripetalData &&
                             <RollGraph
                                 parentWidth={parent.width}
                                 parentHeight={parent.height / 4}
                                 top={parent.height / 4}
                                 title="Centripetal Acceleration (m/s²)"
-                                data={graphs.centripetal}
-                                onMouseLeave={hideTooltip}
+                                data={centripetalData}
+                                onMouseLeave={handleMouseLeave}
                                 showTooltip={showTooltip}
                             />
                         }
@@ -64,7 +72,6 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     </svg>
                     {tooltipData && (
                         <TooltipWithBounds
-                            // key={Math.random()}
                             top={tooltipTop}
                             left={tooltipLeft}
                             style={tooltipStyles}

@@ -5,6 +5,7 @@ import { Grid } from "@visx/grid";
 import { Line, LinePath } from "@visx/shape";
 import { localPoint } from "@visx/event";
 import { bisector } from "d3-array";
+import { useMemo } from "react";
 
 interface GraphData {
     timestamp: number[];
@@ -49,7 +50,7 @@ export default function RollGraph({
     const X_TICKS = 9;
     const Y_TICKS = 7;
 
-    const dataPoints = data.timestamp.map((t, i) => ({ x: t, y: data.values[i] }));
+    const dataPoints = useMemo(() => data.timestamp.map((t, i) => ({ x: t, y: data.values[i] })), [data]);
 
     const handleLocalMouseMove = (event: React.MouseEvent | React.TouchEvent) => {
         const point = localPoint(event);
