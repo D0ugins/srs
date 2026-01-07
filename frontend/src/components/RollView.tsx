@@ -9,13 +9,11 @@ export default function RollView({ roll }: { roll: RollDetails }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [fps, setFps] = useState(30);
+    const fps = 30;
     const frameCallbackIdRef = useRef<number | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [wasPlaying, setWasPlaying] = useState(false);
     const timelineRef = useRef<HTMLDivElement>(null);
-
-    // ...existing code (updateFrame, handleLoadedMetadata, useEffects, handlers, formatTime)...
 
     const updateFrame = () => {
         if (videoRef.current) {
@@ -32,7 +30,6 @@ export default function RollView({ roll }: { roll: RollDetails }) {
             setDuration(videoRef.current.duration);
             const videoElement = videoRef.current as any;
             if (videoElement.requestVideoFrameCallback) {
-                setFps(fps);
                 frameCallbackIdRef.current = videoElement.requestVideoFrameCallback(updateFrame);
             }
         }
