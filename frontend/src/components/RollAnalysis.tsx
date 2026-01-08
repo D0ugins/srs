@@ -101,7 +101,9 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
         if (playing && videoRef.current.paused) videoRef.current.play();
         else if (!playing && !videoRef.current.paused) videoRef.current.pause();
     }, [playing]);
-
+    // [890555.9326319562,  0.0,                    71198699.26796, 
+    //  0.0,                -1170119.0001883141,    47322335.071882315,
+    //  0.0,                0.0,                    1.0                 ]
     return (
         <div className="flex h-full gap-4">
             <div className="flex-[1]">
