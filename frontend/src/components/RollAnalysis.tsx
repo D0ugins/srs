@@ -75,6 +75,15 @@ function RollGraphs({ data,
             setPlaying(false);
         };
 
+        const handleDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
+            const point = localPoint(e);
+            if (!point || !videoStart) return;
+
+            const x = point.x - GRAPH_MARGIN.left;
+            const timestamp = xScale.invert(x);
+            updateVideoTime((timestamp - videoStart) / 1000);
+        };
+
         useEffect(() => {
             const handleMouseMove = (e: MouseEvent) => {
                 if (!isDragging || !videoStart) return;
@@ -111,7 +120,8 @@ function RollGraphs({ data,
             <svg width={parent.width} height={parent.height}
                 // Transform ensures pixel alignment
                 className="cursor-move touch-none"
-                ref={zoom.containerRef}>
+                ref={zoom.containerRef}
+                onDoubleClick={handleDoubleClick}>
                 {data.speed &&
                     <RollGraph
                         parentWidth={parent.width}
