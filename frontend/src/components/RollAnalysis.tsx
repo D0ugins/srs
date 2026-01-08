@@ -5,46 +5,76 @@ import { useTooltip } from "@visx/tooltip";
 import { applyMatrixToPoint, Zoom, type TransformMatrix } from "@visx/zoom";
 import RollGraphs, { GRAPH_MARGIN, type RollGraphsProps } from "./RollGraphs";
 import RollVideo from "./RollVideo";
+import RollMap, { type RollMapProps } from "./RollMap";
 
 function RollGraphsContainer(props: RollGraphsProps) {
     const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
 
     return <div className="h-full relative">
         <ParentSize>
-            {(parent) => {
-                return <Zoom<SVGSVGElement>
-                    width={parent.width}
-                    height={parent.height}
-                    scaleXMin={1}
-                    wheelDelta={(event) => ({ scaleX: event.deltaY > 0 ? 0.9 : 1.1, scaleY: 1 })}
-                    constrain={(transformMatrix: TransformMatrix, prev: TransformMatrix) => {
-                        if (transformMatrix.scaleX <= 1) return { ...transformMatrix, scaleX: 1, translateX: 0 };
-                        if (isPlayheadDragging) transformMatrix = { ...transformMatrix, translateX: prev.translateX };
-                        const min = applyMatrixToPoint(transformMatrix, { x: 0, y: 0 });
-                        const innerWidth = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
-                        const max = applyMatrixToPoint(transformMatrix, { x: innerWidth, y: 0 });
-                        if (min.x > 0) {
-                            return {
-                                ...transformMatrix,
-                                translateX: 0,
-                            }
+            {(parent) => <Zoom<SVGSVGElement>
+                width={parent.width}
+                height={parent.height}
+                scaleXMin={1}
+                wheelDelta={(event) => ({ scaleX: event.deltaY > 0 ? 0.9 : 1.1, scaleY: 1 })}
+                constrain={(transformMatrix: TransformMatrix, prev: TransformMatrix) => {
+                    if (transformMatrix.scaleX <= 1) return { ...transformMatrix, scaleX: 1, translateX: 0 };
+                    if (isPlayheadDragging) transformMatrix = { ...transformMatrix, translateX: prev.translateX };
+                    const min = applyMatrixToPoint(transformMatrix, { x: 0, y: 0 });
+                    const innerWidth = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
+                    const max = applyMatrixToPoint(transformMatrix, { x: innerWidth, y: 0 });
+                    if (min.x > 0) {
+                        return {
+                            ...transformMatrix,
+                            translateX: 0,
                         }
-                        if (max.x < innerWidth) {
-                            return {
-                                ...transformMatrix,
-                                translateX: innerWidth - (max.x - transformMatrix.translateX),
-                            }
+                    }
+                    if (max.x < innerWidth) {
+                        return {
+                            ...transformMatrix,
+                            translateX: innerWidth - (max.x - transformMatrix.translateX),
                         }
-                        return transformMatrix;
-                    }}
-                >{(zoom) => <RollGraphs zoom={zoom} parent={parent} isDragging={isPlayheadDragging} setIsDragging={setIsPlayheadDragging} {...props} />}
-                </Zoom>
-            }}
+                    }
+                    return transformMatrix;
+                }}
+            >{(zoom) => <RollGraphs zoom={zoom} parent={parent} isDragging={isPlayheadDragging} setIsDragging={setIsPlayheadDragging} {...props} />}
+            </Zoom>
+            }
         </ParentSize>
     </div>
 }
 
 
+function RollMapContainer({ positions }: RollMapProps) {
+    return <div className="h-1/2 relative">
+        <ParentSize>
+            {(parent) => <Zoom<SVGSVGElement>
+                width={parent.width}
+                height={parent.height}
+                constrain={(transformMatrix, _prev) => {
+                    let { scaleX, scaleY, translateX, translateY } = transformMatrix;
+                    scaleX = Math.max(1, scaleX);
+                    scaleY = Math.max(1, scaleY);
+
+                    const scaledWidth = parent.width * scaleX;
+                    const scaledHeight = parent.height * scaleY;
+                    const maxTranslateX = Math.max(0, scaledWidth - parent.width);
+                    const maxTranslateY = Math.max(0, scaledHeight - parent.height);
+                    const constrainedTranslateX = Math.min(0, Math.max(-maxTranslateX, translateX));
+                    const constrainedTranslateY = Math.min(0, Math.max(-maxTranslateY, translateY));
+                    return {
+                        ...transformMatrix, scaleX, scaleY,
+                        translateX: constrainedTranslateX,
+                        translateY: constrainedTranslateY,
+                    };
+                }}
+            >
+                {(zoom) => <RollMap parent={parent} zoom={zoom} positions={positions} />}
+            </Zoom>
+            }
+        </ParentSize>
+    </div>
+}
 
 export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, graphs: RollGraphData }) {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -82,6 +112,16 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
         energy: energyData.timestamp.length > 0 ? energyData : undefined,
     }), [speedData, centripetalData, energyData]);
 
+    const positions = useMemo(() => {
+        if (!graphs.gps_data) return undefined;
+        const positions = graphs.gps_data.timestamp.map((timestamp, i) => ({
+            lat: graphs.gps_data!.lat[i],
+            long: graphs.gps_data!.long[i],
+            timestamp: timestamp
+        }));
+        return positions;
+    }, [graphs.gps_data]);
+
     const handleMouseLeave = useCallback(() => {
         hideTooltip();
     }, [hideTooltip]);
@@ -106,7 +146,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
     //  0.0,                0.0,                    1.0                 ]
     return (
         <div className="flex h-full gap-4">
-            <div className="flex-[1]">
+            <div className="flex-[1] min-w-0">
                 <RollVideo
                     roll={roll}
                     videoRef={videoRef}
@@ -114,6 +154,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     setDuration={setDuration}
                     setPlaying={setPlaying}
                 />
+                <RollMapContainer positions={positions} />
             </div>
             <div className="flex-[2] h-full min-w-0">
                 <RollGraphsContainer

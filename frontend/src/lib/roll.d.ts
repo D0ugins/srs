@@ -158,13 +158,13 @@ export interface RollUpdate {
     roll_hills: RollHillInput[];
 }
 
-export interface RollGraphs {
+export interface RollGraphData {
     camera_starts: number[];
     camera_ends: number[];
     gps_data?: {
         timestamp: number[];
         lat: number[];
-        lon: number[];
+        long: number[];
         elevation: number[];
         speed: number[];
     }
