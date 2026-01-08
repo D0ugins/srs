@@ -119,7 +119,7 @@ function RollGraphs({ data,
         return <div className="relative">
             <svg width={parent.width} height={parent.height}
                 // Transform ensures pixel alignment
-                className="cursor-move touch-none"
+                className="cursor-move touch-none select-none"
                 ref={zoom.containerRef}
                 onDoubleClick={handleDoubleClick}>
                 {data.speed &&
