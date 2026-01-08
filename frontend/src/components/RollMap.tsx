@@ -2,6 +2,7 @@ import { Group } from '@visx/group';
 import { scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
 import type { ZoomProps } from '@visx/zoom';
+import { memo } from 'react';
 type ZoomType<ElementType extends Element> = ZoomProps<ElementType>['children'] extends (zoom: infer U) => any ? U : never;
 
 export interface RollMapProps {
@@ -12,8 +13,8 @@ const IMAGE_WIDTH = 6912;
 const IMAGE_HEIGHT = 4608;
 
 
-export default function RollMap({ parent, positions, zoom }:
-    RollMapProps & { parent: { width: number; height: number }, zoom: ZoomType<SVGSVGElement> }) {
+export default memo(({ parent, zoom, positions }:
+    RollMapProps & { parent: { width: number; height: number }, zoom: ZoomType<SVGSVGElement> }) => {
 
     const imageAspectRatio = IMAGE_WIDTH / IMAGE_HEIGHT;
     const containerAspectRatio = parent.width / parent.height;
@@ -31,11 +32,10 @@ export default function RollMap({ parent, positions, zoom }:
         range: [renderedHeight, 0],
     });
 
-    return <svg width={parent.width} height={parent.height} ref={zoom.containerRef}>
+    return <svg width={parent.width} height={parent.height} ref={zoom.containerRef} className='touch-none'>
         <Group transform={zoom.toString()}>
             <image href="/course_sat.png" width="100%" />
             <LinePath
-                key={zoom.transformMatrix.toString()}
                 data={positions ?? []}
                 x={d => xScale(d.long)}
                 y={d => yScale(d.lat)}
@@ -46,4 +46,4 @@ export default function RollMap({ parent, positions, zoom }:
             />
         </Group>
     </svg>
-}
+})

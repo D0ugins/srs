@@ -1,5 +1,5 @@
 import type { RollDetails, RollGraphData } from "@/lib/roll";
-import { useMemo, useCallback, useRef, useState, useEffect } from "react";
+import { useMemo, useCallback, useRef, useState, useEffect, memo } from "react";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
 import { applyMatrixToPoint, Zoom, type TransformMatrix } from "@visx/zoom";
@@ -45,7 +45,7 @@ function RollGraphsContainer(props: RollGraphsProps) {
 }
 
 
-function RollMapContainer({ positions }: RollMapProps) {
+const RollMapContainer = memo(({ positions }: RollMapProps) => {
     return <div className="h-1/2 relative">
         <ParentSize>
             {(parent) => <Zoom<SVGSVGElement>
@@ -74,7 +74,7 @@ function RollMapContainer({ positions }: RollMapProps) {
             }
         </ParentSize>
     </div>
-}
+})
 
 export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, graphs: RollGraphData }) {
     const videoRef = useRef<HTMLVideoElement>(null);
