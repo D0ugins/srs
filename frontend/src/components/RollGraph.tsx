@@ -7,7 +7,7 @@ import { Line, LinePath } from "@visx/shape";
 import { localPoint } from "@visx/event";
 import { RectClipPath } from "@visx/clip-path";
 import { bisector } from "d3-array";
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import { GRAPH_MARGIN } from "./RollAnalysis";
 
 export interface GraphData {
@@ -35,7 +35,8 @@ interface RollGraphProps {
     showTooltip?: (args: any) => void;
 }
 
-export default function RollGraph({
+
+export default memo(({
     parentWidth,
     parentHeight,
     data,
@@ -45,15 +46,24 @@ export default function RollGraph({
     onMouseMove,
     onMouseLeave,
     showTooltip,
-}: RollGraphProps) {
+}: RollGraphProps) => {
     const width = parentWidth - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
     const height = parentHeight - GRAPH_MARGIN.top - GRAPH_MARGIN.bottom;
 
-    let min = Math.min(...data.values);
+    const { min, max } = useMemo(() => {
+        let min = Math.min(...data.values);
+        let max = Math.max(...data.values);
+        if (min > 0 && min / max < 0.1) min = 0;
+        else min = min - (max - min) * 0.1;
+
+        max = max + (max - min) * 0.1;
+        return { min, max };
+    }, [data]);
+
     const yScale = useMemo(() => scaleLinear({
-        domain: [min, Math.max(...data.values) * 1.1],
+        domain: [min, max],
         range: [height, 0],
-    }), [data, height,]);
+    }), [data, height, min, max]);
 
     const X_TICKS = 9;
     const Y_TICKS = 7;
@@ -88,10 +98,10 @@ export default function RollGraph({
 
     return <Group top={top + GRAPH_MARGIN.top} left={GRAPH_MARGIN.left} >
         <text
-            x={-height / 2}
-            y={-32}
+            x={height / 2}
+            y={-(width + 16)}
             fontSize={10}
-            transform="rotate(-90)"
+            transform="rotate(90)"
             textAnchor="middle"
         >
             {title}
@@ -138,4 +148,4 @@ export default function RollGraph({
             onTouchEnd={onMouseLeave}
         />
     </Group>
-}
+})

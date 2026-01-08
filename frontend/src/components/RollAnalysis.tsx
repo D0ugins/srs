@@ -3,7 +3,7 @@ import React, { useMemo, useCallback, useRef, useState, use, useEffect } from "r
 import { ParentSize } from "@visx/responsive";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { Line, Polygon } from "@visx/shape";
-import { applyMatrixToPoint, Zoom, type TransformMatrix, type ZoomProps, type ZoomState } from "@visx/zoom";
+import { applyMatrixToPoint, Zoom, type GenericWheelEvent, type TransformMatrix, type ZoomProps, type ZoomState } from "@visx/zoom";
 import RollGraph, { type GraphData, type TooltipData } from "./RollGraph";
 import { transformMediaUrl } from "@/lib/format";
 import { Group } from "@visx/group";
@@ -11,7 +11,7 @@ import { scaleLinear } from "@visx/scale";
 import type { ScaleLinear } from "d3-scale";
 import { RectClipPath } from "@visx/clip-path";
 import { localPoint } from "@visx/event";
-type ZoomType = ZoomProps<SVGSVGElement>['children'] extends (zoom: infer U) => any ? U : never;
+type ZoomType<ElementType extends Element> = ZoomProps<ElementType>['children'] extends (zoom: infer U) => any ? U : never;
 
 const tooltipStyles = {
     ...defaultStyles,
@@ -27,6 +27,7 @@ interface RollGraphsProps {
     data: {
         speed?: GraphData;
         centripetal?: GraphData;
+        energy?: GraphData;
     }
     tooltipLeft?: number;
     tooltipTop?: number;
@@ -53,11 +54,10 @@ function RollGraphs({ data,
     tooltipLeft, tooltipTop, tooltipData, playing, isDragging, videoStart,
     showTooltip, handleMouseLeave, updateVideoTime, setPlaying, setIsDragging,
     videoTime, zoom, parent }: RollGraphsProps &
-    { zoom: ZoomType, parent: { width: number; height: number }, isDragging: boolean, setIsDragging: (dragging: boolean) => void }) {
+    { zoom: ZoomType<SVGSVGElement>, parent: { width: number; height: number }, isDragging: boolean, setIsDragging: (dragging: boolean) => void }) {
     {
         const width = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
         const xScale = useMemo(() => {
-            // Determine the overall time range
             const allTimestamps = Object.values(data).flatMap(d => d.timestamp);
             const maxTime = Math.max(...allTimestamps);
             return zoomXScale(zoom, scaleLinear({
@@ -141,6 +141,19 @@ function RollGraphs({ data,
                         title="Centripetal Acceleration (m/s²)"
                         xScale={xScale}
                         data={data.centripetal}
+                        onMouseLeave={handleMouseLeave}
+                        showTooltip={showTooltip}
+                    />
+                }
+                {
+                    data.energy &&
+                    <RollGraph
+                        parentWidth={parent.width}
+                        parentHeight={parent.height / 4}
+                        top={parent.height / 2}
+                        title="Specific Energy (J/kg)"
+                        xScale={xScale}
+                        data={data.energy}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
                     />
@@ -280,10 +293,10 @@ function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, setDuration }: 
     return <video
         ref={videoRef}
         className="cursor-pointer"
-        autoPlay
         src={videoUrl}
         onLoadedMetadata={handleLoadedMetadata}
         onClick={handleVideoClick}
+        muted
     >
         Your browser does not support the video tag.
     </video>
@@ -310,16 +323,31 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
 
     const centripetalData = useMemo(() => graphs.centripetal ?? { timestamp: [], values: [] }, [graphs.centripetal]);
 
+    const energyData = useMemo(() => {
+        if (!graphs.gps_data || !graphs.centripetal) return { timestamp: [], values: [] };
+        const values = graphs.gps_data.speed.map((v, i) => 0.5 * v * v + 9.81 * graphs.gps_data!.elevation[i]);
+        return {
+            timestamp: graphs.gps_data.timestamp,
+            values,
+        };
+    }, [graphs.gps_data]);
+
+    const data = useMemo(() => ({
+        speed: speedData.timestamp.length > 0 ? speedData : undefined,
+        centripetal: centripetalData.timestamp.length > 0 ? centripetalData : undefined,
+        energy: energyData.timestamp.length > 0 ? energyData : undefined,
+    }), [speedData, centripetalData, energyData]);
+
     const handleMouseLeave = useCallback(() => {
         hideTooltip();
     }, [hideTooltip]);
 
-    const updateVideoTime = (time: number) => {
+    const updateVideoTime = useCallback((time: number) => {
         if (videoRef.current) {
             videoRef.current.currentTime = Math.min(Math.max(0, time), duration);
         }
         setCurrentTime(time);
-    };
+    }, [duration]);
 
     const videoStart = graphs.camera_starts[0];
     const timeStamp = videoStart ? currentTime * 1000 + videoStart : undefined;
@@ -343,10 +371,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
             </div>
             <div className="flex-[2] h-full min-w-0">
                 <RollGraphsContainer
-                    data={{
-                        speed: speedData.timestamp.length > 0 ? speedData : undefined,
-                        centripetal: centripetalData.timestamp.length > 0 ? centripetalData : undefined,
-                    }}
+                    data={data}
                     tooltipLeft={tooltipLeft}
                     tooltipTop={tooltipTop}
                     tooltipData={tooltipData}
