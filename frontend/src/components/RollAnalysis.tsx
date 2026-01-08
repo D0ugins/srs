@@ -45,33 +45,42 @@ function RollGraphsContainer(props: RollGraphsProps) {
     </div>
 }
 
+const IMAGE_WIDTH = 6912;
+const IMAGE_HEIGHT = 4608;
 
 const RollMapContainer = memo((props: RollMapProps) => {
-    return <div className="h-1/2 relative">
+    return <div className="h-full relative">
         <ParentSize>
-            {(parent) => <Zoom<SVGSVGElement>
-                width={parent.width}
-                height={parent.height}
-                constrain={(transformMatrix, _prev) => {
-                    let { scaleX, scaleY, translateX, translateY } = transformMatrix;
-                    scaleX = Math.max(1, scaleX);
-                    scaleY = Math.max(1, scaleY);
+            {(parent) => {
+                const imageAspectRatio = IMAGE_WIDTH / IMAGE_HEIGHT;
+                const containerAspectRatio = parent.width / parent.height;
 
-                    const scaledWidth = parent.width * scaleX;
-                    const scaledHeight = parent.height * scaleY;
-                    const maxTranslateX = Math.max(0, scaledWidth - parent.width);
-                    const maxTranslateY = Math.max(0, scaledHeight - parent.height);
-                    const constrainedTranslateX = Math.min(0, Math.max(-maxTranslateX, translateX));
-                    const constrainedTranslateY = Math.min(0, Math.max(-maxTranslateY, translateY));
-                    return {
-                        ...transformMatrix, scaleX, scaleY,
-                        translateX: constrainedTranslateX,
-                        translateY: constrainedTranslateY,
-                    };
-                }}
-            >
-                {(zoom) => <RollMap parent={parent} zoom={zoom} {...props} />}
-            </Zoom>
+                const renderedWidth = containerAspectRatio > imageAspectRatio ? parent.height * imageAspectRatio : parent.width;
+                const renderedHeight = containerAspectRatio > imageAspectRatio ? parent.height : parent.width / imageAspectRatio;
+                return <Zoom<SVGSVGElement>
+                    width={renderedWidth}
+                    height={renderedHeight}
+                    constrain={(transformMatrix, _prev) => {
+                        let { scaleX, scaleY, translateX, translateY } = transformMatrix;
+                        scaleX = Math.max(1, scaleX);
+                        scaleY = Math.max(1, scaleY);
+
+                        const scaledWidth = parent.width * scaleX;
+                        const scaledHeight = parent.height * scaleY;
+                        const maxTranslateX = Math.max(0, scaledWidth - parent.width);
+                        const maxTranslateY = Math.max(0, scaledHeight - parent.height);
+                        const constrainedTranslateX = Math.min(0, Math.max(-maxTranslateX, translateX));
+                        const constrainedTranslateY = Math.min(0, Math.max(-maxTranslateY, translateY));
+                        return {
+                            ...transformMatrix, scaleX, scaleY,
+                            translateX: constrainedTranslateX,
+                            translateY: constrainedTranslateY,
+                        };
+                    }}
+                >
+                    {(zoom) => <RollMap width={renderedWidth} height={renderedHeight} zoom={zoom} {...props} />}
+                </Zoom>
+            }
             }
         </ParentSize>
     </div>
@@ -156,7 +165,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
     }, [graphs.gps_data, timestamp]);
 
     return (
-        <div className="flex h-full gap-4">
+        <div className="flex h-full gap-4 mb-2">
             <div className="flex-[1] min-w-0">
                 <RollVideo
                     roll={roll}
@@ -165,22 +174,26 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     setDuration={setDuration}
                     setPlaying={setPlaying}
                 />
-                <RollMapContainer positions={positions} currentLocation={currentLocation} />
             </div>
             <div className="flex-[2] h-full min-w-0">
-                <RollGraphsContainer
-                    data={data}
-                    tooltipLeft={tooltipLeft}
-                    tooltipTop={tooltipTop}
-                    tooltipData={tooltipData}
-                    videoTime={timestamp}
-                    videoStart={videoStart}
-                    showTooltip={showTooltip}
-                    handleMouseLeave={handleMouseLeave}
-                    updateVideoTime={updateVideoTime}
-                    playing={playing}
-                    setPlaying={setPlaying}
-                />
+                <div className="h-2/3 pb-2">
+                    <RollGraphsContainer
+                        data={data}
+                        tooltipLeft={tooltipLeft}
+                        tooltipTop={tooltipTop}
+                        tooltipData={tooltipData}
+                        videoTime={timestamp}
+                        videoStart={videoStart}
+                        showTooltip={showTooltip}
+                        handleMouseLeave={handleMouseLeave}
+                        updateVideoTime={updateVideoTime}
+                        playing={playing}
+                        setPlaying={setPlaying}
+                    />
+                </div>
+                <div className="h-1/3 pl-6">
+                    <RollMapContainer positions={positions} currentLocation={currentLocation} />
+                </div>
             </div>
         </div>
     );

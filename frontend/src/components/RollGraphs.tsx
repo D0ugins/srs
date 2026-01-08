@@ -19,7 +19,7 @@ const tooltipStyles = {
     fontSize: "12px",
 };
 
-export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 10, left: 50 };
+export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 12, left: 50 };
 
 export interface RollGraphsProps {
     data: {
@@ -55,7 +55,7 @@ export default function RollGraphs({ data,
     {
         const width = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
         const xScale = useMemo(() => {
-            const allTimestamps = Object.values(data).flatMap(d => d.timestamp);
+            const allTimestamps = Object.values(data).flatMap(d => d?.timestamp);
             const maxTime = Math.max(...allTimestamps);
             return zoomXScale(zoom, scaleLinear({
                 domain: [0, maxTime],
@@ -113,6 +113,12 @@ export default function RollGraphs({ data,
             };
         }, [isDragging, wasPlaying, xScale]);
 
+        if (!Object.values(data).some(d => d !== undefined)) {
+            return <div className="flex items-center justify-center h-full text-gray-500">
+                No data available for this roll
+            </div>
+        }
+
         return <div className="relative">
             <svg width={parent.width} height={parent.height}
                 // Transform ensures pixel alignment
@@ -128,6 +134,7 @@ export default function RollGraphs({ data,
                         data={data.speed}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
+                        showAxis={false}
                     />
                 }
                 {data.centripetal &&
@@ -154,7 +161,7 @@ export default function RollGraphs({ data,
                         data={data.energy}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
-                        showAxis={false}
+                        showAxis={true}
                     />
                 }
                 {tooltipLeft !== undefined && (

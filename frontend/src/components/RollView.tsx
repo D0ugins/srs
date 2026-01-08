@@ -9,7 +9,7 @@ export default function RollView({ roll }: { roll: RollDetails }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const fps = 30;
+    const fps = 30; // TODO: store actual fps in db
     const frameCallbackIdRef = useRef<number | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [wasPlaying, setWasPlaying] = useState(false);
@@ -162,6 +162,7 @@ export default function RollView({ roll }: { roll: RollDetails }) {
                     ref={videoRef}
                     className="w-1/2 cursor-pointer"
                     autoPlay
+                    muted
                     src={videoUrl}
                     onLoadedMetadata={handleLoadedMetadata}
                     onClick={handleVideoClick}

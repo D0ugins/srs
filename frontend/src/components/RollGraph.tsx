@@ -31,6 +31,7 @@ interface RollGraphProps {
     top?: number;
     xScale: ScaleLinear<number, number, never>;
     showAxis?: boolean;
+    backgroundColor?: string;
     onMouseMove?: (event: React.MouseEvent | React.TouchEvent) => void;
     onMouseLeave?: () => void;
     showTooltip?: (args: any) => void;
@@ -44,6 +45,7 @@ export default memo(({
     title,
     top = 0,
     showAxis = true,
+    backgroundColor,
     xScale,
     onMouseMove,
     onMouseLeave,
@@ -99,11 +101,19 @@ export default memo(({
     };
 
     return <Group top={top + GRAPH_MARGIN.top} left={GRAPH_MARGIN.left} >
+        {backgroundColor && (
+            <rect
+                x={0}
+                y={0}
+                width={width}
+                height={height}
+                fill={backgroundColor}
+            />
+        )}
         <text
-            x={height / 2}
-            y={-(width + 16)}
+            x={width / 2}
+            y={-2}
             fontSize={10}
-            transform="rotate(90)"
             textAnchor="middle"
         >
             {title}
@@ -115,10 +125,12 @@ export default memo(({
             yScale={yScale}
             numTicksRows={Y_TICKS}
             numTicksColumns={X_TICKS}
+            stroke="#E7E7E7"
+            shapeRendering="geometricPrecision"
         />
-        {showAxis && <AxisTop<typeof xScale>
+        {showAxis && <AxisBottom<typeof xScale>
             scale={xScale}
-            top={0}
+            top={height}
             numTicks={X_TICKS} tickFormat={(value) => (+value / 1000).toFixed(3)}
         />}
         <AxisLeft<typeof yScale> scale={yScale} numTicks={Y_TICKS} />
