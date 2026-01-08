@@ -286,7 +286,7 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
             'timestamp': gps_data.index,
             'lat': gps_data.position_lat,
             'long': gps_data.position_long,
-            'elevation': get_elevations(gps_data, snap_to_course=True),
+            'elevation': get_elevations(gps_data, snap_to_course=True, subtract_start_line=True),
             'speed': speed,
         }).to_dict(orient='list')
         angular_velocity = get_angular_velocity(gps_data, 1)
