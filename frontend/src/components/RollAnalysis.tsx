@@ -5,7 +5,8 @@ import { useTooltip } from "@visx/tooltip";
 import { applyMatrixToPoint, Zoom, type TransformMatrix } from "@visx/zoom";
 import RollGraphs, { GRAPH_MARGIN, type RollGraphsProps } from "./RollGraphs";
 import RollVideo from "./RollVideo";
-import RollMap, { type RollMapProps } from "./RollMap";
+import RollMap, { type Position, type RollMapProps } from "./RollMap";
+import { bisector } from "d3-array";
 
 function RollGraphsContainer(props: RollGraphsProps) {
     const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
@@ -45,7 +46,7 @@ function RollGraphsContainer(props: RollGraphsProps) {
 }
 
 
-const RollMapContainer = memo(({ positions }: RollMapProps) => {
+const RollMapContainer = memo((props: RollMapProps) => {
     return <div className="h-1/2 relative">
         <ParentSize>
             {(parent) => <Zoom<SVGSVGElement>
@@ -69,7 +70,7 @@ const RollMapContainer = memo(({ positions }: RollMapProps) => {
                     };
                 }}
             >
-                {(zoom) => <RollMap parent={parent} zoom={zoom} positions={positions} />}
+                {(zoom) => <RollMap parent={parent} zoom={zoom} {...props} />}
             </Zoom>
             }
         </ParentSize>
@@ -134,16 +135,26 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
     }, [duration]);
 
     const videoStart = graphs.camera_starts[0];
-    const timeStamp = videoStart ? currentTime * 1000 + videoStart : undefined;
+    const timestamp = videoStart ? currentTime * 1000 + videoStart : undefined;
     useEffect(() => {
         if (!videoRef.current) return;
 
         if (playing && videoRef.current.paused) videoRef.current.play();
         else if (!playing && !videoRef.current.paused) videoRef.current.pause();
     }, [playing]);
-    // [890555.9326319562,  0.0,                    71198699.26796, 
-    //  0.0,                -1170119.0001883141,    47322335.071882315,
-    //  0.0,                0.0,                    1.0                 ]
+
+    const currentLocation = useMemo(() => {
+        if (!graphs.gps_data || timestamp === undefined || !positions) return undefined;
+        let index = bisector<Position, number>(d => d.timestamp).left(positions, timestamp)
+        // const index = bisectTimestamp(dataPoints, timeStamp, 1);
+        const d0 = positions[index - 1];
+        const d1 = positions[index];
+
+        if (d1 === undefined) return d0;
+        if (d0 === undefined) return d1;
+        return timestamp - d0.timestamp > d1.timestamp - timestamp ? d1 : d0;
+    }, [graphs.gps_data, timestamp]);
+
     return (
         <div className="flex h-full gap-4">
             <div className="flex-[1] min-w-0">
@@ -154,7 +165,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     setDuration={setDuration}
                     setPlaying={setPlaying}
                 />
-                <RollMapContainer positions={positions} />
+                <RollMapContainer positions={positions} currentLocation={currentLocation} />
             </div>
             <div className="flex-[2] h-full min-w-0">
                 <RollGraphsContainer
@@ -162,7 +173,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     tooltipLeft={tooltipLeft}
                     tooltipTop={tooltipTop}
                     tooltipData={tooltipData}
-                    videoTime={timeStamp}
+                    videoTime={timestamp}
                     videoStart={videoStart}
                     showTooltip={showTooltip}
                     handleMouseLeave={handleMouseLeave}

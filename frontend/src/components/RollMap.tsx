@@ -5,15 +5,21 @@ import type { ZoomProps } from '@visx/zoom';
 import { memo } from 'react';
 type ZoomType<ElementType extends Element> = ZoomProps<ElementType>['children'] extends (zoom: infer U) => any ? U : never;
 
+export interface Position {
+    lat: number,
+    long: number,
+    timestamp: number,
+}
 export interface RollMapProps {
-    positions?: { lat: number, long: number, timestamp: number }[]
+    positions?: Position[]
+    currentLocation?: Position
 }
 
 const IMAGE_WIDTH = 6912;
 const IMAGE_HEIGHT = 4608;
 
 
-export default memo(({ parent, zoom, positions }:
+export default memo(({ parent, zoom, positions, currentLocation }:
     RollMapProps & { parent: { width: number; height: number }, zoom: ZoomType<SVGSVGElement> }) => {
 
     const imageAspectRatio = IMAGE_WIDTH / IMAGE_HEIGHT;
@@ -32,6 +38,8 @@ export default memo(({ parent, zoom, positions }:
         range: [renderedHeight, 0],
     });
 
+    const drawSize = Math.max(1 / zoom.transformMatrix.scaleX, 0.33);
+
     return <svg width={parent.width} height={parent.height} ref={zoom.containerRef} className='touch-none'>
         <Group transform={zoom.toString()}>
             <image href="/course_sat.png" width="100%" />
@@ -39,11 +47,19 @@ export default memo(({ parent, zoom, positions }:
                 data={positions ?? []}
                 x={d => xScale(d.long)}
                 y={d => yScale(d.lat)}
-                stroke="red"
-                strokeWidth={1}
+                stroke="gold"
+                strokeWidth={2 * drawSize}
                 fill="none"
                 shapeRendering="geometricPrecision"
             />
+            {currentLocation && <circle
+                cx={xScale(currentLocation.long)}
+                cy={yScale(currentLocation.lat)}
+                r={3 * drawSize}
+                fill="black"
+                stroke="white"
+                strokeWidth={drawSize}
+            />}
         </Group>
     </svg>
 })
