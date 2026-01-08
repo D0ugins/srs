@@ -171,6 +171,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     roll={roll}
                     videoRef={videoRef}
                     setCurrentTime={setCurrentTime}
+                    duration={duration}
                     setDuration={setDuration}
                     setPlaying={setPlaying}
                 />
