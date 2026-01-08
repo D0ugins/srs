@@ -1,5 +1,5 @@
 from db import Roll, SessionDep
-from db.database import Buggy, Driver, Pusher, RollDate, RollFile, RollHill, RollType, Sensor
+from db.database import Buggy, Driver, Pusher, RollDate, RollFile, RollHill, RollType, RollEvent, Sensor
 from lib.fit import get_angular_velocity, get_camera_ends, get_camera_starts, get_gps_data, get_sensor_data, load_fit_file
 from lib.geo import get_elevations
 import numpy as np
@@ -43,6 +43,12 @@ class RollUpdate(BaseModel):
     roll_date: RollDateInput
     roll_files: list[RollFileInput] = []
     roll_hills: list[RollHillInput] = []
+
+class RollEventInput(BaseModel):
+    type: str
+    tag: str | None = None
+    timestamp_ms: int
+    raw_timestamp: datetime | None = None
 
 
 def get_or_create_rolldate(session: SessionDep, roll_date_input: RollDateInput) -> RollDate:
@@ -130,6 +136,27 @@ def get_or_create_rollhill(session: SessionDep,
         roll_hill.pusher = pusher
     return roll_hill
 
+def get_or_create_event(session: SessionDep, roll_id: int,
+                           roll_event_input: RollEventInput):
+    roll_event = session.scalar(
+        select(RollEvent).where(
+            RollEvent.roll_id == roll_id,
+            RollEvent.type == roll_event_input.type,
+            RollEvent.tag == roll_event_input.tag,
+            RollEvent.timestamp_ms == roll_event_input.timestamp_ms
+        )
+    )
+    if not roll_event:
+        roll_event = RollEvent(
+            roll_id=roll_id,
+            type=roll_event_input.type,
+            tag=roll_event_input.tag,
+            timestamp_ms=roll_event_input.timestamp_ms,
+            raw_timestamp=roll_event_input.raw_timestamp
+        )
+        session.add(roll_event)
+        session.flush()
+    return roll_event
 
 @router.get("")
 def get_rolls(
@@ -329,3 +356,29 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
     cached_id = roll_id
     cached = response
     return response
+
+@router.get("/{roll_id}/events")
+def get_roll_events(roll_id: int, session: SessionDep):
+    roll = session.scalar(
+        select(Roll).options(selectinload(Roll.roll_events)).where(Roll.id == roll_id)
+    )    
+    if not roll:
+        raise HTTPException(status_code=404, detail="Roll not found")
+    return roll.roll_events
+
+@router.put("/{roll_id}/events")
+def update_roll_events(roll_id: int, events: list[RollEventInput], session: SessionDep):
+    roll = session.scalar(
+        select(Roll).options(selectinload(Roll.roll_events)).where(Roll.id == roll_id)
+    )    
+    if not roll:
+        raise HTTPException(status_code=404, detail="Roll not found")
+    
+    
+    roll.roll_events = [get_or_create_event(session, roll_id, event_input) for event_input in events]
+    # session.flush()
+    # print(roll.roll_events)
+    # session.rollback()
+    session.commit()
+    session.refresh(roll)
+    return roll.roll_events

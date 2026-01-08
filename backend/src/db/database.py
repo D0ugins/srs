@@ -161,6 +161,8 @@ class RollEvent(TimestampModel):
     
     roll: Mapped["Roll"] = relationship(back_populates="roll_events")
     
+    __table_args__ = (Index("idx_rollevent_roll_type_tag_timestamp", "roll_id", "type", "tag", "timestamp_ms", unique=True),)
+    
     def __repr__(self):
         return f"RollEvent(id={self.id}, roll_id={self.roll_id}, type='{self.type}', timestamp_ms={self.timestamp_ms})"
 
