@@ -1,7 +1,7 @@
 import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import type { ScaleLinear } from "d3-scale";
-import { AxisBottom, AxisLeft } from "@visx/axis";
+import { AxisBottom, AxisLeft, AxisTop } from "@visx/axis";
 import { Grid } from "@visx/grid";
 import { Line, LinePath } from "@visx/shape";
 import { localPoint } from "@visx/event";
@@ -30,6 +30,7 @@ interface RollGraphProps {
     title: string;
     top?: number;
     xScale: ScaleLinear<number, number, never>;
+    showAxis?: boolean;
     onMouseMove?: (event: React.MouseEvent | React.TouchEvent) => void;
     onMouseLeave?: () => void;
     showTooltip?: (args: any) => void;
@@ -42,13 +43,14 @@ export default memo(({
     data,
     title,
     top = 0,
+    showAxis = true,
     xScale,
     onMouseMove,
     onMouseLeave,
     showTooltip,
 }: RollGraphProps) => {
     const width = parentWidth - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
-    const height = parentHeight - GRAPH_MARGIN.top - GRAPH_MARGIN.bottom;
+    const height = showAxis ? parentHeight - GRAPH_MARGIN.bottom : parentHeight - GRAPH_MARGIN.bottom
 
     const { min, max } = useMemo(() => {
         let min = Math.min(...data.values);
@@ -114,11 +116,11 @@ export default memo(({
             numTicksRows={Y_TICKS}
             numTicksColumns={X_TICKS}
         />
-        <AxisBottom<typeof xScale>
+        {showAxis && <AxisTop<typeof xScale>
             scale={xScale}
-            top={height}
+            top={0}
             numTicks={X_TICKS} tickFormat={(value) => (+value / 1000).toFixed(3)}
-        />
+        />}
         <AxisLeft<typeof yScale> scale={yScale} numTicks={Y_TICKS} />
         <RectClipPath id="graph-clip-path" width={width} height={height} />
         <LinePath

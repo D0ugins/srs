@@ -19,7 +19,7 @@ const tooltipStyles = {
     fontSize: "12px",
 };
 
-export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 30, left: 50 };
+export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 10, left: 50 };
 
 export interface RollGraphsProps {
     data: {
@@ -140,6 +140,7 @@ export default function RollGraphs({ data,
                         data={data.centripetal}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
+                        showAxis={false}
                     />
                 }
                 {
@@ -153,6 +154,7 @@ export default function RollGraphs({ data,
                         data={data.energy}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
+                        showAxis={false}
                     />
                 }
                 {tooltipLeft !== undefined && (
@@ -173,7 +175,7 @@ export default function RollGraphs({ data,
                             onMouseDown={handlePlayheadMouseDown} >
                             <RectClipPath id="playhead-clip-path" width={width} height={parent.height} />
                             <Line
-                                from={{ x: xScale(videoTime), y: 0 }}
+                                from={{ x: xScale(videoTime), y: 2 }}
                                 to={{ x: xScale(videoTime), y: parent.height }}
                                 stroke="#ff0000"
                                 strokeWidth={2}
@@ -181,11 +183,11 @@ export default function RollGraphs({ data,
                             />
                             <Polygon
                                 points={[
-                                    [xScale(videoTime), 12],
-                                    [xScale(videoTime) - 6, 4],
-                                    [xScale(videoTime) - 6, -2],
-                                    [xScale(videoTime) + 6, -2],
-                                    [xScale(videoTime) + 6, 4],
+                                    [xScale(videoTime), 14],
+                                    [xScale(videoTime) - 6, 8],
+                                    [xScale(videoTime) - 6, 2],
+                                    [xScale(videoTime) + 6, 2],
+                                    [xScale(videoTime) + 6, 8],
                                 ]}
                                 fill="#ff0000"
                             />
