@@ -8,7 +8,7 @@ import { localPoint } from "@visx/event";
 import { RectClipPath } from "@visx/clip-path";
 import { bisector } from "d3-array";
 import { useMemo, memo } from "react";
-import { GRAPH_MARGIN } from "./RollAnalysis";
+import { GRAPH_MARGIN } from "./RollGraphs";
 
 export interface GraphData {
     timestamp: number[];
