@@ -64,7 +64,7 @@ function RollGraphs({ data,
                 domain: [0, maxTime],
                 range: [0, width],
             }))
-        }, [data, zoom]);
+        }, [data, zoom.transformMatrix, width]);
 
         const [wasPlaying, setWasPlaying] = useState(false);
 
