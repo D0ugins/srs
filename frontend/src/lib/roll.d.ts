@@ -191,3 +191,14 @@ export interface RollGraphData {
         z: number[];
     }
 }
+
+export interface RollEvent {
+    id?: number;
+    type: string;
+    tag?: string;
+    timestamp_ms: number;
+    raw_timestamp?: string;
+
+    created_at?: string;
+    updated_at?: string;
+}

@@ -1,4 +1,4 @@
-import type { RollDetails, RollGraphData } from "@/lib/roll";
+import type { RollDetails, RollEvent, RollGraphData } from "@/lib/roll";
 import { useMemo, useCallback, useRef, useState, useEffect, memo } from "react";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
@@ -7,6 +7,7 @@ import RollGraphs, { GRAPH_MARGIN, type RollGraphsProps } from "./RollGraphs";
 import RollVideo from "./RollVideo";
 import RollMap, { type Position, type RollMapProps } from "./RollMap";
 import { bisector } from "d3-array";
+import RollEventList from "./RollEventList";
 
 function RollGraphsContainer(props: RollGraphsProps) {
     const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
@@ -86,7 +87,7 @@ const RollMapContainer = memo((props: RollMapProps) => {
     </div>
 })
 
-export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, graphs: RollGraphData }) {
+export default function RollAnalysis({ roll, graphs, events }: { roll: RollDetails, graphs: RollGraphData, events: RollEvent[] }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [playing, setPlaying] = useState(false);
@@ -136,14 +137,15 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
         hideTooltip();
     }, [hideTooltip]);
 
-    const updateVideoTime = useCallback((time: number) => {
-        if (videoRef.current) {
-            videoRef.current.currentTime = Math.min(Math.max(0, time), duration);
-        }
-        setCurrentTime(time);
-    }, [duration]);
-
     const videoStart = graphs.camera_starts[0];
+    const updateVideoTime = useCallback((time: number) => {
+        const adjustedTime = Math.min(Math.max(0, time - (videoStart / 1000)), duration)
+        if (videoRef.current) {
+            videoRef.current.currentTime = adjustedTime
+        }
+        setCurrentTime(adjustedTime);
+    }, [duration, videoStart]);
+
     const timestamp = videoStart ? currentTime * 1000 + videoStart : undefined;
     useEffect(() => {
         if (!videoRef.current) return;
@@ -175,6 +177,7 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     setDuration={setDuration}
                     setPlaying={setPlaying}
                 />
+                <RollEventList events={events} updateVideoTime={updateVideoTime} />
             </div>
             <div className="flex-[2] h-full min-w-0">
                 <div className="h-2/3 pb-2">
@@ -184,7 +187,6 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                         tooltipTop={tooltipTop}
                         tooltipData={tooltipData}
                         videoTime={timestamp}
-                        videoStart={videoStart}
                         showTooltip={showTooltip}
                         handleMouseLeave={handleMouseLeave}
                         updateVideoTime={updateVideoTime}

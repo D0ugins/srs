@@ -10,7 +10,7 @@ export const Route = createFileRoute('/rolls/$rollId/recording')({
 function RouteComponent() {
     const { rollId } = Route.useParams();
 
-    const { data: graphs, isLoading, error } = useQuery({
+    const { data: graphs, isLoading: graphsLoading, error: graphsError } = useQuery({
         queryKey: ['roll', rollId, 'recording'],
         queryFn: async () => {
             if (rollId === undefined) return null;
@@ -28,6 +28,19 @@ function RouteComponent() {
             if (rollId === undefined) return null;
 
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls/${rollId}`);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        },
+    });
+
+    const { data: events, isLoading: eventsLoading, error: eventsError } = useQuery({
+        queryKey: ['roll', rollId, 'events'],
+        queryFn: async () => {
+            if (rollId === undefined) return null;
+
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls/${rollId}/events`);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }
@@ -57,7 +70,8 @@ function RouteComponent() {
                     </Link>
                 </div>
             </div>
-            {isLoading ? 'Loading...' : error ? 'Error loading graphs.' : <RollAnalysis roll={roll} graphs={graphs} />}
+            {(graphsLoading || eventsLoading) ? 'Loading...' : (graphsError || eventsError) ? 'Error loading roll data.'
+                : <RollAnalysis roll={roll} graphs={graphs} events={events} />}
         </div>
     );
 }

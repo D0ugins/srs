@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
-import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
+import { TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { Line, Polygon } from "@visx/shape";
 import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
@@ -31,7 +31,6 @@ export interface RollGraphsProps {
     tooltipTop?: number;
     tooltipData?: TooltipData;
     videoTime?: number;
-    videoStart?: number;
     playing: boolean;
     showTooltip: (args: any) => void;
     handleMouseLeave: () => void;
@@ -48,7 +47,7 @@ export function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, n
 }
 
 export default function RollGraphs({ data,
-    tooltipLeft, tooltipTop, tooltipData, playing, isDragging, videoStart,
+    tooltipLeft, tooltipTop, tooltipData, playing, isDragging,
     showTooltip, handleMouseLeave, updateVideoTime, setPlaying, setIsDragging,
     videoTime, zoom, parent }: RollGraphsProps &
     { zoom: ZoomType<SVGSVGElement>, parent: { width: number; height: number }, isDragging: boolean, setIsDragging: (dragging: boolean) => void }) {
@@ -74,16 +73,16 @@ export default function RollGraphs({ data,
 
         const handleDoubleClick = (e: React.MouseEvent<SVGSVGElement>) => {
             const point = localPoint(e);
-            if (!point || !videoStart) return;
+            if (!point) return;
 
             const x = point.x - GRAPH_MARGIN.left;
             const timestamp = xScale.invert(x);
-            updateVideoTime((timestamp - videoStart) / 1000);
+            updateVideoTime(timestamp / 1000);
         };
 
         useEffect(() => {
             const handleMouseMove = (e: MouseEvent) => {
-                if (!isDragging || !videoStart) return;
+                if (!isDragging) return;
 
                 if (isDragging) {
                     const point = localPoint(e);
@@ -91,7 +90,7 @@ export default function RollGraphs({ data,
 
                     const x = point.x - GRAPH_MARGIN.left;
                     const timestamp = xScale.invert(x); // clamping handled in updateVideoTime
-                    updateVideoTime((timestamp - videoStart) / 1000);
+                    updateVideoTime(timestamp / 1000);
                 }
             };
 
