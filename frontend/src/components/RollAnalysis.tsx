@@ -1,5 +1,5 @@
 import type { RollDetails, RollGraphs } from "@/lib/roll";
-import { useMemo, useCallback, useRef, useState } from "react";
+import React, { useMemo, useCallback, useRef, useState, use, useEffect } from "react";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip, TooltipWithBounds, defaultStyles } from "@visx/tooltip";
 import { Line, Polygon } from "@visx/shape";
@@ -10,6 +10,7 @@ import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import type { ScaleLinear } from "d3-scale";
 import { RectClipPath } from "@visx/clip-path";
+import { localPoint } from "@visx/event";
 type ZoomType = ZoomProps<SVGSVGElement>['children'] extends (zoom: infer U) => any ? U : never;
 
 const tooltipStyles = {
@@ -31,8 +32,13 @@ interface RollGraphsProps {
     tooltipTop?: number;
     tooltipData?: TooltipData;
     videoTime?: number;
+    videoStart?: number;
+    playing: boolean;
     showTooltip: (args: any) => void;
     handleMouseLeave: () => void;
+    updateVideoTime: (time: number) => void;
+    setPlaying: (playing: boolean) => void;
+
 }
 
 function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, never>): ScaleLinear<number, number, never> {
@@ -44,9 +50,10 @@ function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, never>):
 }
 
 function RollGraphs({ data,
-    tooltipLeft, tooltipTop, tooltipData,
-    showTooltip, handleMouseLeave,
-    videoTime, zoom, parent }: RollGraphsProps & { zoom: ZoomType, parent: { width: number; height: number } }) {
+    tooltipLeft, tooltipTop, tooltipData, playing, isDragging, videoStart,
+    showTooltip, handleMouseLeave, updateVideoTime, setPlaying, setIsDragging,
+    videoTime, zoom, parent }: RollGraphsProps &
+    { zoom: ZoomType, parent: { width: number; height: number }, isDragging: boolean, setIsDragging: (dragging: boolean) => void }) {
     {
         const width = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
         const xScale = useMemo(() => {
@@ -59,10 +66,51 @@ function RollGraphs({ data,
             }))
         }, [data, zoom]);
 
+        const [wasPlaying, setWasPlaying] = useState(false);
+
+        const handlePlayheadMouseDown = (e: React.MouseEvent) => {
+            e.stopPropagation();
+            setWasPlaying(playing);
+            setIsDragging(true);
+            setPlaying(false);
+        };
+
+        useEffect(() => {
+            const handleMouseMove = (e: MouseEvent) => {
+                if (!isDragging || !videoStart) return;
+
+                if (isDragging) {
+                    const point = localPoint(e);
+                    if (!point) return;
+
+                    const x = point.x - GRAPH_MARGIN.left;
+                    const timestamp = xScale.invert(x); // clamping handled in updateVideoTime
+                    updateVideoTime((timestamp - videoStart) / 1000);
+                }
+            };
+
+            const handleMouseUp = () => {
+                if (isDragging) {
+                    setIsDragging(false);
+                    setPlaying(wasPlaying)
+                }
+            };
+
+            if (isDragging) {
+                window.addEventListener('mousemove', handleMouseMove);
+                window.addEventListener('mouseup', handleMouseUp);
+            }
+
+            return () => {
+                window.removeEventListener('mousemove', handleMouseMove);
+                window.removeEventListener('mouseup', handleMouseUp);
+            };
+        }, [isDragging, wasPlaying, xScale]);
+
         return <div className="relative">
             <svg width={parent.width} height={parent.height}
                 // Transform ensures pixel alignment
-                style={{ cursor: zoom.isDragging ? 'grabbing' : 'grab', touchAction: 'none', transform: 'translate(0, 0)' }}
+                className="cursor-move touch-none"
                 ref={zoom.containerRef}>
                 {data.speed &&
                     <RollGraph
@@ -100,7 +148,9 @@ function RollGraphs({ data,
                 {
                     videoTime && <>
                         <Group top={GRAPH_MARGIN.top - 16} left={GRAPH_MARGIN.left} clipPath="url(#playhead-clip-path)"
-                            shapeRendering="geometricPrecision" pointerEvents="none" opacity={0.75}>
+                            shapeRendering="geometricPrecision" pointerEvents="none" opacity={0.75}
+                            style={{ cursor: isDragging ? "grabbing" : "grab", pointerEvents: "all" }}
+                            onMouseDown={handlePlayheadMouseDown} >
                             <RectClipPath id="playhead-clip-path" width={width} height={parent.height} />
                             <Line
                                 from={{ x: xScale(videoTime), y: 0 }}
@@ -143,6 +193,8 @@ function RollGraphs({ data,
 }
 
 function RollGraphsContainer(props: RollGraphsProps) {
+    const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
+
     return <div className="h-full relative">
         <ParentSize>
             {(parent) => {
@@ -151,8 +203,9 @@ function RollGraphsContainer(props: RollGraphsProps) {
                     height={parent.height}
                     scaleXMin={1}
                     wheelDelta={(event) => ({ scaleX: event.deltaY > 0 ? 0.9 : 1.1, scaleY: 1 })}
-                    constrain={(transformMatrix: TransformMatrix, _prevTransformMatrix: TransformMatrix) => {
+                    constrain={(transformMatrix: TransformMatrix, prev: TransformMatrix) => {
                         if (transformMatrix.scaleX <= 1) return { ...transformMatrix, scaleX: 1, translateX: 0 };
+                        if (isPlayheadDragging) transformMatrix = { ...transformMatrix, translateX: prev.translateX };
                         const min = applyMatrixToPoint(transformMatrix, { x: 0, y: 0 });
                         const innerWidth = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
                         const max = applyMatrixToPoint(transformMatrix, { x: innerWidth, y: 0 });
@@ -170,7 +223,7 @@ function RollGraphsContainer(props: RollGraphsProps) {
                         }
                         return transformMatrix;
                     }}
-                >{(zoom) => <RollGraphs zoom={zoom} parent={parent} {...props} />}
+                >{(zoom) => <RollGraphs zoom={zoom} parent={parent} isDragging={isPlayheadDragging} setIsDragging={setIsPlayheadDragging} {...props} />}
                 </Zoom>
             }}
         </ParentSize>
@@ -181,41 +234,37 @@ interface RollVideoProps {
     roll: RollDetails;
     videoRef: React.RefObject<HTMLVideoElement | null>;
     setCurrentTime: (time: number) => void;
+    setPlaying: React.Dispatch<React.SetStateAction<boolean>>;
+    setDuration: (duration: number) => void;
 }
 
-function RollVideo({ roll, videoRef, setCurrentTime, }: RollVideoProps) {
+function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, setDuration }: RollVideoProps) {
     const videoUrl = transformMediaUrl(
         roll.roll_files.find((file) => file.type === 'video_preview')?.uri
     );
     const frameCallbackIdRef = useRef<number | null>(null);
 
     const updateFrame = () => {
-        if (videoRef.current) {
-            setCurrentTime(videoRef.current.currentTime);
-            const videoElement = videoRef.current as any;
-            if (videoElement.requestVideoFrameCallback) {
-                frameCallbackIdRef.current = videoElement.requestVideoFrameCallback(updateFrame);
-            }
+        if (!videoRef.current) return;
+        setCurrentTime(videoRef.current.currentTime);
+        const videoElement = videoRef.current as any;
+        if (videoElement.requestVideoFrameCallback) {
+            frameCallbackIdRef.current = videoElement.requestVideoFrameCallback(updateFrame);
         }
     };
 
     const handleLoadedMetadata = () => {
-        if (videoRef.current) {
-            const videoElement = videoRef.current as any;
-            if (videoElement.requestVideoFrameCallback) {
-                frameCallbackIdRef.current = videoElement.requestVideoFrameCallback(updateFrame);
-            }
+        if (!videoRef.current) return;
+        setDuration(videoRef.current.duration);
+        const videoElement = videoRef.current as any;
+        if (videoElement.requestVideoFrameCallback) {
+            frameCallbackIdRef.current = videoElement.requestVideoFrameCallback(updateFrame);
         }
     };
 
     const handleVideoClick = () => {
-        if (videoRef.current) {
-            if (videoRef.current.paused) {
-                videoRef.current.play();
-            } else {
-                videoRef.current.pause();
-            }
-        }
+        if (!videoRef.current) return;
+        setPlaying((prev) => !prev);
     };
 
     return <video
@@ -233,6 +282,8 @@ function RollVideo({ roll, videoRef, setCurrentTime, }: RollVideoProps) {
 export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, graphs: RollGraphs }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
+    const [playing, setPlaying] = useState(false);
+    const [duration, setDuration] = useState(0);
 
     const {
         tooltipData,
@@ -253,8 +304,21 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
         hideTooltip();
     }, [hideTooltip]);
 
-    const cameraStart = graphs.camera_starts[0];
-    const timeStamp = cameraStart ? currentTime * 1000 + cameraStart : undefined;
+    const updateVideoTime = (time: number) => {
+        if (videoRef.current) {
+            videoRef.current.currentTime = Math.min(Math.max(0, time), duration);
+        }
+        setCurrentTime(time);
+    };
+
+    const videoStart = graphs.camera_starts[0];
+    const timeStamp = videoStart ? currentTime * 1000 + videoStart : undefined;
+    useEffect(() => {
+        if (!videoRef.current) return;
+
+        if (playing && videoRef.current.paused) videoRef.current.play();
+        else if (!playing && !videoRef.current.paused) videoRef.current.pause();
+    }, [playing]);
 
     return (
         <div className="flex h-full gap-4">
@@ -263,6 +327,8 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     roll={roll}
                     videoRef={videoRef}
                     setCurrentTime={setCurrentTime}
+                    setDuration={setDuration}
+                    setPlaying={setPlaying}
                 />
             </div>
             <div className="flex-[2] h-full min-w-0">
@@ -275,8 +341,12 @@ export default function RollAnalysis({ roll, graphs }: { roll: RollDetails, grap
                     tooltipTop={tooltipTop}
                     tooltipData={tooltipData}
                     videoTime={timeStamp}
+                    videoStart={videoStart}
                     showTooltip={showTooltip}
                     handleMouseLeave={handleMouseLeave}
+                    updateVideoTime={updateVideoTime}
+                    playing={playing}
+                    setPlaying={setPlaying}
                 />
             </div>
         </div>
