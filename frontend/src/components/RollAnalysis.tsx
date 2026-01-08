@@ -9,6 +9,7 @@ import { transformMediaUrl } from "@/lib/format";
 import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import type { ScaleLinear } from "d3-scale";
+import { RectClipPath } from "@visx/clip-path";
 type ZoomType = ZoomProps<SVGSVGElement>['children'] extends (zoom: infer U) => any ? U : never;
 
 const tooltipStyles = {
@@ -58,7 +59,6 @@ function RollGraphs({ data,
             }))
         }, [data, zoom]);
 
-        const videoPosition = videoTime ? xScale(videoTime) + GRAPH_MARGIN.left : undefined;
         return <div className="relative">
             <svg width={parent.width} height={parent.height}
                 // Transform ensures pixel alignment
@@ -98,26 +98,28 @@ function RollGraphs({ data,
                     />
                 )}
                 {
-                    videoTime && <Group top={GRAPH_MARGIN.top - 16} left={GRAPH_MARGIN.left}
-                        shapeRendering="geometricPrecision" pointerEvents="none" opacity={0.75}>
-                        <Line
-                            from={{ x: xScale(videoTime), y: 0 }}
-                            to={{ x: xScale(videoTime), y: parent.height }}
-                            stroke="#ff0000"
-                            strokeWidth={2}
-                            shapeRendering="geometricPrecision"
-                        />
-                        <Polygon
-                            points={[
-                                [xScale(videoTime), 12],
-                                [xScale(videoTime) - 6, 4],
-                                [xScale(videoTime) - 6, -2],
-                                [xScale(videoTime) + 6, -2],
-                                [xScale(videoTime) + 6, 4],
-                            ]}
-                            fill="#ff0000"
-                        />
-                    </Group>
+                    videoTime && <>
+                        <Group top={GRAPH_MARGIN.top - 16} left={GRAPH_MARGIN.left} clipPath="url(#playhead-clip-path)"
+                            shapeRendering="geometricPrecision" pointerEvents="none" opacity={0.75}>
+                            <RectClipPath id="playhead-clip-path" width={width} height={parent.height} />
+                            <Line
+                                from={{ x: xScale(videoTime), y: 0 }}
+                                to={{ x: xScale(videoTime), y: parent.height }}
+                                stroke="#ff0000"
+                                strokeWidth={2}
+                                shapeRendering="geometricPrecision"
+                            />
+                            <Polygon
+                                points={[
+                                    [xScale(videoTime), 12],
+                                    [xScale(videoTime) - 6, 4],
+                                    [xScale(videoTime) - 6, -2],
+                                    [xScale(videoTime) + 6, -2],
+                                    [xScale(videoTime) + 6, 4],
+                                ]}
+                                fill="#ff0000"
+                            />
+                        </Group></>
                 }
             </svg>
             {tooltipData && (
