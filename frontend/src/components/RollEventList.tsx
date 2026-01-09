@@ -1,3 +1,4 @@
+import { EVENT_COLORS, EVENT_TYPES, type EventType } from "@/lib/constants";
 import type { RollEventInput } from "@/routes/rolls/$rollId.recording";
 import React, { useEffect, useState } from "react";
 
@@ -15,15 +16,6 @@ interface RollEventListProps {
     videoTimestamp?: number;
 }
 
-export const EVENT_TYPES = ['roll_start', 'hill_start', 'freeroll_start', 'roll_end', 'note'] as const;
-export type EventType = typeof EVENT_TYPES[number];
-export const EVENT_COLORS: Record<EventType, string> = {
-    'roll_start': '#166534',
-    'hill_start': '#4ade80',
-    'freeroll_start': '#4ade80',
-    'roll_end': '#991b1b',
-    'note': '#77a0ff',
-};
 
 function RollEvent({ event, onEdit, onDelete }: { event: RollEventInput, onEdit: () => void, onDelete: () => void }) {
     return <>

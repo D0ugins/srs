@@ -1,3 +1,5 @@
+import type { EventType } from "@/lib/constants";
+
 export interface Driver {
     id: number;
     name: string;

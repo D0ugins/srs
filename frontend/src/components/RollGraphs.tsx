@@ -9,7 +9,7 @@ import { localPoint } from "@visx/event";
 import type { ZoomProps, ZoomState } from "@visx/zoom";
 import RollGraph, { type GraphData, type TooltipData } from "./RollGraph";
 import type { RollEvent } from "@/lib/roll";
-import { EVENT_COLORS } from "./RollEventList";
+import { EVENT_COLORS, GRAPH_MARGIN } from "@/lib/constants";
 
 type ZoomType<ElementType extends Element> = ZoomProps<ElementType>['children'] extends (zoom: infer U) => any ? U : never;
 
@@ -21,7 +21,6 @@ const tooltipStyles = {
     fontSize: "12px",
 };
 
-export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 12, left: 50 };
 
 export interface RollGraphsProps {
     data: {

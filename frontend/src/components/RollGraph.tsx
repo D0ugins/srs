@@ -1,14 +1,14 @@
 import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import type { ScaleLinear } from "d3-scale";
-import { AxisBottom, AxisLeft, AxisTop } from "@visx/axis";
+import { AxisBottom, AxisLeft } from "@visx/axis";
 import { Grid } from "@visx/grid";
 import { Line, LinePath } from "@visx/shape";
 import { localPoint } from "@visx/event";
 import { RectClipPath } from "@visx/clip-path";
 import { bisector } from "d3-array";
 import { useMemo, memo } from "react";
-import { GRAPH_MARGIN } from "./RollGraphs";
+import { GRAPH_MARGIN } from "@/lib/constants";
 
 export interface GraphData {
     timestamp: number[];

@@ -1,6 +1,6 @@
 import RollAnalysis from "@/components/RollAnalysis";
-import type { EventType } from "@/components/RollEventList";
 import RollHeader from "@/components/RollHeader";
+import type { EventType } from "@/lib/constants";
 import type { RollEvent } from "@/lib/roll";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";

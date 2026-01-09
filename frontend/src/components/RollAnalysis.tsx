@@ -1,14 +1,15 @@
-import type { RollDetails, RollEvent, RollGraphData } from "@/lib/roll";
+import type { RollDetails, RollGraphData } from "@/lib/roll";
 import { useMemo, useCallback, useRef, useState, useEffect, memo } from "react";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
 import { applyMatrixToPoint, Zoom, type TransformMatrix } from "@visx/zoom";
-import RollGraphs, { GRAPH_MARGIN, type RollGraphsProps } from "./RollGraphs";
+import RollGraphs, { type RollGraphsProps } from "./RollGraphs";
 import RollVideo from "./RollVideo";
 import RollMap, { type Position, type RollMapProps } from "./RollMap";
 import { bisector } from "d3-array";
 import RollEventList from "./RollEventList";
 import type { RollEventInput } from "@/routes/rolls/$rollId.recording";
+import { GRAPH_MARGIN } from "@/lib/constants";
 
 function RollGraphsContainer(props: RollGraphsProps) {
     const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
