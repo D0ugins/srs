@@ -15,7 +15,8 @@ const FPS = 30; // TODO: store actaul fps in db
 
 export default function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, duration, setDuration }: RollVideoProps) {
     const videoUrl = transformMediaUrl(
-        roll.roll_files.find((file) => file.type === 'video_preview')?.uri
+        roll.roll_files.find((file) => file.type === 'video_preview')?.uri ??
+        roll.roll_files.find((file) => file.type === 'video_preview_c')?.uri
     );
     const frameCallbackIdRef = useRef<number | null>(null);
 
@@ -70,6 +71,7 @@ export default function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, 
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [duration]);
 
+    if (!videoUrl) return <div>No video available</div>;
     return <video
         ref={videoRef}
         className="cursor-pointer"

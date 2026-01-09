@@ -4,7 +4,8 @@ import type { RollDetails } from "@/lib/roll";
 
 export default function RollView({ roll }: { roll: RollDetails }) {
     const videoUrl = transformMediaUrl(
-        roll.roll_files.find((file) => file.type === 'video_preview')?.uri
+        roll.roll_files.find((file) => file.type === 'video_preview')?.uri ??
+        roll.roll_files.find((file) => file.type === 'video_preview_c')?.uri
     );
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
@@ -158,17 +159,19 @@ export default function RollView({ roll }: { roll: RollDetails }) {
     return (
         <>
             <div className="flex gap-4">
-                <video
-                    ref={videoRef}
-                    className="w-1/2 cursor-pointer"
-                    autoPlay
-                    muted
-                    src={videoUrl}
-                    onLoadedMetadata={handleLoadedMetadata}
-                    onClick={handleVideoClick}
-                >
-                    Your browser does not support the video tag.
-                </video>
+                {
+                    videoUrl ? <video
+                        ref={videoRef}
+                        className="w-1/2 cursor-pointer"
+                        autoPlay
+                        muted
+                        src={videoUrl}
+                        onLoadedMetadata={handleLoadedMetadata}
+                        onClick={handleVideoClick}
+                    >
+                        Your browser does not support the video tag.
+                    </video> : <div className="w-1/2 flex items-center justify-center bg-gray-200 text-gray-500">No video available</div>
+                }
 
                 <div className="flex-1">
                     <table className="w-full border-collapse border-t border-b">
