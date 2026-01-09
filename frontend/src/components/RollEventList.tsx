@@ -1,4 +1,5 @@
 import type { RollEventInput } from "@/routes/rolls/$rollId.recording";
+import React, { useEffect, useState } from "react";
 
 function formatTimestamp(ms: number): string {
     const seconds = ms / 1000;
@@ -49,8 +50,24 @@ function RollEvent({ event, onEdit, onDelete }: { event: RollEventInput, onEdit:
 }
 
 
-function RollEventEdit({ event, setEvents, onDone, onDelete }:
-    { event: RollEventInput, setEvents: React.Dispatch<React.SetStateAction<RollEventInput[]>>, onDone: () => void, onDelete: () => void }) {
+interface RollEventEditProps {
+    event: RollEventInput;
+    setEvents: React.Dispatch<React.SetStateAction<RollEventInput[]>>;
+    updateVideoTime: (time: number) => void;
+    onDone: () => void;
+    onDelete: () => void;
+}
+
+function RollEventEdit({ event, setEvents, updateVideoTime, onDone, onDelete }: RollEventEditProps) {
+
+    const [timestampInput, setTimestampInput] = useState(
+        (event.timestamp_ms / 1000).toFixed(2)
+    );
+
+    // Sync local state when event.timestamp_ms changes externally
+    useEffect(() => {
+        setTimestampInput((event.timestamp_ms / 1000).toFixed(2));
+    }, [event.timestamp_ms]);
 
     const updateEvent = (updates: Partial<RollEventInput>) => {
         setEvents(events => events.map(e =>
@@ -58,12 +75,15 @@ function RollEventEdit({ event, setEvents, onDone, onDelete }:
         ));
     };
 
-
     const handleTimestampChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const seconds = parseFloat(e.target.value);
-        if (!isNaN(seconds)) {
-            updateEvent({ timestamp_ms: Math.round(seconds * 1000) });
-        }
+        setTimestampInput(e.target.value);
+    };
+
+    const handleTimestampBlur = () => {
+        const seconds = parseFloat(timestampInput);
+        if (isNaN(seconds) || seconds < 0) return setTimestampInput((event.timestamp_ms / 1000).toFixed(2));
+
+        updateVideoTime(seconds);
     };
 
     return (
@@ -89,8 +109,9 @@ function RollEventEdit({ event, setEvents, onDone, onDelete }:
             {/* Timestamp */}
             <input
                 type="number"
-                value={(event.timestamp_ms / 1000).toFixed(2)}
+                value={timestampInput}
                 onChange={handleTimestampChange}
+                onBlur={handleTimestampBlur}
                 step="0.01"
                 className="text-sm border rounded px-1 py-0.5 w-20 ml-auto"
             />
@@ -128,7 +149,10 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
     }
 
     function toggleEdit(event: RollEventInput) {
-        setEvents(events.map(e => ({ ...e, editing: e.key === event.key && !event.editing })));
+        setEvents(events
+            .map(e => ({ ...e, editing: e.key === event.key && !event.editing }))
+            .sort((a, b) => a.timestamp_ms - b.timestamp_ms)
+        );
     }
 
     function deleteEvent(event: RollEventInput) {
@@ -145,6 +169,17 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
         };
         setEvents(events => [...events.map(e => ({ ...e, editing: false })), newEvent].sort((a, b) => a.timestamp_ms - b.timestamp_ms));
     }
+
+    useEffect(() => {
+        if (videoTimestamp === undefined) return;
+        setEvents(events => {
+            const editing = events.find(e => e.editing);
+            if (!editing) return events;
+            return events.map(e =>
+                e.key === editing.key ? { ...e, timestamp_ms: Math.round(videoTimestamp) } : e
+            );
+        })
+    }, [videoTimestamp]);
 
     return (
         <div className="mt-4">
@@ -168,7 +203,9 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
                             onClick={() => onEventClick(event)}
                             style={{ cursor: 'pointer', borderLeft: `4px solid ${EVENT_COLORS[event.type]}`, backgroundColor: `${EVENT_COLORS[event.type]}10` }}>
                             {event.editing ?
-                                <RollEventEdit key={event.key} event={event} setEvents={setEvents} onDone={() => toggleEdit(event)} onDelete={() => deleteEvent(event)} /> :
+                                <RollEventEdit key={event.key} event={event}
+                                    setEvents={setEvents} updateVideoTime={updateVideoTime}
+                                    onDone={() => toggleEdit(event)} onDelete={() => deleteEvent(event)} /> :
                                 <RollEvent key={event.key} event={event} onEdit={() => toggleEdit(event)} onDelete={() => deleteEvent(event)} />
                             }
                         </li>))}
