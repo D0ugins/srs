@@ -59,7 +59,6 @@ interface RollEventEditProps {
 }
 
 function RollEventEdit({ event, setEvents, updateVideoTime, onDone, onDelete }: RollEventEditProps) {
-
     const [timestampInput, setTimestampInput] = useState(
         (event.timestamp_ms / 1000).toFixed(2)
     );
@@ -83,6 +82,7 @@ function RollEventEdit({ event, setEvents, updateVideoTime, onDone, onDelete }: 
         const seconds = parseFloat(timestampInput);
         if (isNaN(seconds) || seconds < 0) return setTimestampInput((event.timestamp_ms / 1000).toFixed(2));
 
+        updateEvent({ timestamp_ms: Math.round(seconds * 1000) }); // Needed so enter key works
         updateVideoTime(seconds);
     };
 
@@ -159,6 +159,14 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
         setEvents(events.filter(e => e.key !== event.key));
     }
 
+    function finishEditing() {
+        setEvents(events => events.map(e => ({ ...e, editing: false })).sort((a, b) => a.timestamp_ms - b.timestamp_ms));
+    }
+
+    function deleteEditing() {
+        setEvents(events => events.filter(e => !e.editing));
+    }
+
     function addEvent() {
         const newKey = events.length > 0 ? Math.max(...events.map(e => e.key)) + 1 : 0;
         const newEvent: RollEventInput = {
@@ -180,6 +188,35 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
             );
         })
     }, [videoTimestamp]);
+
+    useEffect(() => {
+        function handleKeyDown(e: KeyboardEvent) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                // blur to trigger any pending saves (e.g., timestamp input)
+                if (document.activeElement instanceof HTMLElement) {
+                    document.activeElement.blur();
+                }
+                finishEditing();
+                return;
+            }
+
+            // Ignore if focused on an input element
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') return;
+
+            if (e.key === 'n' || e.key === 'N') {
+                e.preventDefault();
+                addEvent();
+            } else if (e.key === 'Delete') {
+                e.preventDefault();
+                deleteEditing();
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [videoTimestamp, events]);
 
     return (
         <div className="mt-4">
