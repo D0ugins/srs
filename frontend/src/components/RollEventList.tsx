@@ -130,11 +130,24 @@ function RollEventEdit({ event, setEvents, updateVideoTime, onDone, onDelete }: 
     );
 }
 
-// TODO
-function guessNextEvent(events: RollEventInput[], videoTimestamp?: number): { type: EventType; tag?: string } {
-    return { type: 'roll_start' };
+type EventGuess = { type: EventType; tag?: string }
+const guessList: EventGuess[] = [
+    { type: 'roll_start' },
+    { type: 'hill_start', tag: '1' },
+    { type: 'hill_start', tag: '2' },
+    { type: 'freeroll_start' },
+    { type: 'hill_start', tag: '3' },
+    { type: 'hill_start', tag: '4' },
+    { type: 'hill_start', tag: '5' },
+    { type: 'roll_end' },
+]
+function guessNextEvent(events: RollEventInput[], videoTimestamp?: number): EventGuess {
+    const beforeEvents = videoTimestamp !== undefined ? events.filter(e => e.timestamp_ms <= videoTimestamp) : events;
+    for (const guess of guessList) {
+        if (!beforeEvents.find(e => e.type === guess.type && (!guess.tag || e.tag === guess.tag))) return guess
+    }
+    return { type: 'note' }
 }
-
 
 export default function RollEventList({ events, setEvents, updateVideoTime, videoTimestamp }: RollEventListProps) {
     function onEventClick(event: RollEventInput) {
