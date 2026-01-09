@@ -332,7 +332,7 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
                                     <option value="">Unknown</option>
                                     {sensors?.map((sensor) => (
                                         <option key={sensor.id} value={sensor.abbreviation}>
-                                            {sensor.abbreviation}
+                                            {sensor.name}
                                         </option>
                                     ))}
                                 </select>

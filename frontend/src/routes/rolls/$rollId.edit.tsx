@@ -77,7 +77,7 @@ function RouteComponent() {
     else if (!formData || isLoading) return <div>Loading...</div>;
 
     return (
-        <div className="flex flex-col h-full p-2">
+        <div className="flex-1 flex flex-col h-full p-2">
             <div className="mb-4 pb-2 border-b border-gray-300 flex justify-between items-center">
                 <RollHeader roll={roll} />
                 <div className="flex gap-2">
