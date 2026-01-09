@@ -125,8 +125,12 @@ function RouteComponent() {
             <div className="mb-4 pb-2 border-b border-gray-300 flex justify-between items-center">
                 <RollHeader roll={roll} />
                 <div className="flex gap-2">
-                    <button onClick={() => saveEventsMutation.mutate(events)} className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400">
-                        Save
+                    <button
+                        onClick={() => saveEventsMutation.mutate(events)}
+                        disabled={saveEventsMutation.isPending}
+                        className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                    >
+                        {saveEventsMutation.isPending ? 'Saving...' : 'Save'}
                     </button>
                     <Link from={Route.fullPath} to=".." className="px-4 py-1.5 bg-red-300 rounded hover:bg-red-400">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
