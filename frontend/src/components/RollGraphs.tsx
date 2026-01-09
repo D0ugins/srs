@@ -8,6 +8,8 @@ import { RectClipPath } from "@visx/clip-path";
 import { localPoint } from "@visx/event";
 import type { ZoomProps, ZoomState } from "@visx/zoom";
 import RollGraph, { type GraphData, type TooltipData } from "./RollGraph";
+import type { RollEvent } from "@/lib/roll";
+import { EVENT_COLORS } from "./RollEventList";
 
 type ZoomType<ElementType extends Element> = ZoomProps<ElementType>['children'] extends (zoom: infer U) => any ? U : never;
 
@@ -32,6 +34,7 @@ export interface RollGraphsProps {
     tooltipData?: TooltipData;
     videoTime?: number;
     playing: boolean;
+    events?: RollEvent[];
     showTooltip: (args: any) => void;
     handleMouseLeave: () => void;
     updateVideoTime: (time: number) => void;
@@ -46,7 +49,7 @@ export function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, n
     });
 }
 
-export default function RollGraphs({ data,
+export default function RollGraphs({ data, events,
     tooltipLeft, tooltipTop, tooltipData, playing, isDragging,
     showTooltip, handleMouseLeave, updateVideoTime, setPlaying, setIsDragging,
     videoTime, zoom, parent }: RollGraphsProps &
@@ -199,6 +202,25 @@ export default function RollGraphs({ data,
                             />
                         </Group></>
                 }
+                {
+                    events && <Group top={GRAPH_MARGIN.top} left={GRAPH_MARGIN.left} >
+                        {events.slice(0).reverse().map((event, index) => { // Reverse to draw earlier events on top
+                            const x = xScale(event.timestamp_ms);
+                            return <Group key={event.id ?? index}>
+
+                                <Polygon
+                                    points={[
+                                        [x, 2],
+                                        [x - 5, -4],
+                                        [x + 5, -4],
+                                    ]}
+                                    fill={EVENT_COLORS[event.type] ?? 'gray'}
+                                />
+                            </Group>
+                        })}
+                    </Group>
+                }
+
             </svg>
             {tooltipData && (
                 <TooltipWithBounds

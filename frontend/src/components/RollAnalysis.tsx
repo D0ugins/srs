@@ -192,6 +192,7 @@ export default function RollAnalysis({ roll, graphs, events }: { roll: RollDetai
                         updateVideoTime={updateVideoTime}
                         playing={playing}
                         setPlaying={setPlaying}
+                        events={events}
                     />
                 </div>
                 <div className="h-1/3 pl-6">

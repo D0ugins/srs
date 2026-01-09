@@ -191,10 +191,10 @@ export interface RollGraphData {
         z: number[];
     }
 }
-
+export type EventType = 'roll_start' | 'hill_start' | 'roll_end';
 export interface RollEvent {
     id?: number;
-    type: string;
+    type: EventType;
     tag?: string;
     timestamp_ms: number;
     raw_timestamp?: string;
