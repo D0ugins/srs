@@ -26,7 +26,7 @@ function RouteComponent() {
     if (isLoading) return <div>Loading...</div>;
     else if (error) return <div>Error loading roll data</div>;
 
-    return <div className="flex flex-col h-full p-2">
+    return <div className="flex-1 flex flex-col h-full p-2">
         <div className="mb-4 pb-2 border-b border-gray-300 flex justify-between items-center">
             <RollHeader roll={roll} />
             <div className="flex gap-4 mr-4">
