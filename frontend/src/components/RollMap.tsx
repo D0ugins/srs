@@ -1,3 +1,4 @@
+import { HILL_LINES } from '@/lib/constants';
 import { Group } from '@visx/group';
 import { scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
@@ -42,6 +43,21 @@ export default memo(({ width, height, zoom, positions, currentLocation }:
                 fill="none"
                 shapeRendering="geometricPrecision"
             />
+            {
+                HILL_LINES.map((line, idx) => {
+                    return <LinePath
+                        key={idx}
+                        data={line}
+                        x={d => xScale(d.long)}
+                        y={d => yScale(d.lat)}
+                        stroke="red"
+                        strokeWidth={3}
+                        fill="none"
+                        strokeLinecap='square'
+                        shapeRendering="geometricPrecision"
+                    />
+                })
+            }
             {currentLocation && <circle
                 cx={xScale(currentLocation.long)}
                 cy={yScale(currentLocation.lat)}
