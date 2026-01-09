@@ -48,7 +48,6 @@ function RouteComponent() {
 
 
     return <div className="flex h-full">
-
         {isCollapsed ? (
             <button
                 onClick={() => { setIsCollapsed(false); setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); }}
@@ -72,9 +71,7 @@ function RouteComponent() {
                 onMouseDown={() => setIsResizing(true)}
             />
         </>}
-        <div className="flex-1 overflow-x-hidden">
-            <Outlet />
-        </div>
+        <Outlet />
     </div>
 
 }

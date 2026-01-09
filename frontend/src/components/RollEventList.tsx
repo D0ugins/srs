@@ -15,13 +15,14 @@ interface RollEventListProps {
     videoTimestamp?: number;
 }
 
-export const EVENT_TYPES = ['roll_start', 'hill_start', 'freeroll_start', 'roll_end'] as const;
+export const EVENT_TYPES = ['roll_start', 'hill_start', 'freeroll_start', 'roll_end', 'note'] as const;
 export type EventType = typeof EVENT_TYPES[number];
 export const EVENT_COLORS: Record<EventType, string> = {
     'roll_start': '#166534',
     'hill_start': '#4ade80',
     'freeroll_start': '#4ade80',
     'roll_end': '#991b1b',
+    'note': '#77a0ff',
 };
 
 function RollEvent({ event, onEdit, onDelete }: { event: RollEventInput, onEdit: () => void, onDelete: () => void }) {
@@ -219,7 +220,7 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
     }, [videoTimestamp, events]);
 
     return (
-        <div className="mt-4">
+        <div className="my-4 flex-1 flex flex-col min-h-0">
             <div className="flex justify-between items-center mb-2">
                 <h3 className="text-sm font-semibold">Events</h3>
                 <button
@@ -232,9 +233,9 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
                 </button>
             </div>
             {events.length === 0 ? (
-                <div className="text-gray-500 text-sm">No events recorded</div>
+                <div className="text-gray-500 text-sm flex-1">No events recorded</div>
             ) : (
-                <ul className="max-h-48 overflow-y-auto space-y-1 text-sm">
+                <ul className="overflow-y-auto space-y-1 text-sm flex-1">
                     {events.map((event) => (
                         <li className="flex items-center gap-2 py-0 px-1 rounded hover:bg-gray-100" key={event.key}
                             onClick={() => onEventClick(event)}

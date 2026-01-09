@@ -121,7 +121,7 @@ function RouteComponent() {
     }
 
     return (
-        <div className="flex flex-col h-full p-2">
+        <div className="flex flex-col flex-1 p-2">
             <div className="mb-4 pb-2 border-b border-gray-300 flex justify-between items-center">
                 <RollHeader roll={roll} />
                 <div className="flex gap-2">
@@ -140,8 +140,10 @@ function RouteComponent() {
                     {errorMessage}
                 </div>
             )}
-            {(graphsLoading || eventsLoading) ? 'Loading...' : (graphsError || eventsError) ? 'Error loading roll data.'
-                : <RollAnalysis roll={roll} graphs={graphs} events={events} setEvents={setEvents} />}
-        </div>
+            <div className="flex-1 min-h-0">
+                {(graphsLoading || eventsLoading) ? 'Loading...' : (graphsError || eventsError) ? 'Error loading roll data.'
+                    : <RollAnalysis roll={roll} graphs={graphs} events={events} setEvents={setEvents} />}
+            </div>
+        </div >
     );
 }

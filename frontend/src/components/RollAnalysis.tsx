@@ -176,7 +176,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
 
     return (
         <div className="flex h-full gap-4 mb-2">
-            <div className="flex-[1] min-w-0">
+            <div className="flex flex-col flex-[1] min-w-0">
                 <RollVideo
                     roll={roll}
                     videoRef={videoRef}
