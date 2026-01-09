@@ -8,6 +8,7 @@ import RollVideo from "./RollVideo";
 import RollMap, { type Position, type RollMapProps } from "./RollMap";
 import { bisector } from "d3-array";
 import RollEventList from "./RollEventList";
+import type { RollEventInput } from "@/routes/rolls/$rollId.recording";
 
 function RollGraphsContainer(props: RollGraphsProps) {
     const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
@@ -87,7 +88,14 @@ const RollMapContainer = memo((props: RollMapProps) => {
     </div>
 })
 
-export default function RollAnalysis({ roll, graphs, events }: { roll: RollDetails, graphs: RollGraphData, events: RollEvent[] }) {
+interface RollAnalysisProps {
+    roll: RollDetails;
+    graphs: RollGraphData;
+    events: RollEventInput[];
+    setEvents: React.Dispatch<React.SetStateAction<RollEventInput[]>>;
+}
+
+export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAnalysisProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [playing, setPlaying] = useState(false);
@@ -177,7 +185,7 @@ export default function RollAnalysis({ roll, graphs, events }: { roll: RollDetai
                     setDuration={setDuration}
                     setPlaying={setPlaying}
                 />
-                <RollEventList events={events} updateVideoTime={updateVideoTime} />
+                <RollEventList events={events} setEvents={setEvents} updateVideoTime={updateVideoTime} videoTimestamp={timestamp} />
             </div>
             <div className="flex-[2] h-full min-w-0">
                 <div className="h-2/3 pb-2">

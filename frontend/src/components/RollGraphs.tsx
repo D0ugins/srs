@@ -206,7 +206,7 @@ export default function RollGraphs({ data, events,
                     events && <Group top={GRAPH_MARGIN.top} left={GRAPH_MARGIN.left} >
                         {events.slice(0).reverse().map((event, index) => { // Reverse to draw earlier events on top
                             const x = xScale(event.timestamp_ms);
-                            return <Group key={event.id ?? index}>
+                            return <Group key={index}>
 
                                 <Polygon
                                     points={[
