@@ -130,7 +130,7 @@ class Roll(TimestampModel):
     )
     
     def __repr__(self):
-        return f"Roll(id={self.id}, roll_number={self.roll_number}, driver_id={self.driver_id}, buggy_id={self.buggy_id})"
+        return f"Roll(id={self.id}, roll_date_id={self.roll_date_id}, buggy_id={self.buggy_id}, driver_id={self.driver_id}, roll_number={self.roll_number})"
 
 class RollFile(TimestampModel):
     __tablename__ = "rollfile"
@@ -147,7 +147,7 @@ class RollFile(TimestampModel):
     __table_args__ = (Index("idx_rollfile_roll_type_uri", "roll_id", "type", "uri", unique=True),)
     
     def __repr__(self):
-        return f"RollFile(id={self.id}, roll_id={self.roll_id}, type='{self.type}')"
+        return f"RollFile(id={self.id}, roll_id={self.roll_id}, type='{self.type}', uri='{self.uri}', sensor_id={self.sensor_id})"
 
 class RollEvent(TimestampModel):
     __tablename__ = "rollevent"
@@ -164,7 +164,7 @@ class RollEvent(TimestampModel):
     __table_args__ = (Index("idx_rollevent_roll_type_tag_timestamp", "roll_id", "type", "tag", "timestamp_ms", unique=True),)
     
     def __repr__(self):
-        return f"RollEvent(id={self.id}, roll_id={self.roll_id}, type='{self.type}', timestamp_ms={self.timestamp_ms})"
+        return f"RollEvent(id={self.id}, roll_id={self.roll_id}, type='{self.type}', tag={self.tag!r}, timestamp_ms={self.timestamp_ms})"
 
 class RollHill(TimestampModel):
     __tablename__ = "rollhill"
@@ -180,7 +180,7 @@ class RollHill(TimestampModel):
     __table_args__ = (Index("idx_rollhill_roll_pusher_hillnum", "roll_id", "pusher_id", "hill_number", unique=True),)
     
     def __repr__(self):
-        return f"RollHill(id={self.id}, roll_id={self.roll_id}, pusher_id={self.pusher_id})"
+        return f"RollHill(id={self.id}, roll_id={self.roll_id}, pusher_id={self.pusher_id}, hill_number={self.hill_number})"
 
 def create_db_and_tables():
     Base.metadata.create_all(engine)
