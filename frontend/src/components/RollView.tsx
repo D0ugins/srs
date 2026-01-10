@@ -196,7 +196,7 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
 
     return (
         <>
-            <div className="flex gap-4">
+            <div className="flex gap-4 max-h-[40%]">
                 {
                     videoUrl ? <video
                         ref={videoRef}
@@ -274,6 +274,29 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                     <span>{stats?.freeroll_energy_loss !== undefined ? stats.freeroll_energy_loss.toFixed(2) : '---'} J/kg</span>
                 </div>
             </div>
+
+            {(roll.driver_notes || roll.mech_notes || roll.pusher_notes) && (
+                <div className="mt-6 space-y-2">
+                    {roll.driver_notes && (
+                        <div>
+                            <span className="font-semibold">Driver Notes: </span>
+                            <span>{roll.driver_notes}</span>
+                        </div>
+                    )}
+                    {roll.mech_notes && (
+                        <div>
+                            <span className="font-semibold">Mech Notes: </span>
+                            <span>{roll.mech_notes}</span>
+                        </div>
+                    )}
+                    {roll.pusher_notes && (
+                        <div>
+                            <span className="font-semibold">Pusher Notes: </span>
+                            <span>{roll.pusher_notes}</span>
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="mt-auto bg-white border border-gray-300 rounded-lg shadow-lg p-4">
                 <div className="flex items-start gap-6">
