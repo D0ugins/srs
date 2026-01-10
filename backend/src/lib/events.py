@@ -59,10 +59,15 @@ def calculate_freeroll_stats(fit_file: str | None, roll_events: list[RollEvent])
         elevations = get_elevations(gps_data, snap_to_course=True, subtract_start_line=True)
         energy = gps_data.speed ** 2 / 2 + elevations * 9.81
         stats['max_energy'] = float(energy.max())
+        
+        # snap hill starts to gps_timestamps
+        hill3_starts = list(gps_data.timestamp.iloc[gps_data.index.get_indexer(hill3_starts, method='nearest')]) # type: ignore
+        freeroll_starts = list(gps_data.timestamp.iloc[gps_data.index.get_indexer(freeroll_starts, method='nearest')]) # type: ignore
         if len(hill3_starts) == 1:
             stats['freeroll_energy_loss'] = float(energy.max() - energy.loc[hill3_starts[0]])
         if len(freeroll_starts) == 1 and len(hill3_starts) == 1:
             pickup_timestamp = energy.loc[freeroll_starts[0]:hill3_starts[0] + 10_000].idxmin()
+            stats['pickup_timestamp_ms'] = int(pickup_timestamp)
             stats['pickup_energy'] = float(energy.loc[pickup_timestamp])
             stats['pickup_speed'] = float(gps_data.speed.loc[pickup_timestamp])
             stats['rollup_height'] = float(elevations.loc[hill3_starts[0]] - elevations.loc[pickup_timestamp])
