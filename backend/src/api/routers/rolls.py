@@ -420,4 +420,19 @@ def get_roll_stats(roll_id: int, session: SessionDep):
     if len(roll_starts) == 1 and len(roll_ends) == 1:
         stats['course_time_ms'] = roll_ends[0] - roll_starts[0]
     
+    fit_files = [rf for rf in roll.roll_files if rf.type == 'fit']
+    if len(fit_files) == 1:
+        fit_file = fit_files[0].uri.replace('%fit%', 'virbs')
+        try:
+            messages = load_fit_file(fit_file)
+            camera_starts = get_camera_starts(messages)
+            if len(camera_starts) == 1:
+                if len(roll_starts) == 1:
+                    stats['video_roll_start_ms'] = roll_starts[0] - camera_starts[0]
+                if len(roll_ends) == 1:
+                    stats['video_roll_end_ms'] = roll_ends[0] - camera_starts[0]
+                
+        except Exception as e:
+            print(e)
+    
     return stats

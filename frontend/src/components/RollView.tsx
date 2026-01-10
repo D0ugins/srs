@@ -139,6 +139,17 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
         };
     }, [isDragging, duration, wasPlaying]);
 
+    const handleVideoClick = () => {
+        if (videoRef.current) {
+            if (videoRef.current.paused) {
+                videoRef.current.play();
+            } else {
+                videoRef.current.pause();
+            }
+        }
+    };
+
+
     const formatVidTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
@@ -153,15 +164,11 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
         return `${mins}:${secs.padStart(4, '0')}`;
     }
 
-    const handleVideoClick = () => {
-        if (videoRef.current) {
-            if (videoRef.current.paused) {
-                videoRef.current.play();
-            } else {
-                videoRef.current.pause();
-            }
+    useEffect(() => {
+        if (videoRef.current && stats?.video_roll_start_ms !== undefined) {
+            videoRef.current.currentTime = stats.video_roll_start_ms / 1000;
         }
-    };
+    }, [videoRef.current, stats?.video_roll_start_ms]);
 
     return (
         <>

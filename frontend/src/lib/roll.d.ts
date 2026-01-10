@@ -213,4 +213,7 @@ export interface RollStats {
     hill4_time_ms?: number;
     hill5_time_ms?: number;
     course_time_ms?: number;
+
+    video_roll_start_ms?: number;
+    video_roll_end_ms?: number;
 }
