@@ -10,6 +10,7 @@ import { bisector } from "d3-array";
 import RollEventList from "./RollEventList";
 import type { RollEventInput } from "@/routes/rolls/$rollId.recording";
 import { GRAPH_MARGIN } from "@/lib/constants";
+import VideoTimeline from "./VideoTimeline";
 
 function RollGraphsContainer(props: RollGraphsProps) {
     const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
@@ -132,6 +133,8 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         energy: energyData.timestamp.length > 0 ? energyData : undefined,
     }), [speedData, centripetalData, energyData]);
 
+    const hasGraphData = data.speed || data.centripetal || data.energy;
+
     const positions = useMemo(() => {
         if (!graphs.gps_data) return undefined;
         const positions = graphs.gps_data.timestamp.map((timestamp, i) => ({
@@ -190,23 +193,40 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
             </div>
             <div className="flex-[2] h-full min-w-0">
                 <div className="h-2/3 pb-2">
-                    <RollGraphsContainer
-                        data={data}
-                        tooltipLeft={tooltipLeft}
-                        tooltipTop={tooltipTop}
-                        tooltipData={tooltipData}
-                        videoTime={timestamp}
-                        showTooltip={showTooltip}
-                        handleMouseLeave={handleMouseLeave}
-                        updateVideoTime={updateVideoTime}
-                        playing={playing}
-                        setPlaying={setPlaying}
-                        events={events}
-                    />
+                    {hasGraphData ? (
+                        <RollGraphsContainer
+                            data={data}
+                            tooltipLeft={tooltipLeft}
+                            tooltipTop={tooltipTop}
+                            tooltipData={tooltipData}
+                            videoTime={timestamp}
+                            showTooltip={showTooltip}
+                            handleMouseLeave={handleMouseLeave}
+                            updateVideoTime={updateVideoTime}
+                            playing={playing}
+                            setPlaying={setPlaying}
+                            events={events}
+                        />
+                    ) : (
+                        <>
+                            <VideoTimeline
+                                videoRef={videoRef}
+                                currentTime={currentTime}
+                                duration={duration}
+                                playing={playing}
+                                setPlaying={setPlaying}
+                                updateVideoTime={updateVideoTime}
+                                videoStart={videoStart}
+                            />
+                            <div className="text-gray-500 text-center">No graph data available</div>
+                        </>
+                    )}
                 </div>
-                <div className="h-1/3 pl-6">
-                    <RollMapContainer positions={positions} currentLocation={currentLocation} />
-                </div>
+                {hasGraphData && (
+                    <div className="h-1/3 pl-6">
+                        <RollMapContainer positions={positions} currentLocation={currentLocation} />
+                    </div>
+                )}
             </div>
         </div>
     );
