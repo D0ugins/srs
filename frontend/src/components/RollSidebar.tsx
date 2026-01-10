@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { useState, useEffect, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import RollTree from './RollTree'
 import { capitalize, formatDate } from '@/lib/format'
@@ -21,6 +21,8 @@ export type RollDataTree = RollTreeNode | RollTreeLeaf
 
 export const ROLL_ORDER_KEYS = ['type', 'date', 'driver', 'buggy'] as const;
 export type RollOrderKey = typeof ROLL_ORDER_KEYS[number];
+
+const GROUPINGS_KEY = 'rolls-sidebar-groupings';
 
 function getGroupKey(roll: RollDataBase, key: RollOrderKey): string {
     switch (key) {
@@ -109,8 +111,26 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
         },
     });
 
-    const [groupings, setGroupings] = useState<RollOrderKey[]>(['type', 'driver']);
+    const [groupings, setGroupings] = useState<RollOrderKey[]>(() => {
+        try {
+            const stored = localStorage.getItem(GROUPINGS_KEY);
+            if (!stored) return ['type', 'driver'];
+            const parsed = JSON.parse(stored) as string[];
+
+            if (parsed.every(key => ROLL_ORDER_KEYS.includes(key as RollOrderKey)))
+                return parsed as RollOrderKey[];
+        } catch (e) {
+            console.error('Failed to load groupings from localStorage', e);
+        }
+        return ['type', 'driver'];
+    });
     const [filters, setFilters] = useState<unknown[]>([]); // TODO
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(GROUPINGS_KEY, JSON.stringify(groupings));
+        } catch (e) { console.error('Failed to save groupings to localStorage', e); }
+    }, [groupings]);
 
     const location = useLocation();
 

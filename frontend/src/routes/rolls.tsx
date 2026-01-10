@@ -6,13 +6,27 @@ export const Route = createFileRoute('/rolls')({
     component: RouteComponent,
 })
 
+const EXPANDED_NODES_KEY = 'rolls-sidebar-expanded-nodes';
+
 function RouteComponent() {
     const DEFAULT_SIDEBAR_WIDTH = 320;
     const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
     const [isResizing, setIsResizing] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => {
+        try {
+            const stored = localStorage.getItem(EXPANDED_NODES_KEY);
+            return stored ? new Set(JSON.parse(stored) as string[]) : new Set();
+        } catch (e) { console.error('Failed to load expanded nodes from localStorage', e); }
+        return new Set();
+    });
     const sidebarRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(EXPANDED_NODES_KEY, JSON.stringify([...expandedNodes]));
+        } catch (e) { console.error('Failed to save expanded nodes to localStorage', e); }
+    }, [expandedNodes]);
 
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
