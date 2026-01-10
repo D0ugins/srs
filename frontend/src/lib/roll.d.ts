@@ -204,3 +204,13 @@ export interface RollEvent {
     created_at?: string;
     updated_at?: string;
 }
+
+export interface RollStats {
+    hill1_time_ms?: number;
+    hill2_time_ms?: number;
+    freeroll_time_ms?: number;
+    hill3_time_ms?: number;
+    hill4_time_ms?: number;
+    hill5_time_ms?: number;
+    course_time_ms?: number;
+}

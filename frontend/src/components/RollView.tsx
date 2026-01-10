@@ -1,8 +1,8 @@
 import { useRef, useState, useEffect } from "react";
 import { transformMediaUrl } from "@/lib/format";
-import type { RollDetails } from "@/lib/roll";
+import type { RollDetails, RollStats } from "@/lib/roll";
 
-export default function RollView({ roll }: { roll: RollDetails }) {
+export default function RollView({ roll, stats }: { roll: RollDetails, stats?: RollStats }) {
     const videoUrl = transformMediaUrl(
         roll.roll_files.find((file) => file.type === 'video_preview')?.uri ??
         roll.roll_files.find((file) => file.type === 'video_preview_c')?.uri
@@ -139,12 +139,19 @@ export default function RollView({ roll }: { roll: RollDetails }) {
         };
     }, [isDragging, duration, wasPlaying]);
 
-    const formatTime = (seconds: number) => {
+    const formatVidTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         const frames = Math.floor((seconds % 1) * fps);
         return `${mins}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
     };
+
+    const formatStatTime = (ms: number) => {
+        const totalSeconds = ms / 1000;
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = (totalSeconds - (mins * 60)).toFixed(1);
+        return `${mins}:${secs.padStart(4, '0')}`;
+    }
 
     const handleVideoClick = () => {
         if (videoRef.current) {
@@ -185,16 +192,28 @@ export default function RollView({ roll }: { roll: RollDetails }) {
                         <tbody>
                             {[1, 2, 3, 4, 5].map((hillNumber) => {
                                 const rollHill = roll.roll_hills[hillNumber - 1];
+                                const time = stats?.[`hill${hillNumber}_time_ms` as keyof RollStats];
                                 return (
                                     <tr key={hillNumber} className="border-b last:border-b-0">
                                         <td className="py-2 w-16 border-l border-r px-2">{hillNumber}</td>
                                         <td className="py-2 border-r px-2">{rollHill?.pusher?.name || ''}</td>
-                                        <td className="py-2 w-24 border-r px-2">---</td>
+                                        <td className="py-2 w-24 border-r px-2"> {time !== undefined ? (time / 1000).toFixed(1) : '---'} </td>
                                     </tr>
                                 );
                             })}
                         </tbody>
                     </table>
+                    <div className="mt-4 flex text-center text-lg">
+                        <div className="flex-1">
+                            <span className="font-semibold">Freeroll Time: </span>
+                            <span>{stats?.freeroll_time_ms !== undefined ? (stats?.freeroll_time_ms / 1000).toFixed(1) : '---'}</span>
+                        </div>
+                        <div className="flex-1">
+                            <span className="font-semibold">Course Time: </span>
+                            <span>{stats?.course_time_ms !== undefined ? formatStatTime(stats.course_time_ms) : '---'}</span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -215,9 +234,9 @@ export default function RollView({ roll }: { roll: RollDetails }) {
                     />
                 </div>
                 <div className="flex justify-between text-sm text-gray-600 mt-1">
-                    <span>{formatTime(currentTime)}</span>
+                    <span>{formatVidTime(currentTime)}</span>
                     <span>{fps} fps</span>
-                    <span>{formatTime(duration)}</span>
+                    <span>{formatVidTime(duration)}</span>
                 </div>
             </div>
         </>

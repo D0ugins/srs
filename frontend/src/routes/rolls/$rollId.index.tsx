@@ -23,6 +23,19 @@ function RouteComponent() {
         },
     });
 
+    const { data: stats } = useQuery({
+        queryKey: ['roll', rollId, 'stats'],
+        queryFn: async () => {
+            if (rollId === undefined) return null;
+
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls/${rollId}/stats`);
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        },
+    });
+
     if (isLoading) return <div>Loading...</div>;
     else if (error) return <div>Error loading roll data</div>;
 
@@ -40,6 +53,6 @@ function RouteComponent() {
                 </Link>
             </div>
         </div>
-        <RollView roll={roll} />
+        <RollView roll={roll} stats={stats} />
     </div>
 }

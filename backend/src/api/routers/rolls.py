@@ -382,3 +382,42 @@ def update_roll_events(roll_id: int, events: list[RollEventInput], session: Sess
     session.commit()
     session.refresh(roll)
     return roll.roll_events
+
+@router.get("/{roll_id}/stats")
+def get_roll_stats(roll_id: int, session: SessionDep):
+    query = select(Roll).options(
+          selectinload(Roll.roll_files),
+          selectinload(Roll.roll_events)
+    ).where(Roll.id == roll_id)
+    
+    roll = session.scalar(query)
+    if not roll:
+        raise HTTPException(status_code=404, detail="Roll not found")
+    
+    stats = {}
+    roll_starts = [e.timestamp_ms for e in roll.roll_events if e.type == 'roll_start']
+    hill1_starts = [e.timestamp_ms for e in roll.roll_events if e.type == 'hill_start' and e.tag == '1']
+    hill2_starts = [e.timestamp_ms for e in roll.roll_events if e.type == 'hill_start' and e.tag == '2']
+    freeroll_starts = [e.timestamp_ms for e in roll.roll_events if e.type == 'freeroll_start']
+    hill3_starts = [e.timestamp_ms for e in roll.roll_events if e.type == 'hill_start' and e.tag == '3']
+    hill4_starts = [e.timestamp_ms for e in roll.roll_events if e.type == 'hill_start' and e.tag == '4']
+    hill5_starts = [e.timestamp_ms for e in roll.roll_events if e.type == 'hill_start' and e.tag == '5']
+    roll_ends = [e.timestamp_ms for e in roll.roll_events if e.type == 'roll_end']
+    
+    if len(hill1_starts) == 1 and len(hill2_starts) == 1:
+        stats['hill1_time_ms'] = hill2_starts[0] - hill1_starts[0]
+    if len(hill2_starts) == 1 and len(freeroll_starts) == 1:
+        stats['hill2_time_ms'] = freeroll_starts[0] - hill2_starts[0]
+    if len(freeroll_starts) == 1 and len(hill3_starts) == 1:
+        stats['freeroll_time_ms'] = hill3_starts[0] - freeroll_starts[0]
+    if len(hill3_starts) == 1 and len(hill4_starts) == 1:
+        stats['hill3_time_ms'] = hill4_starts[0] - hill3_starts[0]
+    if len(hill4_starts) == 1 and len(hill5_starts) == 1:
+        stats['hill4_time_ms'] = hill5_starts[0] - hill4_starts[0]
+    if len(hill5_starts) == 1 and len(roll_ends) == 1:
+        stats['hill5_time_ms'] = roll_ends[0] - hill5_starts[0]
+    
+    if len(roll_starts) == 1 and len(roll_ends) == 1:
+        stats['course_time_ms'] = roll_ends[0] - roll_starts[0]
+    
+    return stats
