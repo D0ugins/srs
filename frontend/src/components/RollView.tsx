@@ -248,6 +248,33 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                 </div>
             </div>
 
+            <div className="mt-8 grid grid-cols-3 gap-4 text-center">
+                <div className="space-y-2">
+                    <div>
+                        <span className="font-semibold block">Max Speed</span>
+                        <span>{stats?.max_speed !== undefined ? stats.max_speed.toFixed(2) : '---'} m/s</span>
+                    </div>
+                    <div>
+                        <span className="font-semibold block">Max Energy</span>
+                        <span>{stats?.max_energy !== undefined ? stats.max_energy.toFixed(2) : '---'} J/kg</span>
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <div>
+                        <span className="font-semibold block">Pickup Speed</span>
+                        <span>{stats?.pickup_speed !== undefined ? stats.pickup_speed.toFixed(2) : '---'} m/s</span>
+                    </div>
+                    <div>
+                        <span className="font-semibold block">Rollup Height</span>
+                        <span>{stats?.rollup_height !== undefined ? stats.rollup_height.toFixed(2) : '---'} m</span>
+                    </div>
+                </div>
+                <div>
+                    <span className="font-semibold block">Freeroll Energy Loss</span>
+                    <span>{stats?.freeroll_energy_loss !== undefined ? stats.freeroll_energy_loss.toFixed(2) : '---'} J/kg</span>
+                </div>
+            </div>
+
             <div className="mt-auto bg-white border border-gray-300 rounded-lg shadow-lg p-4">
                 <div className="flex items-start gap-6">
                     <div className="flex-1">

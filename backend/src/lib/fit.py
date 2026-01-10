@@ -72,6 +72,7 @@ def get_gps_data(messages: FitMessages) -> pd.DataFrame | None:
     gps_data.timestamp = gps_data.timestamp * 1000 + gps_data.timestamp_ms
     gps_data.drop(columns=['timestamp_ms'])
     gps_data.index = gps_data.timestamp
+    gps_data['speed'] = np.linalg.norm(np.array(gps_data.velocity.to_list()), axis=1)
     
     return gps_data
 

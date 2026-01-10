@@ -308,18 +308,17 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
     response = {}
     gps_data = get_gps_data(messages)
     if gps_data is not None:
-        speed = pd.Series(np.linalg.norm(np.array(gps_data.velocity.to_list()), axis=1), index=gps_data.index)
         response['gps_data'] = pd.DataFrame({
             'timestamp': gps_data.index,
             'lat': gps_data.position_lat,
             'long': gps_data.position_long,
             'elevation': get_elevations(gps_data, snap_to_course=True, subtract_start_line=True),
-            'speed': speed,
+            'speed': gps_data.speed,
         }).to_dict(orient='list')
         angular_velocity = get_angular_velocity(gps_data, 1)
         response['centripetal'] = pd.DataFrame({
             'timestamp': angular_velocity.index,
-            'values': angular_velocity * speed.loc[angular_velocity.index]  # v^2 / r = v * omega
+            'values': angular_velocity * gps_data.speed.loc[angular_velocity.index]  # v^2 / r = v * omega
         }).to_dict(orient='list')
         
     
@@ -431,8 +430,22 @@ def get_roll_stats(roll_id: int, session: SessionDep):
                     stats['video_roll_start_ms'] = roll_starts[0] - camera_starts[0]
                 if len(roll_ends) == 1:
                     stats['video_roll_end_ms'] = roll_ends[0] - camera_starts[0]
+
+                gps_data = get_gps_data(messages)
+                if gps_data is not None:
+                    stats['max_speed'] = float(gps_data['speed'].max())
+                    elevations = get_elevations(gps_data, snap_to_course=True, subtract_start_line=True)
+                    energy = gps_data.speed ** 2 / 2 + elevations * 9.81
+                    stats['max_energy'] = float(energy.max())
+                    if len(hill3_starts) == 1:
+                        stats['freeroll_energy_loss'] = float(energy.max() - energy.loc[hill3_starts[0]])
+                    if len(freeroll_starts) == 1 and len(hill3_starts) == 1:
+                        pickup_timestamp =  energy.loc[freeroll_starts[0]:hill3_starts[0] + 10_000].idxmin()
+                        stats['pickup_energy'] = float(energy.loc[pickup_timestamp])
+                        stats['pickup_speed'] = float(gps_data.speed.loc[pickup_timestamp])
+                        stats['rollup_height'] = float(elevations.loc[hill3_starts[0]] - elevations.loc[pickup_timestamp])                        
                 
         except Exception as e:
-            print(e)
+            print(f"Error loading fit data for roll {roll.id}: {e}")
     
     return stats
