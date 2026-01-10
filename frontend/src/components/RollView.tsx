@@ -222,7 +222,7 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                         </thead>
                         <tbody>
                             {[1, 2, 3, 4, 5].map((hillNumber) => {
-                                const rollHill = roll.roll_hills[hillNumber - 1];
+                                const rollHill = roll.roll_hills.find(rh => rh.hill_number === hillNumber);
                                 const time = stats?.[`hill${hillNumber}_time_ms` as keyof RollStats];
                                 return (
                                     <tr key={hillNumber} className="border-b last:border-b-0">
