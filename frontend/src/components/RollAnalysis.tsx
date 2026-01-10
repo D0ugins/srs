@@ -146,7 +146,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         hideTooltip();
     }, [hideTooltip]);
 
-    const videoStart = graphs.camera_starts[0];
+    const videoStart = graphs.camera_starts?.[0] ?? 0;
     const updateVideoTime = useCallback((time: number) => {
         const adjustedTime = Math.min(Math.max(0, time - (videoStart / 1000)), duration)
         if (videoRef.current) {

@@ -297,7 +297,7 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
     
     fit_files = [rf for rf in roll.roll_files if rf.type == 'fit']
     if not fit_files:
-        raise HTTPException(status_code=404, detail="No fit files for this roll")
+        return {}
     fit_file = fit_files[0].uri.replace('%fit%', 'virbs')
     try:
         messages = load_fit_file(fit_file)
