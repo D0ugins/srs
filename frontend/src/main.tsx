@@ -1,11 +1,14 @@
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
-import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { RouterProvider, createRouter, createHashHistory } from '@tanstack/react-router'
 
 import * as TanStackQueryProvider from './integrations/tanstack-query/root-provider.tsx'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
+
+// Use hash-based routing for static file hosting
+const hashHistory = createHashHistory()
 
 import './styles.css'
 import reportWebVitals from './reportWebVitals.ts'
@@ -22,7 +25,7 @@ const router = createRouter({
   scrollRestoration: true,
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
-  basepath: `${import.meta.env.BASE_URL || ''}`,
+  history: hashHistory,
 })
 
 // Register the router instance for type safety
