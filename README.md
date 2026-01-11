@@ -23,6 +23,8 @@ Copy the `.env.sample` file to a `.env` file with the relevant fields before run
 
 When creating a new route, run `npm run dev` locally once to update `routeTree.gen.ts` for tanStack router
 
+To build, run `npx vite build`
+
 ### SRS Roll Server
 The backend is written in python and uses FastAPI to handle http requests, and sqlalchemy to read from an sqlite database file.
 
