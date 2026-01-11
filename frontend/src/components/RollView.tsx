@@ -170,9 +170,6 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
         }
     };
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-
 
     const formatVidTime = (seconds: number) => {
         const mins = Math.floor(seconds / 60);

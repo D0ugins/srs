@@ -124,7 +124,7 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
         }
         return ['type', 'driver'];
     });
-    const [filters, setFilters] = useState<unknown[]>([]); // TODO
+    // const [filters, setFilters] = useState<unknown[]>([]); // TODO
 
     useEffect(() => {
         try {
