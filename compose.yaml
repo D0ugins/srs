@@ -1,6 +1,8 @@
 services:
   backend:
       build: ./backend
+      profiles:
+        - "dev"
       ports:
         - "8000:8000"
       command: uv run fastapi dev /app/src/api/main.py --host 0.0.0.0
@@ -21,6 +23,8 @@ services:
             path: ./backend/uv.lock
   frontend:
       build: ./frontend
+      profiles:
+        - "dev"
       ports:
         - "3000:3000"
       depends_on:
@@ -33,6 +37,32 @@ services:
             target: /app
           - action: rebuild
             path: ./frontend/package-lock.json
+  backend_prod:
+      build: ./backend
+      profiles:
+        - "prod"
+      ports:
+        - "8000:8000"
+      command: uv run fastapi run /app/src/api/main.py --host 0.0.0.0
+      volumes:
+        - ./data/geo:/app/data/geo
+        - ./data/db:/app/data/db
+        - ./data/videos:/app/data/videos
+        - ./data/virbs:/app/data/virbs
+        - ./data/cache:/app/data/cache
+      environment:
+        - DB_PATH=/app/data/db/srs.db
+  frontend_prod:
+      build: 
+          context: ./frontend
+          dockerfile: Dockerfile.prod
+      profiles: 
+        - "prod"
+      ports: 
+        - "80:8080"
+      depends_on:
+        - backend_prod
+      command: npx -y http-server
   create_db:
       build: ./backend
       command: uv run /app/src/db/database.py

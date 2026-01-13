@@ -8,7 +8,7 @@ Main web UI for viewing and analyzing rolls. [More information](https://docs.goo
 
 To run with docker, upload the data folders referenced in `compose.yaml` and run `docker compose up --build`. 
 
-For hot reloading during development, use `docker compose up --build --watch`[^1]
+For hot reloading during development, use `docker compose --profile dev up --build --watch`[^1]
 
 [^1]: At the moment hot reloading of the backend doesn't work while a video is playing on the frontend. Reload the page in the browser to allow the backend to restart
 
@@ -24,6 +24,8 @@ Copy the `.env.sample` file to a `.env` file with the relevant fields before run
 When creating a new route, run `npm run dev` locally once to update `routeTree.gen.ts` for tanStack router
 
 To build, run `npx vite build`, make sure to set the base path if needed
+
+To run for production (frontend + backend) run `docker compose --profile prod up --build`
 
 ### SRS Roll Server
 The backend is written in python and uses FastAPI to handle http requests, and sqlalchemy to read from an sqlite database file.
