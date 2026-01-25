@@ -33,7 +33,7 @@ export default memo(({ width, height, zoom, positions, currentLocation }:
 
     return <svg width={width} height={height} ref={zoom.containerRef} className='touch-none'>
         <Group transform={zoom.toString()}>
-            <image href={`${import.meta.env.BASE_URL || ''}/course_sat.png`} width="100%" height="100%" />
+            <image href={`${import.meta.env.BASE_URL || '/'}course_sat.png`} width="100%" height="100%" />
             <LinePath
                 data={positions ?? []}
                 x={d => xScale(d.long)}
