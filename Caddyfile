@@ -1,0 +1,7 @@
+srs.westus2.cloudapp.azure.com {
+  reverse_proxy backend_prod:8000 {
+    transport http { 
+      versions 1.1 
+    }
+  }
+}
