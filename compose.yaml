@@ -41,8 +41,6 @@ services:
       build: ./backend
       profiles:
         - "prod"
-      ports:
-        - "8000:8000"
       command: uv run fastapi run /app/src/api/main.py --host 0.0.0.0
       volumes:
         - ./data/geo:/app/data/geo
@@ -57,9 +55,33 @@ services:
           context: ./frontend
           dockerfile: Dockerfile.prod
       profiles: 
-        - "prod"
+        - "frontend"
       ports: 
-        - "80:8080"
+        - "8080:8080"
+      depends_on:
+        - backend_prod
+      command: npx -y http-server 
+  caddy:
+      image: caddy:latest
+      profiles: 
+        - "prod"
+      ports:
+        - "80:80"
+        - "443:443"
+      volumes:
+        - ./Caddyfile:/etc/caddy/Caddyfile
+        - caddy_data:/data
+        - caddy_config:/config
+      depends_on:
+        - backend_prod
+  dashboard:
+      build: 
+          context: ../buggy-racing-dashboard
+          dockerfile: Dockerfile.prod
+      profiles: 
+        - "frontend"
+      ports: 
+        - "9000:8080"
       depends_on:
         - backend_prod
       command: npx -y http-server
@@ -70,3 +92,6 @@ services:
         - ./data/db:/app/data/db
       profiles:
         - "create_db"
+volumes:
+  caddy_data: 
+  caddy_config:
