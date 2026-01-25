@@ -82,7 +82,7 @@ def export_freeroll(
         roll_number = str(roll.roll_number) if roll.roll_number is not None else ""
         
         fit_files = [rf for rf in roll.roll_files if rf.type == 'fit']
-        fit_file = fit_files[0].uri.replace('%fit%', 'virbs') if len(fit_files) == 1 else None
+        fit_file = fit_files[0].uri.replace('[[fit]]', 'virbs') if len(fit_files) == 1 else None
         
         stats = calculate_freeroll_stats(fit_file, roll.roll_events)
         

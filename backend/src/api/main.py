@@ -20,12 +20,12 @@ app.include_router(sensors.router)
 app.include_router(file.router)
 app.include_router(exports.router)
 
-app.mount("/%thumbnails%", 
+app.mount("/[[thumbnails]]", 
           StaticFiles(directory='/app/data/virbs'), 
           name="thumbnails")
-app.mount("/%fit%", 
+app.mount("/[[fit]]", 
           StaticFiles(directory=os.path.join(os.path.dirname(__file__), "/app/data/virbs")), 
           name="fit")
-app.mount("/%videos%", 
+app.mount("/[[videos]]", 
           StaticFiles(directory=os.path.join(os.path.dirname(__file__), "/app/data/videos")), 
           name="videos")
