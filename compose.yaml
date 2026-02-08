@@ -42,6 +42,7 @@ services:
       profiles:
         - "prod"
       command: uv run fastapi run /app/src/api/main.py --host 0.0.0.0
+      restart: unless-stopped
       volumes:
         - ./data/geo:/app/data/geo
         - ./data/db:/app/data/db
@@ -74,6 +75,7 @@ services:
         - caddy_config:/config
       depends_on:
         - backend_prod
+      restart: unless-stopped
   dashboard:
       build: 
           context: ../buggy-racing-dashboard
