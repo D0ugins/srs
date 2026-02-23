@@ -41,6 +41,8 @@ services:
       build: ./backend
       profiles:
         - "prod"
+      ports:
+        - "8000:8000"
       command: uv run fastapi run /app/src/api/main.py --host 0.0.0.0
       restart: unless-stopped
       volumes:
@@ -65,7 +67,7 @@ services:
   caddy:
       image: caddy:latest
       profiles: 
-        - "prod"
+        - "proxy"
       ports:
         - "80:80"
         - "443:443"
@@ -73,8 +75,6 @@ services:
         - ./Caddyfile:/etc/caddy/Caddyfile
         - caddy_data:/data
         - caddy_config:/config
-      depends_on:
-        - backend_prod
       restart: unless-stopped
   dashboard:
       build: 
