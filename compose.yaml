@@ -14,6 +14,8 @@ services:
         - ./data/cache:/app/data/cache
       environment:
         - DB_PATH=/app/data/db/srs.db
+      env_file:
+        - ./backend/.env
       develop:
         watch:
           - action: sync
@@ -45,6 +47,8 @@ services:
         - "8000:8000"
       command: uv run fastapi run /app/src/api/main.py --host 0.0.0.0
       restart: unless-stopped
+      env_file:
+        - ./backend/.env
       volumes:
         - ./data/geo:/app/data/geo
         - ./data/db:/app/data/db

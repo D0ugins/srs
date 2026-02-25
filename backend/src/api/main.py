@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from api.routers import rolls, drivers, buggies, pushers, sensors, file, exports
+from lib.racebox import load_session
 
 app = FastAPI()
 app.add_middleware(
@@ -29,3 +30,7 @@ app.mount("/[[fit]]",
 app.mount("/[[videos]]", 
           StaticFiles(directory=os.path.join(os.path.dirname(__file__), "/app/data/videos")), 
           name="videos")
+
+@app.get("/[[racebox]]/{session_id}")
+def get_racebox_session(session_id: str):
+    return load_session(session_id)
