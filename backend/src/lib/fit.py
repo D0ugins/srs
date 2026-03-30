@@ -48,6 +48,7 @@ def get_camera_ends(messages: FitMessages) -> list[int]:
     return [m['timestamp'] * 1000 + m['timestamp_ms']
               for m in messages.get('camera_event_mesgs', []) if m.get('camera_event_type', '') == 'video_end']
     
+
 def get_gps_data(messages: FitMessages) -> pd.DataFrame | None:
     """
     Get gps data from fit file messagges.
@@ -116,17 +117,51 @@ def get_sensor_data(calibration: dict, sensor_messages: List[SensorMessage], fie
     return raw, data, float(fs)
 
 
-def get_angular_velocity(gps_data: pd.DataFrame, cutoff: float = 2.0) -> pd.Series:
-    """
-    Compute angular velocity (in rad/s) from gps heading data.
-    Returns pd.Series indexed by timestamp (ms).
-    Filters out data where speed < cutoff
-    """
+def get_fit_graph_data(messages: dict) -> dict:
+    """Extract graph data (gps, centripetal, accelerometer, gyroscope, magnetometer) from fit messages."""
+    from lib.geo import get_elevations, get_angular_velocity
     
-    heading = gps_data.heading[np.linalg.norm(np.array(gps_data.velocity.to_list()), axis=1) >= cutoff]
-    # Account for wrap arounds
-    offsets = np.array([heading.shift(1) - heading, heading.shift(1) - heading - 360, heading.shift(1) - heading + 360])
-    mins = np.argmin(np.abs(offsets), axis=0)
-    heading_diffs = pd.Series(offsets[mins, np.arange(len(mins))], index=heading.index)
+    response = {}
+    gps_data = get_gps_data(messages)
+    if gps_data is not None:
+        response['gps_data'] = pd.DataFrame({
+            'timestamp': gps_data.index,
+            'lat': gps_data.position_lat,
+            'long': gps_data.position_long,
+            'elevation': get_elevations(gps_data, snap_to_course=True, subtract_start_line=True),
+            'speed': gps_data.speed,
+        }).to_dict(orient='list')
+        angular_velocity = get_angular_velocity(gps_data.heading, gps_data.speed, cutoff=1)
+        response['centripetal'] = pd.DataFrame({
+            'timestamp': angular_velocity.index,
+            'values': angular_velocity * gps_data.speed.loc[angular_velocity.index]
+        }).to_dict(orient='list')
     
-    return ((heading_diffs * (np.pi / 180)) / (heading_diffs.index.to_series().diff() / 1000)).dropna()
+    if 'three_d_sensor_calibration_mesgs' in messages:
+        calibration_mesgs = messages['three_d_sensor_calibration_mesgs']
+        calibration_data = { m['sensor_type']: m for m in calibration_mesgs }
+        if 'accelerometer' in calibration_data and 'accelerometer_data_mesgs' in messages:
+            accel_cal = calibration_data['accelerometer']
+            _, accel_data, _ = get_sensor_data(accel_cal, 
+                                               messages['accelerometer_data_mesgs'],
+                                               {'x': 'accel_x', 'y': 'accel_y', 'z': 'accel_z'},
+                                               decimation=20)
+            accel_data.x *= -1
+            accel_data.y *= -1
+            response['accelerometer'] = accel_data.to_dict(orient='list')
+        if 'gyroscope' in calibration_data and 'gyroscope_data_mesgs' in messages:
+            gyro_cal = calibration_data['gyroscope']
+            _, gyro_data, _ = get_sensor_data(gyro_cal, 
+                                              messages['gyroscope_data_mesgs'],
+                                              {'x': 'gyro_x', 'y': 'gyro_y', 'z': 'gyro_z'},
+                                              decimation=20)
+            response['gyroscope'] = gyro_data.to_dict(orient='list')
+        if 'compass' in calibration_data and 'magnetometer_data_mesgs' in messages:
+            mag_cal = calibration_data['compass']
+            _, mag_data, _ = get_sensor_data(mag_cal, 
+                                             messages['magnetometer_data_mesgs'],
+                                             {'x': 'mag_x', 'y': 'mag_y', 'z': 'mag_z'},
+                                             decimation=20)
+            response['magnetometer'] = mag_data.to_dict(orient='list')
+    
+    return response

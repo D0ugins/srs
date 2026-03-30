@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+import numpy as np
 import pandas as pd
 import rasterio
 import geopandas as gpd
@@ -26,3 +27,18 @@ def get_elevations(gps_data: pd.DataFrame, snap_to_course: bool, subtract_start_
     elevation = load_elevation_data()
     samples = elevation.sample(positions.to_crs(elevation.crs).apply(lambda p: (p.x, p.y)))
     return pd.Series([e[0] for e in samples], index=gps_data.index) - (288.4 if subtract_start_line else 0.0)
+
+
+def get_angular_velocity(heading: pd.Series, speed: pd.Series, cutoff: float = 2.0) -> pd.Series:
+    """
+    Compute angular velocity (in rad/s) from heading and speed data.
+    Returns pd.Series indexed by timestamp (ms).
+    Filters out data where speed < cutoff.
+    """
+    heading = heading[speed >= cutoff]
+    # Account for wrap arounds
+    offsets = np.array([heading.shift(1) - heading, heading.shift(1) - heading - 360, heading.shift(1) - heading + 360])
+    mins = np.argmin(np.abs(offsets), axis=0)
+    heading_diffs = pd.Series(offsets[mins, np.arange(len(mins))], index=heading.index)
+    
+    return ((heading_diffs * (np.pi / 180)) / (heading_diffs.index.to_series().diff() / 1000)).dropna()

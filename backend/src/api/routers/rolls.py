@@ -1,10 +1,8 @@
 from db import Roll, SessionDep
 from db.database import Buggy, Driver, Pusher, RollDate, RollFile, RollHill, RollType, RollEvent, Sensor
-from lib.fit import get_angular_velocity, get_camera_ends, get_camera_starts, get_gps_data, get_sensor_data, load_fit_file
-from lib.geo import get_elevations
+from lib.fit import FIT_EPOCH_S, get_camera_ends, get_camera_starts, get_fit_graph_data, load_fit_file
+from lib.racebox import get_racebox_graph_data
 from lib.events import calculate_hill_times, calculate_freeroll_stats
-import numpy as np
-import pandas as pd
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -296,63 +294,32 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
     if not roll:
         raise HTTPException(status_code=404, detail="Roll not found")
     
+    racebox_files = [rf for rf in roll.roll_files if rf.type == 'racebox']
     fit_files = [rf for rf in roll.roll_files if rf.type == 'fit']
-    if not fit_files:
-        return {}
-    fit_file = fit_files[0].uri.replace('[[fit]]', 'virbs')
-    try:
+    
+    if not racebox_files and not fit_files: return {}
+    
+    if racebox_files and not fit_files:
+        session_id = racebox_files[0].uri.split('/')[-1]
+        racebox_start, response = get_racebox_graph_data(session_id)
+   
+    if fit_files:
+        fit_file = fit_files[0].uri.replace('[[fit]]', 'virbs')
         messages = load_fit_file(fit_file)
-    except Exception as e:
-        print(e)
-        raise HTTPException(status_code=500, detail=f"Error loading fit file: {e}")
-    
-    response = {}
-    gps_data = get_gps_data(messages)
-    if gps_data is not None:
-        response['gps_data'] = pd.DataFrame({
-            'timestamp': gps_data.index,
-            'lat': gps_data.position_lat,
-            'long': gps_data.position_long,
-            'elevation': get_elevations(gps_data, snap_to_course=True, subtract_start_line=True),
-            'speed': gps_data.speed,
-        }).to_dict(orient='list')
-        angular_velocity = get_angular_velocity(gps_data, 1)
-        response['centripetal'] = pd.DataFrame({
-            'timestamp': angular_velocity.index,
-            'values': angular_velocity * gps_data.speed.loc[angular_velocity.index]  # v^2 / r = v * omega
-        }).to_dict(orient='list')
         
+        if racebox_files:
+            session_id = racebox_files[0].uri.split('/')[-1]
+            racebox_start, response = get_racebox_graph_data(session_id)
+            
+            fit_start = messages['timestamp_correlation_mesgs'][0]['timestamp'] + FIT_EPOCH_S
+            offset = racebox_start - fit_start   
+        else:
+            response = get_fit_graph_data(messages)
+            offset = 0
+        print(offset * 1000)
+        response['camera_starts'] = [t - offset for t in get_camera_starts(messages)]
+        response['camera_ends'] = [t - offset for t in get_camera_ends(messages)]
     
-    # TODO: handle multiple calibration messages (for gyro)
-    if 'three_d_sensor_calibration_mesgs' in messages:
-        calibration_mesgs = messages['three_d_sensor_calibration_mesgs']
-        calibration_data = { m['sensor_type']: m for m in calibration_mesgs }
-        if 'accelerometer' in calibration_data and 'accelerometer_data_mesgs' in messages:
-            accel_cal = calibration_data['accelerometer']
-            _, accel_data, _ = get_sensor_data(accel_cal, 
-                                               messages['accelerometer_data_mesgs'], # type: ignore
-                                               {'x': 'accel_x', 'y': 'accel_y', 'z': 'accel_z'},
-                                               decimation=20)
-            # makes these positive for forward facing virb
-            accel_data.x *= -1
-            accel_data.y *= -1
-            response['accelerometer'] = accel_data.to_dict(orient='list')
-        if 'gyroscope' in calibration_data and 'gyroscope_data_mesgs' in messages:
-            gyro_cal = calibration_data['gyroscope']
-            _, gyro_data, _ = get_sensor_data(gyro_cal, 
-                                              messages['gyroscope_data_mesgs'], # type: ignore
-                                              {'x': 'gyro_x', 'y': 'gyro_y', 'z': 'gyro_z'},
-                                              decimation=20)
-            response['gyroscope'] = gyro_data.to_dict(orient='list')
-        if 'compass' in calibration_data and 'magnetometer_data_mesgs' in messages:
-            mag_cal = calibration_data['compass']
-            _, mag_data, _ = get_sensor_data(mag_cal, 
-                                             messages['magnetometer_data_mesgs'], # type: ignore
-                                             {'x': 'mag_x', 'y': 'mag_y', 'z': 'mag_z'},
-                                             decimation=20)
-            response['magnetometer'] = mag_data.to_dict(orient='list')
-    response['camera_starts'] = get_camera_starts(messages)
-    response['camera_ends'] = get_camera_ends(messages)
     cached_id = roll_id
     cached = response
     return response
