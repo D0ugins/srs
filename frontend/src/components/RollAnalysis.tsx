@@ -158,7 +158,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         setCurrentTime(adjustedTime);
     }, [duration, videoStart]);
 
-    const timestamp = videoStart ? currentTime * 1000 + videoStart : undefined;
+    const timestamp = currentTime * 1000 + videoStart;
     useEffect(() => {
         if (!videoRef.current) return;
 
