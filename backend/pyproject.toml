@@ -16,6 +16,7 @@ dependencies = [
     "line-profiler>=5.0.0",
     "matplotlib>=3.10.6",
     "numpy>=2.3.3",
+    "opencv-python>=4.13.0.92",
     "orjson>=3.11.5",
     "pandas>=2.3.2",
     "plotly>=6.3.0",
