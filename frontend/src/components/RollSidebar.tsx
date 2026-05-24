@@ -19,15 +19,19 @@ interface RollTreeNode {
 
 export type RollDataTree = RollTreeNode | RollTreeLeaf
 
-export const ROLL_ORDER_KEYS = ['type', 'date', 'driver', 'buggy'] as const;
+export const ROLL_ORDER_KEYS = ['raceday', 'date', 'driver', 'buggy'] as const;
 export type RollOrderKey = typeof ROLL_ORDER_KEYS[number];
 
 const GROUPINGS_KEY = 'rolls-sidebar-groupings';
 
 function getGroupKey(roll: RollDataBase, key: RollOrderKey): string {
     switch (key) {
-        case 'type':
-            return roll.roll_date.type;
+        case 'raceday': {
+            const month = roll.roll_date.month;
+            const year = roll.roll_date.year;
+            const racedayYear = month <= 4 ? year : year + 1;
+            return `RD ${racedayYear}`;
+        }
         case 'date':
             return formatDate(roll.roll_date);
         case 'driver':
@@ -76,7 +80,6 @@ function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filter
     const leaves: Map<RollDataBase, RollTreeLeaf> = new Map();
     for (const roll of rolls) {
         let name = '';
-        if (!groupings.includes('type')) name += `${capitalize(roll.roll_date.type)} `
         if (!groupings.includes('driver')) name += `${roll.driver.name} `
         if (!groupings.includes('buggy')) name += `${roll.buggy.name} `
         if (!groupings.includes('date')) name += `${formatDate(roll.roll_date)} `
@@ -94,7 +97,7 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
     const { data, isPending, isError } = useQuery({
         queryKey: ['rolls'],
         queryFn: async () => {
-            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls`)
+            const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls?type=weekend`)
             if (!response.ok) {
                 throw new Error('Network response was not ok')
             }
@@ -114,7 +117,7 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
     const [groupings, setGroupings] = useState<RollOrderKey[]>(() => {
         try {
             const stored = localStorage.getItem(GROUPINGS_KEY);
-            if (!stored) return ['type', 'driver'];
+            if (!stored) return ['date', 'driver'];
             const parsed = JSON.parse(stored) as string[];
 
             if (parsed.every(key => ROLL_ORDER_KEYS.includes(key as RollOrderKey)))
@@ -122,7 +125,7 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
         } catch (e) {
             console.error('Failed to load groupings from localStorage', e);
         }
-        return ['type', 'driver'];
+        return ['raceday', 'driver'];
     });
     // const [filters, setFilters] = useState<unknown[]>([]); // TODO
 

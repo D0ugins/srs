@@ -163,6 +163,7 @@ def get_rolls(
     roll_date_id: int | None = Query(None),
     buggy_id: int | None = Query(None),
     driver_id: int | None = Query(None),
+    type: RollType | None = Query(None),
     # skip: int = Query(0, ge=0),
     # limit: int = Query(100, ge=1, le=1000)
 ):
@@ -179,6 +180,8 @@ def get_rolls(
         query = query.where(Roll.buggy_id == buggy_id)
     if driver_id:
         query = query.where(Roll.driver_id == driver_id)
+    if type:
+        query = query.where(Roll.roll_date.has(RollDate.type == type))
     
     rolls = session.scalars(query).all()
     return rolls
