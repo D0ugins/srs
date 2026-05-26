@@ -4,7 +4,7 @@ services:
       profiles:
         - "dev"
       ports:
-        - "8000:8000"
+        - "8001:8000"
       command: uv run fastapi dev /app/src/api/main.py --host 0.0.0.0
       volumes:
         - ./data/geo:/app/data/geo
@@ -13,7 +13,7 @@ services:
         - ./data/virbs:/app/data/virbs
         - ./data/cache:/app/data/cache
       environment:
-        - DB_PATH=/app/data/db/srs.db
+        - DB_URI=sqlite:////app/data/db/srs.db
       env_file:
         - ./backend/.env
       develop:
@@ -56,7 +56,7 @@ services:
         - ./data/virbs:/app/data/virbs
         - ./data/cache:/app/data/cache
       environment:
-        - DB_PATH=/app/data/db/srs.db
+        - DB_URI=sqlite:////app/data/db/srs.db
   frontend_prod:
       build: 
           context: ./frontend
@@ -98,6 +98,17 @@ services:
         - ./data/db:/app/data/db
       profiles:
         - "create_db"
+  migrations:
+      build: ./backend
+      profiles:
+        - "dev"
+      command: uv run alembic upgrade head
+      volumes:
+        - ./data/db:/app/data/db
+      environment:
+        - DB_PATH=/app/data/db/srs.db
+      env_file:
+        - ./backend/.env
 volumes:
   caddy_data: 
   caddy_config:

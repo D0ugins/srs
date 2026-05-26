@@ -7,8 +7,7 @@ from sqlalchemy import create_engine, Index, CheckConstraint, event, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, Session, Mapped, mapped_column
 
 DATA_PATH = os.getenv('DATA_PATH', '/app/data')
-DB_PATH = os.getenv('DB_PATH', f'{DATA_PATH}/db/srs.db')
-DB_URI = f'sqlite:///{DB_PATH}'
+DB_URI = os.getenv('DB_URI', f'sqlite:///{DATA_PATH}/db/srs.db')
 engine = create_engine(DB_URI, connect_args={"check_same_thread": False})
 
 Base = declarative_base()
