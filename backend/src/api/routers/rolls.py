@@ -271,7 +271,12 @@ def update_roll(roll_id: int, roll_data: RollUpdate, session: SessionDep):
     roll = session.get(Roll, roll_id)
     if not roll:
         raise HTTPException(status_code=404, detail="Roll not found")
-
+    if roll_data.roll_number is None and roll_data.start_time is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Either Roll Number or Start Time must be provided"
+        )
+        
     roll.driver_notes = roll_data.driver_notes
     roll.mech_notes = roll_data.mech_notes
     roll.pusher_notes = roll_data.pusher_notes
@@ -307,6 +312,11 @@ def update_roll(roll_id: int, roll_data: RollUpdate, session: SessionDep):
 @router.post("")
 def create_roll(roll_data: RollUpdate, session: SessionDep):
     rolldate = get_or_create_rolldate(session, roll_data.roll_date)
+    if roll_data.roll_number is None and roll_data.start_time is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Either Roll Number or Start Time must be provided"
+        )
     driver = session.execute(
         select(Driver).where(Driver.name == roll_data.driver_name)
     ).scalar_one_or_none()

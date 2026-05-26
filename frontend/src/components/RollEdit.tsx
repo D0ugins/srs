@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { RollDetails, RollUpdate, Driver, Buggy, Sensor, Pusher } from "@/lib/roll";
 import Autocomplete from "./Autocomplete";
@@ -32,7 +33,7 @@ export function rollToRollUpdate(roll: RollDetails): RollUpdate {
     };
 }
 
-export default function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData: (rollData: RollUpdate) => void }) {
+export default function RollEdit({ formData, setFormData }: { formData: RollUpdate, setFormData: Dispatch<SetStateAction<RollUpdate>> }) {
     const pusherInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     const { data: drivers, isLoading: driversLoading } = useQuery({
@@ -44,10 +45,10 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
             }
             const data: Driver[] = await response.json();
             if (!formData.driver_name) {
-                setFormData({
-                    ...formData,
+                setFormData((prev) => ({
+                    ...prev,
                     driver_name: data[0]?.name || ''
-                });
+                }));
             }
             return data;
         }
@@ -62,10 +63,10 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
             }
             const data: Buggy[] = await response.json();
             if (!formData.buggy_abbreviation) {
-                setFormData({
-                    ...formData,
+                setFormData((prev) => ({
+                    ...prev,
                     buggy_abbreviation: data[0]?.abbreviation || ''
-                });
+                }));
             }
             return data;
         }
