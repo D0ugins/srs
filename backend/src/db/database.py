@@ -3,7 +3,7 @@ from typing import Annotated
 from datetime import datetime, timezone
 from enum import Enum
 from fastapi import Depends
-from sqlalchemy import create_engine, Index, CheckConstraint, event, ForeignKey
+from sqlalchemy import create_engine, Index, CheckConstraint, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, Session, Mapped, mapped_column
 
 DATA_PATH = os.getenv('DATA_PATH', '/app/data')
@@ -69,7 +69,7 @@ class Sensor(TimestampModel):
     abbreviation: Mapped[str] = mapped_column(unique=True)
     uri: Mapped[str | None] = mapped_column()
     
-    roll_files: Mapped[list["RollFile"]] = relationship(back_populates="sensor")
+    files: Mapped[list["File"]] = relationship(back_populates="sensor")
     
     def __repr__(self):
         return f"Sensor(id={self.id}, name='{self.name}', type='{self.type}')"
@@ -131,22 +131,36 @@ class Roll(TimestampModel):
     def __repr__(self):
         return f"Roll(id={self.id}, roll_date_id={self.roll_date_id}, buggy_id={self.buggy_id}, driver_id={self.driver_id}, roll_number={self.roll_number})"
 
+class File(TimestampModel):
+    __tablename__ = "file"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    type: Mapped[str] = mapped_column(index=True)
+    uri: Mapped[str] = mapped_column()
+    sensor_id: Mapped[int | None] = mapped_column(ForeignKey("sensor.id"), index=True)
+
+    sensor: Mapped["Sensor"] = relationship(back_populates="files")
+    roll_files: Mapped[list["RollFile"]] = relationship(back_populates="file")
+
+    __table_args__ = (Index("idx_file_type_uri_sensor", "type", "uri", "sensor_id", unique=True),)
+
+    def __repr__(self):
+        return f"File(id={self.id}, type='{self.type}', uri='{self.uri}', sensor_id={self.sensor_id})"
+
 class RollFile(TimestampModel):
     __tablename__ = "rollfile"
     
     id: Mapped[int] = mapped_column(primary_key=True)
     roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
-    type: Mapped[str] = mapped_column(index=True)
-    uri: Mapped[str] = mapped_column()
-    sensor_id: Mapped[int | None] = mapped_column(ForeignKey("sensor.id"))
+    file_id: Mapped[int] = mapped_column(ForeignKey("file.id"), index=True)
     
     roll: Mapped["Roll"] = relationship(back_populates="roll_files")
-    sensor: Mapped["Sensor"] = relationship(back_populates="roll_files")
+    file: Mapped["File"] = relationship(back_populates="roll_files")
     
-    __table_args__ = (Index("idx_rollfile_roll_type_uri", "roll_id", "type", "uri", unique=True),)
+    __table_args__ = (Index("idx_rollfile_roll_file", "roll_id", "file_id", unique=True),)
     
     def __repr__(self):
-        return f"RollFile(id={self.id}, roll_id={self.roll_id}, type='{self.type}', uri='{self.uri}', sensor_id={self.sensor_id})"
+        return f"RollFile(id={self.id}, roll_id={self.roll_id}, file_id={self.file_id})"
 
 class RollEvent(TimestampModel):
     __tablename__ = "rollevent"

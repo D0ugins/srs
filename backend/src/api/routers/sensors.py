@@ -17,7 +17,7 @@ def get_sensors(
 @router.get("/{sensor_id}")
 def get_sensor(sensor_id: int, session: SessionDep):
     query = select(Sensor).options(
-        selectinload(Sensor.roll_files)
+        selectinload(Sensor.files)
     ).where(Sensor.id == sensor_id)
     
     sensor = session.scalar(query)

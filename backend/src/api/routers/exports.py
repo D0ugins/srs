@@ -5,7 +5,7 @@ from lib.events import calculate_hill_times, calculate_freeroll_stats
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from db import SessionDep
-from db.database import Roll, RollHill, RollEvent
+from db.database import Roll, RollFile, RollHill, RollEvent
 
 router = APIRouter(prefix="/exports", tags=["exports"])
 
@@ -68,7 +68,7 @@ def export_freeroll(
         selectinload(Roll.buggy),
         selectinload(Roll.roll_date),
         selectinload(Roll.roll_events),
-        selectinload(Roll.roll_files),
+        selectinload(Roll.roll_files).selectinload(RollFile.file),
     )
     
     rolls = session.scalars(query).all()
@@ -81,8 +81,8 @@ def export_freeroll(
         start_time = roll.start_time.strftime("%H:%M") if roll.start_time else ""
         roll_number = str(roll.roll_number) if roll.roll_number is not None else ""
         
-        fit_files = [rf for rf in roll.roll_files if rf.type == 'fit']
-        fit_file = fit_files[0].uri.replace('[[fit]]', 'virbs') if len(fit_files) == 1 else None
+        fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
+        fit_file = fit_files[0].file.uri.replace('[[fit]]', 'virbs') if len(fit_files) == 1 else None
         
         stats = calculate_freeroll_stats(fit_file, roll.roll_events)
         

@@ -1,5 +1,5 @@
 from db import Roll, SessionDep
-from db.database import Buggy, Driver, Pusher, RollDate, RollFile, RollHill, RollType, RollEvent, Sensor
+from db.database import Buggy, Driver, File, Pusher, RollDate, RollFile, RollHill, RollType, RollEvent, Sensor
 from lib.fit import FIT_EPOCH_S, get_camera_ends, get_camera_starts, get_fit_graph_data, load_fit_file
 from lib.racebox import get_racebox_graph_data
 from lib.events import calculate_hill_times, calculate_freeroll_stats
@@ -80,25 +80,40 @@ def get_or_create_sensor(session: SessionDep, abbreviation: str) -> Sensor:
         session.flush()
     return sensor
 
-def get_or_create_rollfile(session: SessionDep, 
-                           roll_file_input: RollFileInput, 
-                           roll_id: int) -> RollFile:
-    query = select(RollFile).where(
-        RollFile.type == roll_file_input.type,
-        RollFile.uri == roll_file_input.uri,
-        RollFile.roll_id == roll_id
+def get_or_create_file(session: SessionDep, roll_file_input: RollFileInput) -> File:
+    sensor = None
+    if roll_file_input.sensor_abbreviation:
+        sensor = get_or_create_sensor(session, roll_file_input.sensor_abbreviation)
+
+    query = select(File).where(
+        File.type == roll_file_input.type,
+        File.uri == roll_file_input.uri,
+        File.sensor_id == (sensor.id if sensor else None)
     )
-    roll_file = session.scalar(query)
-    if not roll_file:
-        sensor = None
-        if roll_file_input.sensor_abbreviation:
-            sensor = get_or_create_sensor(session, roll_file_input.sensor_abbreviation)
-        
-        roll_file = RollFile(
+    file = session.scalar(query)
+    if not file:
+        file = File(
             type=roll_file_input.type,
             uri=roll_file_input.uri,
             sensor=sensor,
-            roll_id=roll_id
+        )
+        session.add(file)
+        session.flush()
+    return file
+
+def get_or_create_rollfile(session: SessionDep, 
+                           roll_file_input: RollFileInput, 
+                           roll_id: int) -> RollFile:
+    file = get_or_create_file(session, roll_file_input)
+    query = select(RollFile).where(
+        RollFile.roll_id == roll_id,
+        RollFile.file_id == file.id
+    )
+    roll_file = session.scalar(query)
+    if not roll_file:
+        roll_file = RollFile(
+            roll_id=roll_id,
+            file=file,
         )
         session.add(roll_file)
         session.flush()
@@ -157,6 +172,53 @@ def get_or_create_event(session: SessionDep, roll_id: int,
         session.flush()
     return roll_event
 
+def serialize_sensor(sensor: Sensor | None):
+    if not sensor:
+        return None
+    return {
+        "id": sensor.id,
+        "name": sensor.name,
+        "abbreviation": sensor.abbreviation,
+        "uri": sensor.uri,
+        "type": sensor.type,
+        "created_at": sensor.created_at,
+        "updated_at": sensor.updated_at,
+    }
+
+def serialize_roll_file(roll_file: RollFile, detailed: bool):
+    payload = {
+        "id": roll_file.id,
+        "uri": roll_file.file.uri,
+        "type": roll_file.file.type,
+        "created_at": roll_file.created_at,
+        "updated_at": roll_file.updated_at,
+    }
+    if detailed:
+        payload["sensor"] = serialize_sensor(roll_file.file.sensor)
+    else:
+        payload["sensor_id"] = roll_file.file.sensor_id
+    return payload
+
+def serialize_roll(roll: Roll, detailed: bool):
+    payload = {
+        "id": roll.id,
+        "roll_number": roll.roll_number,
+        "start_time": roll.start_time,
+        "driver": roll.driver,
+        "buggy": roll.buggy,
+        "roll_date": roll.roll_date,
+        "roll_files": [serialize_roll_file(roll_file, detailed) for roll_file in roll.roll_files],
+        "driver_notes": roll.driver_notes,
+        "mech_notes": roll.mech_notes,
+        "pusher_notes": roll.pusher_notes,
+        "created_at": roll.created_at,
+        "updated_at": roll.updated_at,
+    }
+    if detailed:
+        payload["roll_events"] = roll.roll_events
+        payload["roll_hills"] = roll.roll_hills
+    return payload
+
 @router.get("")
 def get_rolls(
     session: SessionDep,
@@ -170,7 +232,7 @@ def get_rolls(
     query = select(Roll).options(
         selectinload(Roll.driver),
         selectinload(Roll.buggy),
-        selectinload(Roll.roll_files),
+        selectinload(Roll.roll_files).selectinload(RollFile.file),
         selectinload(Roll.roll_date)
     )
     
@@ -184,14 +246,14 @@ def get_rolls(
         query = query.where(Roll.roll_date.has(RollDate.type == type))
     
     rolls = session.scalars(query).all()
-    return rolls
+    return [serialize_roll(roll, detailed=False) for roll in rolls]
 
 @router.get('/{roll_id}')
 def get_roll(roll_id: int, session: SessionDep):
     query = select(Roll).options(
         selectinload(Roll.driver),
         selectinload(Roll.buggy),
-        selectinload(Roll.roll_files).selectinload(RollFile.sensor),
+        selectinload(Roll.roll_files).selectinload(RollFile.file).selectinload(File.sensor),
         selectinload(Roll.roll_date),
         selectinload(Roll.roll_events),
         selectinload(Roll.roll_hills).selectinload(RollHill.pusher),
@@ -201,7 +263,7 @@ def get_roll(roll_id: int, session: SessionDep):
     if not roll:
         raise HTTPException(status_code=404, detail="Roll not found")
 
-    return roll
+    return serialize_roll(roll, detailed=True)
 
 @router.put("/{roll_id}")
 def update_roll(roll_id: int, roll_data: RollUpdate, session: SessionDep):
@@ -292,22 +354,22 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
         return cached
     
     roll = session.scalar(
-        select(Roll).options(selectinload(Roll.roll_files)).where(Roll.id == roll_id)
+        select(Roll).options(selectinload(Roll.roll_files).selectinload(RollFile.file)).where(Roll.id == roll_id)
     )    
     if not roll:
         raise HTTPException(status_code=404, detail="Roll not found")
     
-    racebox_files = [rf for rf in roll.roll_files if rf.type == 'racebox']
-    fit_files = [rf for rf in roll.roll_files if rf.type == 'fit']
+    racebox_files = [rf for rf in roll.roll_files if rf.file.type == 'racebox']
+    fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
     
     if not racebox_files and not fit_files: return {}
     
     if racebox_files and not fit_files:
-        session_id = racebox_files[0].uri.split('/')[-1]
+        session_id = racebox_files[0].file.uri.split('/')[-1]
         racebox_start, response = get_racebox_graph_data(session_id)
    
     if fit_files:
-        fit_file = fit_files[0].uri.replace('[[fit]]', 'virbs')
+        fit_file = fit_files[0].file.uri.replace('[[fit]]', 'virbs')
         messages = load_fit_file(fit_file)
         
         if racebox_files:
@@ -356,7 +418,7 @@ def update_roll_events(roll_id: int, events: list[RollEventInput], session: Sess
 @router.get("/{roll_id}/stats")
 def get_roll_stats(roll_id: int, session: SessionDep):
     query = select(Roll).options(
-          selectinload(Roll.roll_files),
+        selectinload(Roll.roll_files).selectinload(RollFile.file),
           selectinload(Roll.roll_events)
     ).where(Roll.id == roll_id)
     
@@ -376,8 +438,8 @@ def get_roll_stats(roll_id: int, session: SessionDep):
     if len(roll_starts) == 1 and len(roll_ends) == 1:
         stats['course_time_ms'] = roll_ends[0] - roll_starts[0]
     
-    fit_files = [rf for rf in roll.roll_files if rf.type == 'fit']
-    fit_file = fit_files[0].uri.replace('[[fit]]', 'virbs') if len(fit_files) == 1 else None
+    fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
+    fit_file = fit_files[0].file.uri.replace('[[fit]]', 'virbs') if len(fit_files) == 1 else None
     
     freeroll_stats = calculate_freeroll_stats(fit_file, roll.roll_events)
     stats.update(freeroll_stats)
