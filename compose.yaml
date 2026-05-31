@@ -104,7 +104,7 @@ services:
         - "dev"
       command: uv run alembic upgrade head
       volumes:
-        - ./backend:/app
+        - ./backend/alembic:/app/alembic
         - ./data/db:/data/db
       environment:
         - DB_PATH=/data/db/srs.db
