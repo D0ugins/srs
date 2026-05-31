@@ -138,9 +138,11 @@ class File(TimestampModel):
     type: Mapped[str] = mapped_column(index=True)
     uri: Mapped[str] = mapped_column()
     sensor_id: Mapped[int | None] = mapped_column(ForeignKey("sensor.id"), index=True)
-
+    
     sensor: Mapped["Sensor"] = relationship(back_populates="files")
     roll_files: Mapped[list["RollFile"]] = relationship(back_populates="file")
+
+    start_time: Mapped[datetime | None] = mapped_column()
 
     __table_args__ = (Index("idx_file_type_uri_sensor", "type", "uri", "sensor_id", unique=True),)
 
@@ -156,6 +158,9 @@ class RollFile(TimestampModel):
     
     roll: Mapped["Roll"] = relationship(back_populates="roll_files")
     file: Mapped["File"] = relationship(back_populates="roll_files")
+    
+    local_start_ms: Mapped[int | None] = mapped_column()
+    local_end_ms: Mapped[int | None] = mapped_column()
     
     __table_args__ = (Index("idx_rollfile_roll_file", "roll_id", "file_id", unique=True),)
     
