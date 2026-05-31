@@ -14,6 +14,9 @@ DATA_PATH = os.getenv('DATA_PATH', '/app/data')
 
 type FitMessages = dict[str, list[dict]]
 
+def fit_to_utc(timestamp: int) -> pd.Timestamp:
+    return pd.to_datetime((timestamp + FIT_EPOCH_S) * 1e9)
+
 @lru_cache(maxsize=16)
 def load_fit_file(file_path: str) -> FitMessages:
     rel_path = file_path
@@ -69,7 +72,7 @@ def get_gps_data(messages: FitMessages) -> pd.DataFrame | None:
     gps_data = pd.DataFrame.from_records(gps_mesgs)
     gps_data.position_lat = gps_data.position_lat / 2**31 * 180
     gps_data.position_long = gps_data.position_long / 2**31 * 180        
-    gps_data.utc_timestamp = pd.to_datetime((gps_data.utc_timestamp + FIT_EPOCH_S) * 1e9)
+    gps_data.utc_timestamp = fit_to_utc(gps_data.utc_timestamp)
     gps_data.timestamp = gps_data.timestamp * 1000 + gps_data.timestamp_ms
     gps_data.drop(columns=['timestamp_ms'])
     gps_data.index = gps_data.timestamp
