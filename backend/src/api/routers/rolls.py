@@ -191,6 +191,9 @@ def serialize_roll_file(roll_file: RollFile, detailed: bool):
         "id": roll_file.id,
         "uri": roll_file.file.uri,
         "type": roll_file.file.type,
+        "start_utc": roll_file.file.start_time,
+        "local_start_ms": roll_file.local_start_ms,
+        "local_end_ms": roll_file.local_end_ms,
         "created_at": roll_file.created_at,
         "updated_at": roll_file.updated_at,
     }

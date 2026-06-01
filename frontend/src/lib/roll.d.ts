@@ -3,7 +3,7 @@ import type { EventType } from "@/lib/constants";
 export interface Driver {
     id: number;
     name: string;
-    
+
     created_at: string;
     updated_at: string;
 }
@@ -12,7 +12,7 @@ export interface Buggy {
     id: number;
     name: string;
     abbreviation: string;
-    
+
     created_at: string;
     updated_at: string;
 }
@@ -39,6 +39,18 @@ export interface Sensor {
     updated_at: string;
 }
 
+export interface RollFile {
+    id: number;
+    uri: string;
+    type: string;
+    start_utc: string | null;
+    local_start_ms: number | null;
+    local_end_ms: number | null;
+
+    created_at: string;
+    updated_at: string;
+}
+
 export interface RollDataBase {
     id: number;
     roll_number?: number;
@@ -60,15 +72,7 @@ export interface RollDataBase {
         notes: string;
     };
 
-    roll_files: {
-        id: number;
-        uri: string;
-        sensor_id: number;
-        type: string;
-
-        created_at: string;
-        updated_at: string;
-    }[];
+    roll_files: RollFile[];
 
     driver_notes: string;
     mech_notes: string;
@@ -79,9 +83,7 @@ export interface RollDataBase {
 }
 
 export interface RollDetails extends RollDataBase {
-    roll_files: {
-        id: number;
-        uri: string;
+    roll_files: (RollFile & {
         sensor: {
             id: number;
             name: string;
@@ -92,11 +94,7 @@ export interface RollDetails extends RollDataBase {
             created_at: string;
             updated_at: string;
         };
-        type: string;
-
-        created_at: string;
-        updated_at: string;
-    }[];
+    })[];
 
     roll_events: {
         id: number;
