@@ -12,6 +12,8 @@ services:
         - ./data/videos:/app/data/videos
         - ./data/virbs:/app/data/virbs
         - ./data/cache:/app/data/cache
+        - ./data/gdrive:/app/data/gdrive
+        - ./data/archive:/app/data/archive
       environment:
         - DB_URI=sqlite:////app/data/db/srs.db
       env_file:
@@ -55,6 +57,8 @@ services:
         - ./data/videos:/app/data/videos
         - ./data/virbs:/app/data/virbs
         - ./data/cache:/app/data/cache
+        - ./data/gdrive:/app/data/gdrive
+        - ./data/archive:/app/data/archive
       environment:
         - DB_URI=sqlite:////app/data/db/srs.db
   frontend_prod:

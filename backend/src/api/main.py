@@ -30,6 +30,12 @@ app.mount("/[[fit]]",
 app.mount("/[[videos]]", 
           StaticFiles(directory=os.path.join(os.path.dirname(__file__), "/app/data/videos")), 
           name="videos")
+app.mount(f"/[[archive]]",
+          StaticFiles(directory=os.path.join(os.path.dirname(__file__), "/app/data/archive")), 
+          name="archive")
+app.mount(f"/[[gdrive]]",
+          StaticFiles(directory=os.path.join(os.path.dirname(__file__), "/app/data/gdrive")), 
+          name="gdrive")
 
 @app.get("/[[racebox]]/{session_id}")
 def get_racebox_session(session_id: str):
