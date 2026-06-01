@@ -147,7 +147,7 @@ class File(TimestampModel):
     __table_args__ = (Index("idx_file_type_uri_sensor", "type", "uri", "sensor_id", unique=True),)
 
     def __repr__(self):
-        return f"File(id={self.id}, type='{self.type}', uri='{self.uri}', sensor_id={self.sensor_id})"
+        return f"File(id={self.id}, type='{self.type}', uri='{self.uri}', sensor_id={self.sensor_id}, start_time={self.start_time})"
 
 class RollFile(TimestampModel):
     __tablename__ = "rollfile"
@@ -165,7 +165,7 @@ class RollFile(TimestampModel):
     __table_args__ = (Index("idx_rollfile_roll_file", "roll_id", "file_id", unique=True),)
     
     def __repr__(self):
-        return f"RollFile(id={self.id}, roll_id={self.roll_id}, file_id={self.file_id})"
+        return f"RollFile(id={self.id}, roll_id={self.roll_id}, file_id={self.file_id}, local_start_ms={self.local_start_ms}, local_end_ms={self.local_end_ms})"
 
 class RollEvent(TimestampModel):
     __tablename__ = "rollevent"
