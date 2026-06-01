@@ -8,21 +8,6 @@ COPY uv.lock /app/uv.lock
 
 WORKDIR /app
 
-RUN apt update
-RUN apt install -y \
-    ffmpeg \
-    pkg-config \
-    python3-dev \
-    build-essential \
-    cython3 \
-    libavformat-dev \
-    libavcodec-dev \
-    libavdevice-dev \
-    libavutil-dev \
-    libavfilter-dev \
-    libswscale-dev \
-    libswresample-dev
-
 RUN chown -R app:app /app
 USER app
 
