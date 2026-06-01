@@ -109,9 +109,9 @@ services:
       command: uv run alembic upgrade head
       volumes:
         - ./backend/alembic:/app/alembic
-        - ./data/db:/data/db
+        - ./data/db:/app/data/db
       environment:
-        - DB_PATH=/data/db/srs.db
+        - DB_PATH=/app/data/db/srs.db
       env_file:
         - ./backend/.env
 volumes:
