@@ -7,7 +7,11 @@ export default function RollHeader({ roll }: { roll: RollDetails | RollDataBase 
         {roll.roll_number && `Roll #${roll.roll_number} `}
         {roll.start_time && (
             <span className="text-base text-gray-500">
-                ({new Date(roll.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})
+                ({new Date(roll.start_time + "Z").toLocaleString('en-US', {
+                    timeZone: 'America/New_York',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                })})
             </span>
         )}
     </h1>
