@@ -149,7 +149,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         hideTooltip();
     }, [hideTooltip]);
 
-    const videoStart = graphs.camera_starts?.[0] ?? 0;
+    const videoStart = graphs.video_start ?? 0;
     const updateVideoTime = useCallback((time: number) => {
         const adjustedTime = Math.min(Math.max(0, time - (videoStart / 1000)), duration)
         if (videoRef.current) {
@@ -165,7 +165,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         if (playing && videoRef.current.paused) videoRef.current.play();
         else if (!playing && !videoRef.current.paused) videoRef.current.pause();
     }, [playing]);
-
+    
     const currentLocation = useMemo(() => {
         if (!graphs.gps_data || timestamp === undefined || !positions) return undefined;
         let index = bisector<Position, number>(d => d.timestamp).left(positions, timestamp)

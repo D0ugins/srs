@@ -119,7 +119,7 @@ export default function RollGraphs({ data, events,
                 No data available for this roll
             </div>
         }
-
+        
         return <div className="relative">
             <svg width={parent.width} height={parent.height}
                 // Transform ensures pixel alignment
@@ -176,7 +176,7 @@ export default function RollGraphs({ data, events,
                     />
                 )}
                 {
-                    videoTime && <>
+                    videoTime != undefined && <>
                         <Group top={GRAPH_MARGIN.top - 16} left={GRAPH_MARGIN.left} clipPath="url(#playhead-clip-path)"
                             shapeRendering="geometricPrecision" pointerEvents="none" opacity={0.75}
                             style={{ cursor: isDragging ? "grabbing" : "grab", pointerEvents: "all" }}

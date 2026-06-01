@@ -375,28 +375,42 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
     
     racebox_files = [rf for rf in roll.roll_files if rf.file.type == 'racebox']
     fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
+    gpx_files = [rf for rf in roll.roll_files if rf.file.type == 'gpx'] + [rf for rf in roll.roll_files if rf.file.type == 'gpx_c']
     
     if not racebox_files and not fit_files: return {}
     
-    if racebox_files and not fit_files:
-        session_id = racebox_files[0].file.uri.split('/')[-1]
+    video_file = None
+    for t in ('video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'):
+        f = next((rf for rf in roll.roll_files if rf.file.type == t), None)
+        if f:
+            video_file = f
+            break
+    
+    data_file = None
+    if racebox_files:
+        data_file = racebox_file = racebox_files[0]
+        session_id = data_file.file.uri.split('/')[-1]
         racebox_start, response = get_racebox_graph_data(session_id)
-   
-    if fit_files:
-        fit_file = resolve_path(fit_files[0].file.uri)
-        messages = load_fit_file(fit_file)
-        
-        if racebox_files:
-            session_id = racebox_files[0].uri.split('/')[-1]
-            racebox_start, response = get_racebox_graph_data(session_id)
-            
-            fit_start = messages['timestamp_correlation_mesgs'][0]['timestamp'] + FIT_EPOCH_S
-            offset = racebox_start - fit_start   
+    elif fit_files:
+        data_file = fit_file = fit_files[0]
+        fit_path = resolve_path(fit_file.file.uri)
+        messages = load_fit_file(fit_path)
+        response = get_fit_graph_data(messages, fit_file.local_start_ms, fit_file.local_end_ms)
+    elif gpx_files:
+        # TODO
+        ...
+    
+    if data_file and video_file:
+        video_start = video_file.file.start_time
+        data_start = data_file.file.start_time
+        print(video_file.file.start_time, data_file.file.start_time)
+        if video_start and data_start:
+            response['video_start'] = int((video_start - data_start).total_seconds() * 1000)
+            response['video_start'] -= data_file.local_start_ms or 0
         else:
-            response = get_fit_graph_data(messages)
-            offset = 0
-        response['camera_starts'] = [t - offset for t in get_camera_starts(messages)]
-        response['camera_ends'] = [t - offset for t in get_camera_ends(messages)]
+            response['video_start'] = 0
+        if (video_file.local_start_ms is not None) and (video_file.local_end_ms is not None):
+            response['video_end'] = response['video_start'] + (video_file.local_end_ms - video_file.local_start_ms)
     
     cached_id = roll_id
     cached = response

@@ -159,8 +159,8 @@ export interface RollUpdate {
 }
 
 export interface RollGraphData {
-    camera_starts: number[];
-    camera_ends: number[];
+    video_start: number;
+    video_end: number;
     gps_data?: {
         timestamp: number[];
         lat: number[];
