@@ -4,10 +4,11 @@ import type { RollDetails, RollStats } from "@/lib/roll";
 
 export default function RollView({ roll, stats }: { roll: RollDetails, stats?: RollStats }) {
     const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
-    const videoUrl = transformMediaUrl(VIDEO_CHOICES
-        .map(type => roll.roll_files.find(file => file.type === type)?.uri)
-        .find(uri => uri !== undefined)
-    );
+    const video = VIDEO_CHOICES
+        .map(type => roll.roll_files.find(file => file.type === type))
+        .find(f => f !== undefined);
+
+    const videoUrl = transformMediaUrl(video?.uri);
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
@@ -187,8 +188,12 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
     }
 
     useEffect(() => {
-        if (videoRef.current && stats?.video_roll_start_ms !== undefined) {
-            videoRef.current.currentTime = stats.video_roll_start_ms / 1000;
+        if (videoRef.current) {
+            if (stats?.video_roll_start_ms !== undefined) {
+                videoRef.current.currentTime = stats.video_roll_start_ms / 1000;
+            } else {
+                videoRef.current.currentTime = (video?.local_start_ms ?? 0) / 1000;
+            }
         }
     }, [videoRef.current, stats?.video_roll_start_ms]);
 
