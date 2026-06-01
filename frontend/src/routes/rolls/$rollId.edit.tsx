@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useEffect, useState } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RollDetails, RollUpdate } from "@/lib/roll";
 import RollEdit, { rollToRollUpdate } from "@/components/RollEdit";
@@ -96,7 +96,7 @@ function RouteComponent() {
                     {errorMessage}
                 </div>
             )}
-            <RollEdit formData={formData} setFormData={setFormData} />
+            <RollEdit formData={formData} setFormData={setFormData as Dispatch<SetStateAction<RollUpdate>>} />
         </div>
     );
 }
