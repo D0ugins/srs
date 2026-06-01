@@ -283,7 +283,7 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                     {roll.mech_notes && (
                         <div>
                             <span className="font-semibold">Mech Notes: </span>
-                            <span>{roll.mech_notes}</span>
+                            <span>{roll.mech_notes.replaceAll('\n', ' // ')}</span>
                         </div>
                     )}
                     {roll.pusher_notes && (
