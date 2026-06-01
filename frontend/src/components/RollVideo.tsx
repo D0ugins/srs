@@ -15,10 +15,11 @@ const FPS = 30; // TODO: store actaul fps in db
 
 export default function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, duration, setDuration }: RollVideoProps) {
     const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
-    const videoUrl = transformMediaUrl(VIDEO_CHOICES
-        .map(type => roll.roll_files.find(file => file.type === type)?.uri)
-        .find(uri => uri !== undefined)
-    );
+    const video = VIDEO_CHOICES
+        .map(type => roll.roll_files.find(file => file.type === type))
+        .find(f => f !== undefined);
+    const videoUrl = transformMediaUrl(video?.uri);
+
     const frameCallbackIdRef = useRef<number | null>(null);
 
     const updateFrame = () => {
@@ -32,8 +33,9 @@ export default function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, 
 
     const handleLoadedMetadata = () => {
         if (!videoRef.current) return;
-        setDuration(videoRef.current.duration);
         const videoElement = videoRef.current as any;
+        setDuration(videoElement.duration);
+        videoElement.currentTime = (video?.local_start_ms ?? 0) / 1000;
         if (videoElement.requestVideoFrameCallback) {
             frameCallbackIdRef.current = videoElement.requestVideoFrameCallback(updateFrame);
         }
