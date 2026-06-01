@@ -14,9 +14,10 @@ export interface RollVideoProps {
 const FPS = 30; // TODO: store actaul fps in db
 
 export default function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, duration, setDuration }: RollVideoProps) {
-    const videoUrl = transformMediaUrl(
-        roll.roll_files.find((file) => file.type === 'video_preview')?.uri ??
-        roll.roll_files.find((file) => file.type === 'video_preview_c')?.uri
+    const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
+    const videoUrl = transformMediaUrl(VIDEO_CHOICES
+        .map(type => roll.roll_files.find(file => file.type === type)?.uri)
+        .find(uri => uri !== undefined)
     );
     const frameCallbackIdRef = useRef<number | null>(null);
 

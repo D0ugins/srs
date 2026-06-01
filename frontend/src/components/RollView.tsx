@@ -3,9 +3,10 @@ import { transformMediaUrl } from "@/lib/format";
 import type { RollDetails, RollStats } from "@/lib/roll";
 
 export default function RollView({ roll, stats }: { roll: RollDetails, stats?: RollStats }) {
-    const videoUrl = transformMediaUrl(
-        roll.roll_files.find((file) => file.type === 'video_preview')?.uri ??
-        roll.roll_files.find((file) => file.type === 'video_preview_c')?.uri
+    const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
+    const videoUrl = transformMediaUrl(VIDEO_CHOICES
+        .map(type => roll.roll_files.find(file => file.type === type)?.uri)
+        .find(uri => uri !== undefined)
     );
     const videoRef = useRef<HTMLVideoElement>(null);
     const [currentTime, setCurrentTime] = useState(0);
