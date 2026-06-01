@@ -107,7 +107,8 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
                 if (a.roll_date.month !== b.roll_date.month) return b.roll_date.month - a.roll_date.month;
                 if (a.roll_date.day !== b.roll_date.day) return b.roll_date.day - a.roll_date.day;
 
-                if (a.roll_number !== undefined && b.roll_number !== undefined) return b.roll_number - a.roll_number;
+                if (a.roll_number !== undefined && b.roll_number !== undefined
+                    && a.roll_number !== b.roll_number) return b.roll_number - a.roll_number;
                 if (a.start_time && b.start_time) return b.start_time.localeCompare(a.start_time);
                 return b.updated_at.localeCompare(a.updated_at);
             });
