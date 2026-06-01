@@ -3,6 +3,7 @@ from db.database import Buggy, Driver, File, Pusher, RollDate, RollFile, RollHil
 from lib.fit import FIT_EPOCH_S, get_camera_ends, get_camera_starts, get_fit_graph_data, load_fit_file
 from lib.racebox import get_racebox_graph_data
 from lib.events import calculate_hill_times, calculate_freeroll_stats
+from lib.paths import resolve_path
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -379,7 +380,7 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
         racebox_start, response = get_racebox_graph_data(session_id)
    
     if fit_files:
-        fit_file = fit_files[0].file.uri.replace('[[fit]]', 'virbs')
+        fit_file = resolve_path(fit_files[0].file.uri)
         messages = load_fit_file(fit_file)
         
         if racebox_files:
@@ -391,7 +392,6 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
         else:
             response = get_fit_graph_data(messages)
             offset = 0
-        print(offset * 1000)
         response['camera_starts'] = [t - offset for t in get_camera_starts(messages)]
         response['camera_ends'] = [t - offset for t in get_camera_ends(messages)]
     
