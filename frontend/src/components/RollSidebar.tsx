@@ -145,7 +145,6 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
         return <div>Error loading rolls.</div>
     }
 
-
     const makeLeaf = (roll: RollDataBase, name: string): RollTreeLeaf => {
         const pathParts = location.pathname.split('/');
         pathParts[2] = roll.id.toString();
@@ -162,7 +161,12 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
             >
                 <span>{name}{name !== "" ? " - " : ""}</span><span>
                     {roll.start_time
-                        ? roll.start_time.slice(-8, -3)
+                        ? new Date(roll.start_time + "Z").toLocaleString('en-US', {
+                            timeZone: 'America/New_York',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        })
                         : <> Roll #{roll.roll_number} </>
                     }
                 </span>

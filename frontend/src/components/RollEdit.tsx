@@ -230,7 +230,7 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">Start Time (EST)</label>
+                                <label className="block text-sm font-medium mb-1">Start Time (UTC)</label>
                                 <input
                                     type="time"
                                     value={formData.start_time?.slice(11, 16) || ''}
