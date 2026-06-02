@@ -207,6 +207,7 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                         autoPlay
                         muted
                         src={videoUrl}
+                        key={videoUrl}
                         onLoadedMetadata={handleLoadedMetadata}
                         onClick={handleVideoClick}
                     >

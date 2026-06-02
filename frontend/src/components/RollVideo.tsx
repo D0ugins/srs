@@ -79,6 +79,7 @@ export default function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, 
         ref={videoRef}
         className="cursor-pointer"
         src={videoUrl}
+        key={videoUrl}
         onLoadedMetadata={handleLoadedMetadata}
         onClick={handleVideoClick}
         muted
