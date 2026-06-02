@@ -84,17 +84,6 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [fps, duration]);
 
-    useEffect(() => {
-        return () => {
-            if (frameCallbackIdRef.current !== null && videoRef.current) {
-                const videoElement = videoRef.current as any;
-                if (videoElement.cancelVideoFrameCallback) {
-                    videoElement.cancelVideoFrameCallback(frameCallbackIdRef.current);
-                }
-            }
-        };
-    }, []);
-
     const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (videoRef.current && !isDragging) {
             const rect = e.currentTarget.getBoundingClientRect();
@@ -196,6 +185,25 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
             }
         }
     }, [videoRef.current, stats?.video_roll_start_ms]);
+
+    useEffect(() => {
+        const videoElement = videoRef.current;
+        // Needed since react dev server calls setup/teardown twice on mount
+        if (videoElement) videoElement.src = videoUrl || '';
+
+        return () => {
+            if (!videoElement) return;
+
+            videoElement.pause();
+            if (frameCallbackIdRef.current !== null) {
+                videoElement.cancelVideoFrameCallback(frameCallbackIdRef.current);
+                frameCallbackIdRef.current = null;
+            }
+
+            videoElement.removeAttribute('src');
+            videoElement.load();
+        };
+    }, [videoUrl]);
 
     return (
         <>

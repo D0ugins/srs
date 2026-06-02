@@ -74,6 +74,25 @@ export default function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, 
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [duration]);
 
+    useEffect(() => {
+        const videoElement = videoRef.current;
+
+        // Needed since react dev server calls setup/teardown twice on mount
+        if (videoElement) videoElement.src = videoUrl || '';
+        return () => {
+            if (!videoElement) return;
+
+            videoElement.pause();
+            if (frameCallbackIdRef.current !== null) {
+                videoElement.cancelVideoFrameCallback(frameCallbackIdRef.current);
+                frameCallbackIdRef.current = null;
+            }
+
+            videoElement.removeAttribute('src');
+            videoElement.load();
+        };
+    }, [videoUrl]);
+
     if (!videoUrl) return <div>No video available</div>;
     return <video
         ref={videoRef}
