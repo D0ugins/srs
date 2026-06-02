@@ -1,5 +1,6 @@
 from garmin_fit_sdk import Decoder, Stream
 from lib.signal import unfiorm_sample
+from lib.geo import get_elevations, get_angular_velocity
 import pandas as pd
 import numpy as np
 from scipy import signal
@@ -122,7 +123,6 @@ def get_sensor_data(calibration: dict, sensor_messages: List[SensorMessage], fie
 
 def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_end_ms: int | None = None) -> dict:
     """Extract graph data (gps, centripetal, accelerometer, gyroscope, magnetometer) from fit messages."""
-    from lib.geo import get_elevations, get_angular_velocity
     
     response = {}
     gps_data = get_gps_data(messages)
@@ -175,5 +175,50 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
             mag_data = mag_data.loc[local_start_ms:local_end_ms]
             mag_data.timestamp = mag_data.timestamp - (local_start_ms or 0)
             response['magnetometer'] = mag_data.to_dict(orient='list')
+    
+    return response
+
+def calculate_speed(gps_data: pd.DataFrame) -> pd.Series:
+    lat = np.radians(gps_data.position_lat)
+    lon = np.radians(gps_data.position_long)
+    dlat = lat.diff()
+    dlon = lon.diff()
+    a = np.sin(dlat / 2)**2 + np.cos(lat).shift() * np.cos(lat) * np.sin(dlon / 2)**2
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    distance = 6371000 * c # Earth radius in meters
+    speed = distance / gps_data.index.to_series().diff() # speed in m/s
+    return speed.fillna(0)
+
+def calculate_heading(gps_data: pd.DataFrame) -> pd.Series:
+    lat = np.radians(gps_data.position_lat)
+    lon = np.radians(gps_data.position_long)
+    dlat = lat.diff()
+    dlon = lon.diff()
+    x = np.sin(dlon) * np.cos(lat)
+    y = np.cos(lat).shift() * np.sin(lat) - np.sin(lat).shift() * np.cos(lat) * np.cos(dlon)
+    heading = (np.degrees(np.arctan2(x, y)) + 360) % 360
+    return heading.fillna(method='ffill').fillna(0)
+
+def get_gpx_graph_data(gpx_data: pd.DataFrame, local_start_ms: int | None = None, local_end_ms: int | None = None) -> dict:
+    gps_data = gpx_data.loc[local_start_ms:local_end_ms]
+    gps_data.rename(columns={'latitude': 'position_lat', 'longitude': 'position_long', 'enhanced_speed': 'speed'}, inplace=True)
+    gps_data.index = gps_data.index - (local_start_ms or 0)
+    gps_data['speed'] = calculate_speed(gps_data)
+    gps_data['heading'] = calculate_heading(gps_data)
+    
+    response = {}
+    response['gps_data'] = pd.DataFrame({
+        'timestamp': gps_data.index * 1000,
+        'lat': gps_data.position_lat,
+        'long': gps_data.position_long,
+        'elevation': get_elevations(gps_data, snap_to_course=True, subtract_start_line=True),
+        'speed': gps_data.speed,
+    }).to_dict(orient='list')
+    
+    angular_velocity = get_angular_velocity(gps_data.heading, gps_data.speed, cutoff=1)
+    response['centripetal'] = pd.DataFrame({
+        'timestamp': angular_velocity.index,
+        'values': angular_velocity * gps_data.speed.loc[angular_velocity.index]
+    }).to_dict(orient='list')
     
     return response

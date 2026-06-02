@@ -1,6 +1,7 @@
 from db import Roll, SessionDep
 from db.database import Buggy, Driver, File, Pusher, RollDate, RollFile, RollHill, RollType, RollEvent, Sensor
-from lib.fit import FIT_EPOCH_S, get_camera_ends, get_camera_starts, get_fit_graph_data, load_fit_file
+from lib.fit import FIT_EPOCH_S, get_camera_ends, get_camera_starts, get_fit_graph_data, get_gpx_graph_data, load_fit_file
+from lib.gpx import load_gpx
 from lib.racebox import get_racebox_graph_data
 from lib.events import calculate_hill_times, calculate_freeroll_stats
 from lib.paths import resolve_path
@@ -377,7 +378,6 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
     fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
     gpx_files = [rf for rf in roll.roll_files if rf.file.type == 'gpx'] + [rf for rf in roll.roll_files if rf.file.type == 'gpx_c']
     
-    if not racebox_files and not fit_files: return {}
     
     video_file = None
     for t in ('video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'):
@@ -397,8 +397,11 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
         messages = load_fit_file(fit_path)
         response = get_fit_graph_data(messages, fit_file.local_start_ms, fit_file.local_end_ms)
     elif gpx_files:
-        # TODO
-        ...
+        data_file = gpx_file = gpx_files[0]
+        gpx_data = load_gpx(resolve_path(gpx_file.file.uri))
+        response = get_gpx_graph_data(gpx_data, gpx_file.local_start_ms, gpx_file.local_end_ms)
+    
+    if not data_file: return {}
     
     if data_file and video_file:
         video_start = video_file.file.start_time
