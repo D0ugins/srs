@@ -469,7 +469,7 @@ def get_roll_stats(roll_id: int, session: SessionDep):
         stats['course_time_ms'] = roll_ends[0] - roll_starts[0]
     
     fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
-    fit_file = fit_files[0].file.uri.replace('[[fit]]', 'virbs') if len(fit_files) == 1 else None
+    fit_file = resolve_path(fit_files[0].file.uri) if len(fit_files) == 1 else None
     
     freeroll_stats = calculate_freeroll_stats(fit_file, roll.roll_events)
     stats.update(freeroll_stats)
