@@ -371,22 +371,10 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
 cached_id = None
 cached = None
 
-@router.get("/{roll_id}/graphs")
-def get_roll_graphs(roll_id: int, session: SessionDep):
-    global cached_id, cached
-    if roll_id == cached_id and cached is not None:
-        return cached
-    
-    roll = session.scalar(
-        select(Roll).options(selectinload(Roll.roll_files).selectinload(RollFile.file)).where(Roll.id == roll_id)
-    )    
-    if not roll:
-        raise HTTPException(status_code=404, detail="Roll not found")
-    
+def get_graph_data(roll):
     racebox_files = [rf for rf in roll.roll_files if rf.file.type == 'racebox']
     fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
     gpx_files = [rf for rf in roll.roll_files if rf.file.type == 'gpx'] + [rf for rf in roll.roll_files if rf.file.type == 'gpx_c']
-    
     
     video_file = None
     for t in ('video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'):
@@ -417,7 +405,6 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
     if data_file and video_file:
         video_start = video_file.file.start_time
         data_start = data_file.file.start_time
-        print(video_file.file.start_time, data_file.file.start_time)
         if video_start and data_start:
             response['video_start'] = int((video_start - data_start).total_seconds() * 1000)
             response['video_start'] -= data_file.local_start_ms or 0
@@ -425,11 +412,28 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
             response['video_start'] = 0
         if (video_file.local_start_ms is not None) and (video_file.local_end_ms is not None):
             response['video_end'] = response['video_start'] + (video_file.local_end_ms - video_file.local_start_ms)
+    
+    return response
 
-    serialized_response = serialize_graph_response(response)
+
+@router.get("/{roll_id}/graphs")
+def get_roll_graphs(roll_id: int, session: SessionDep):
+    global cached_id, cached
+    if roll_id == cached_id and cached is not None:
+        return cached
+    
+    roll = session.scalar(
+        select(Roll).options(selectinload(Roll.roll_files).selectinload(RollFile.file)).where(Roll.id == roll_id)
+    )    
+    if not roll:
+        raise HTTPException(status_code=404, detail="Roll not found")
+    
+    
+    data = get_graph_data(roll)
+    response = serialize_graph_response(data)
     cached_id = roll_id
-    cached = serialized_response
-    return serialized_response
+    cached = response
+    return response
 
 @router.get("/{roll_id}/events")
 def get_roll_events(roll_id: int, session: SessionDep):
@@ -480,10 +484,9 @@ def get_roll_stats(roll_id: int, session: SessionDep):
     if len(roll_starts) == 1 and len(roll_ends) == 1:
         stats['course_time_ms'] = roll_ends[0] - roll_starts[0]
     
-    fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
-    fit_file = resolve_path(fit_files[0].file.uri) if len(fit_files) == 1 else None
+    graphs = get_graph_data(roll)
     
-    freeroll_stats = calculate_freeroll_stats(fit_file, roll.roll_events)
+    freeroll_stats = calculate_freeroll_stats(graphs, roll.roll_events)
     stats.update(freeroll_stats)
     
     return stats
