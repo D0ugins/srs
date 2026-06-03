@@ -371,7 +371,7 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
 cached_id = None
 cached = None
 
-def get_graph_data(roll):
+def get_graph_data(roll, include_imu: bool = True):
     racebox_files = [rf for rf in roll.roll_files if rf.file.type == 'racebox']
     fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
     gpx_files = [rf for rf in roll.roll_files if rf.file.type == 'gpx'] + [rf for rf in roll.roll_files if rf.file.type == 'gpx_c']
@@ -394,7 +394,7 @@ def get_graph_data(roll):
         data_file = fit_file = fit_files[0]
         fit_path = resolve_path(fit_file.file.uri)
         messages = load_fit_file(fit_path)
-        response = get_fit_graph_data(messages, fit_file.local_start_ms, fit_file.local_end_ms + 2000)
+        response = get_fit_graph_data(messages, fit_file.local_start_ms, fit_file.local_end_ms + 2000, include_imu=include_imu)
     elif gpx_files:
         data_file = gpx_file = gpx_files[0]
         gpx_data = load_gpx(resolve_path(gpx_file.file.uri))
@@ -484,7 +484,7 @@ def get_roll_stats(roll_id: int, session: SessionDep):
     if len(roll_starts) == 1 and len(roll_ends) == 1:
         stats['course_time_ms'] = roll_ends[0] - roll_starts[0]
     
-    graphs = get_graph_data(roll)
+    graphs = get_graph_data(roll, include_imu=False)
     
     freeroll_stats = calculate_freeroll_stats(graphs, roll.roll_events)
     stats.update(freeroll_stats)

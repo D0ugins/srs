@@ -121,7 +121,7 @@ def get_sensor_data(calibration: dict, sensor_messages: List[SensorMessage], fie
     return raw, data, float(fs)
 
 
-def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_end_ms: int | None = None) -> dict[str, pd.DataFrame]:
+def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_end_ms: int | None = None, include_imu: bool = True) -> dict[str, pd.DataFrame]:
     """Extract graph data (gps, centripetal, accelerometer, gyroscope, magnetometer) from fit messages."""
     
     response: dict[str, pd.DataFrame] = {}
@@ -143,7 +143,7 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
             'values': angular_velocity * gps_data.speed.loc[angular_velocity.index]
         })
     
-    if 'three_d_sensor_calibration_mesgs' in messages:
+    if include_imu and 'three_d_sensor_calibration_mesgs' in messages:
         calibration_mesgs = messages['three_d_sensor_calibration_mesgs']
         calibration_data = { m['sensor_type']: m for m in calibration_mesgs }
         if 'accelerometer' in calibration_data and 'accelerometer_data_mesgs' in messages:
