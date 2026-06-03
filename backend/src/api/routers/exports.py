@@ -1,4 +1,5 @@
 from io import StringIO
+from api.routers.rolls import get_graph_data
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from lib.events import calculate_hill_times, calculate_freeroll_stats
@@ -74,21 +75,21 @@ def export_freeroll(
     rolls = session.scalars(query).all()
     
     output = StringIO()
-    output.write("Buggy,Driver,Date,Roll Number,Roll Start Time,Time,Max Speed,Max Energy,Energy Loss,Pickup Energy,Pickup Speed,Rollup Height\n")
+    output.write("Buggy,Driver,Date,Roll Number,Roll Start Time,Time,Max Speed,Max Energy,To Chute Energy Loss,Chute Energy Loss,Freeroll Energy Loss,Pickup Energy,Pickup Speed,Rollup Height\n")
     
     for roll in rolls:
         date_str = f"{roll.roll_date.year}/{roll.roll_date.month:02d}/{roll.roll_date.day:02d}"
         start_time = roll.start_time.strftime("%H:%M") if roll.start_time else ""
         roll_number = str(roll.roll_number) if roll.roll_number is not None else ""
         
-        fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
-        fit_file = fit_files[0].file.uri.replace('[[fit]]', 'virbs') if len(fit_files) == 1 else None
-        
-        stats = calculate_freeroll_stats(fit_file, roll.roll_events)
+        graphs = get_graph_data(roll, include_imu=False)
+        stats = calculate_freeroll_stats(graphs, roll.roll_events)
         
         freeroll_time = f"{stats['freeroll_time_ms'] / 1000:.1f}" if 'freeroll_time_ms' in stats else ""
         max_speed = f"{stats['max_speed']:.2f}" if 'max_speed' in stats else ""
         max_energy = f"{stats['max_energy']:.2f}" if 'max_energy' in stats else ""
+        to_chute_energy_loss = f"{stats['to_chute_energy_loss']:.2f}" if 'to_chute_energy_loss' in stats else ""
+        chute_energy_loss = f"{stats['chute_energy_loss']:.2f}" if 'chute_energy_loss' in stats else ""
         freeroll_energy_loss = f"{stats['freeroll_energy_loss']:.2f}" if 'freeroll_energy_loss' in stats else ""
         pickup_energy = f"{stats['pickup_energy']:.2f}" if 'pickup_energy' in stats else ""
         pickup_speed = f"{stats['pickup_speed']:.2f}" if 'pickup_speed' in stats else ""
@@ -99,7 +100,7 @@ def export_freeroll(
             date_str, roll_number, start_time,
             freeroll_time,
             max_speed, max_energy,
-            freeroll_energy_loss,
+            to_chute_energy_loss, chute_energy_loss, freeroll_energy_loss,
             pickup_energy, pickup_speed, rollup_height,
         ]
         output.write(",".join(row) + "\n")
