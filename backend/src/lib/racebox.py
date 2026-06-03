@@ -28,7 +28,7 @@ def load_session(session_id: str) -> dict:
     return data
 
 
-def get_racebox_graph_data(session_id: str) -> tuple[int, dict]:
+def get_racebox_graph_data(session_id: str) -> tuple[int, dict[str, pd.DataFrame]]:
     """Extract graph data from a racebox session."""
     
     session_data = load_session(session_id)
@@ -41,7 +41,7 @@ def get_racebox_graph_data(session_id: str) -> tuple[int, dict]:
     df['Speed'] = df['Speed'] / 3.6  # kph to m/s
     df.index = df['timestamp']
     
-    response = {}
+    response: dict[str, pd.DataFrame] = {}
     
     # GPS data
     gps_df = pd.DataFrame({
@@ -51,33 +51,33 @@ def get_racebox_graph_data(session_id: str) -> tuple[int, dict]:
     
     elevations = get_elevations(gps_df, snap_to_course=True, subtract_start_line=True)
     
-    response['gps_data'] = {
-        'timestamp': df['timestamp'].tolist(),
-        'lat': df['Latitude'].tolist(),
-        'long': df['Longitude'].tolist(),
-        'elevation': elevations.tolist(),
-        'speed': df['Speed'].tolist(),
-    }
+    response['gps_data'] = pd.DataFrame({
+        'timestamp': df['timestamp'],
+        'lat': df['Latitude'],
+        'long': df['Longitude'],
+        'elevation': elevations,
+        'speed': df['Speed'],
+    })
     
     # Centripetal: angular_velocity * speed
     angular_velocity = get_angular_velocity(df['Heading'], df['Speed'], cutoff=1.0)
-    response['centripetal'] = {
-        'timestamp': angular_velocity.index.tolist(),
-        'values': (angular_velocity * df['Speed'].loc[angular_velocity.index]).tolist(),
-    }
+    response['centripetal'] = pd.DataFrame({
+        'timestamp': angular_velocity.index,
+        'values': angular_velocity * df['Speed'].loc[angular_velocity.index],
+    })
     
-    response['accelerometer'] = {
-        'timestamp': df['timestamp'].tolist(),
-        'x': df['GForceX'].tolist(),
-        'y': df['GForceY'].tolist(),
-        'z': df['GForceZ'].tolist(),
-    }
+    response['accelerometer'] = pd.DataFrame({
+        'timestamp': df['timestamp'],
+        'x': df['GForceX'],
+        'y': df['GForceY'],
+        'z': df['GForceZ'],
+    })
     
-    response['gyroscope'] = {
-        'timestamp': df['timestamp'].tolist(),
-        'x': df['GyroX'].tolist(),
-        'y': df['GyroY'].tolist(),
-        'z': df['GyroZ'].tolist(),
-    }
+    response['gyroscope'] = pd.DataFrame({
+        'timestamp': df['timestamp'],
+        'x': df['GyroX'],
+        'y': df['GyroY'],
+        'z': df['GyroZ'],
+    })
     start_time = session_data['session']['meta']['dateTimeStartedUTC']
     return start_time, response

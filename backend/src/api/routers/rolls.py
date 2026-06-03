@@ -9,7 +9,9 @@ from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime
+import pandas as pd
 from pydantic import BaseModel
+from typing import cast
 
 
 router = APIRouter(prefix="/rolls", tags=["rolls"])
@@ -224,6 +226,13 @@ def serialize_roll(roll: Roll, detailed: bool):
         payload["roll_hills"] = roll.roll_hills
     return payload
 
+
+def serialize_graph_response(response: dict):
+    return {
+        key: value.to_dict(orient='list') if isinstance(value, pd.DataFrame) else value
+        for key, value in response.items()
+    }
+
 @router.get("")
 def get_rolls(
     session: SessionDep,
@@ -387,10 +396,12 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
             break
     
     data_file = None
+    response: dict = {}
     if racebox_files:
         data_file = racebox_file = racebox_files[0]
         session_id = data_file.file.uri.split('/')[-1]
-        racebox_start, response = get_racebox_graph_data(session_id)
+        racebox_start, racebox_response = get_racebox_graph_data(session_id)
+        response = racebox_response
     elif fit_files:
         data_file = fit_file = fit_files[0]
         fit_path = resolve_path(fit_file.file.uri)
@@ -414,10 +425,11 @@ def get_roll_graphs(roll_id: int, session: SessionDep):
             response['video_start'] = 0
         if (video_file.local_start_ms is not None) and (video_file.local_end_ms is not None):
             response['video_end'] = response['video_start'] + (video_file.local_end_ms - video_file.local_start_ms)
-    
+
+    serialized_response = serialize_graph_response(response)
     cached_id = roll_id
-    cached = response
-    return response
+    cached = serialized_response
+    return serialized_response
 
 @router.get("/{roll_id}/events")
 def get_roll_events(roll_id: int, session: SessionDep):

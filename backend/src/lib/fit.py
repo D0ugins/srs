@@ -121,10 +121,10 @@ def get_sensor_data(calibration: dict, sensor_messages: List[SensorMessage], fie
     return raw, data, float(fs)
 
 
-def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_end_ms: int | None = None) -> dict:
+def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_end_ms: int | None = None) -> dict[str, pd.DataFrame]:
     """Extract graph data (gps, centripetal, accelerometer, gyroscope, magnetometer) from fit messages."""
     
-    response = {}
+    response: dict[str, pd.DataFrame] = {}
     gps_data = get_gps_data(messages)
     
     if gps_data is not None:
@@ -136,12 +136,12 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
             'long': gps_data.position_long,
             'elevation': get_elevations(gps_data, snap_to_course=True, subtract_start_line=True),
             'speed': gps_data.speed,
-        }).to_dict(orient='list')
+        })
         angular_velocity = get_angular_velocity(gps_data.heading, gps_data.speed, cutoff=1)
         response['centripetal'] = pd.DataFrame({
             'timestamp': angular_velocity.index,
             'values': angular_velocity * gps_data.speed.loc[angular_velocity.index]
-        }).to_dict(orient='list')
+        })
     
     if 'three_d_sensor_calibration_mesgs' in messages:
         calibration_mesgs = messages['three_d_sensor_calibration_mesgs']
@@ -156,7 +156,7 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
             accel_data.timestamp = accel_data.timestamp - (local_start_ms or 0)
             accel_data.x *= -1
             accel_data.y *= -1
-            response['accelerometer'] = accel_data.to_dict(orient='list')
+            response['accelerometer'] = accel_data
         if 'gyroscope' in calibration_data and 'gyroscope_data_mesgs' in messages:
             gyro_cal = calibration_data['gyroscope']
             _, gyro_data, _ = get_sensor_data(gyro_cal, 
@@ -165,7 +165,7 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
                                               decimation=20)
             gyro_data = gyro_data.loc[local_start_ms:local_end_ms]
             gyro_data.timestamp = gyro_data.timestamp - (local_start_ms or 0)
-            response['gyroscope'] = gyro_data.to_dict(orient='list')
+            response['gyroscope'] = gyro_data
         if 'compass' in calibration_data and 'magnetometer_data_mesgs' in messages:
             mag_cal = calibration_data['compass']
             _, mag_data, _ = get_sensor_data(mag_cal, 
@@ -174,7 +174,7 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
                                              decimation=20)
             mag_data = mag_data.loc[local_start_ms:local_end_ms]
             mag_data.timestamp = mag_data.timestamp - (local_start_ms or 0)
-            response['magnetometer'] = mag_data.to_dict(orient='list')
+            response['magnetometer'] = mag_data
     
     return response
 
