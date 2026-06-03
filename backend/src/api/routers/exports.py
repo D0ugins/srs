@@ -24,7 +24,7 @@ def export_hills(
     rolls = session.scalars(query).all()
     
     output = StringIO()
-    output.write("Buggy,Driver,Pusher,Gender,Hill,Date,Time,Roll Type,Roll Number,Roll Start Time\n")
+    output.write("Buggy,Driver,Pusher,Gender,Hill,Date,Time,Roll Type,Roll Number,Roll Start Time UTC\n")
     
     for roll in rolls:
         hill_times = calculate_hill_times(roll.roll_events)
