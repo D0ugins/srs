@@ -71,10 +71,10 @@ def get_gps_data(messages: FitMessages) -> pd.DataFrame | None:
     
     gps_mesgs = messages['gps_metadata_mesgs']
     gps_data = pd.DataFrame.from_records(gps_mesgs)
-    gps_data.position_lat = gps_data.position_lat / 2**31 * 180
-    gps_data.position_long = gps_data.position_long / 2**31 * 180        
-    gps_data.utc_timestamp = fit_to_utc(gps_data.utc_timestamp)
-    gps_data.timestamp = gps_data.timestamp * 1000 + gps_data.timestamp_ms
+    gps_data['position_lat'] = gps_data.position_lat / 2**31 * 180
+    gps_data['position_long'] = gps_data.position_long / 2**31 * 180        
+    gps_data['utc_timestamp'] = fit_to_utc(gps_data.utc_timestamp) # type: ignore
+    gps_data['timestamp'] = gps_data.timestamp * 1000 + gps_data.timestamp_ms
     gps_data.drop(columns=['timestamp_ms'])
     gps_data.index = gps_data.timestamp
     gps_data['speed'] = np.linalg.norm(np.array(gps_data.velocity.to_list()), axis=1)
@@ -153,9 +153,9 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
                                                {'x': 'accel_x', 'y': 'accel_y', 'z': 'accel_z'},
                                                decimation=20)
             accel_data = accel_data.loc[local_start_ms:local_end_ms]
-            accel_data.timestamp = accel_data.timestamp - (local_start_ms or 0)
-            accel_data.x *= -1
-            accel_data.y *= -1
+            accel_data['timestamp'] = accel_data.timestamp - (local_start_ms or 0)
+            accel_data['x'] *= -1
+            accel_data['y'] *= -1
             response['accelerometer'] = accel_data
         if 'gyroscope' in calibration_data and 'gyroscope_data_mesgs' in messages:
             gyro_cal = calibration_data['gyroscope']
@@ -164,7 +164,7 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
                                               {'x': 'gyro_x', 'y': 'gyro_y', 'z': 'gyro_z'},
                                               decimation=20)
             gyro_data = gyro_data.loc[local_start_ms:local_end_ms]
-            gyro_data.timestamp = gyro_data.timestamp - (local_start_ms or 0)
+            gyro_data['timestamp'] = gyro_data.timestamp - (local_start_ms or 0)
             response['gyroscope'] = gyro_data
         if 'compass' in calibration_data and 'magnetometer_data_mesgs' in messages:
             mag_cal = calibration_data['compass']
@@ -173,7 +173,7 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
                                              {'x': 'mag_x', 'y': 'mag_y', 'z': 'mag_z'},
                                              decimation=20)
             mag_data = mag_data.loc[local_start_ms:local_end_ms]
-            mag_data.timestamp = mag_data.timestamp - (local_start_ms or 0)
+            mag_data['timestamp'] = mag_data.timestamp - (local_start_ms or 0)
             response['magnetometer'] = mag_data
     
     return response
@@ -181,9 +181,9 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
 def calculate_speed(gps_data: pd.DataFrame) -> pd.Series:
     lat = np.radians(gps_data.position_lat)
     lon = np.radians(gps_data.position_long)
-    dlat = lat.diff()
-    dlon = lon.diff()
-    a = np.sin(dlat / 2)**2 + np.cos(lat).shift() * np.cos(lat) * np.sin(dlon / 2)**2
+    dlat = lat.diff() # type: ignore
+    dlon = lon.diff() # type: ignore
+    a = np.sin(dlat / 2)**2 + np.cos(lat).shift() * np.cos(lat) * np.sin(dlon / 2)**2 # type: ignore
     c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
     distance = 6371000 * c # Earth radius in meters
     speed = distance / gps_data.index.to_series().diff() # speed in m/s
@@ -192,9 +192,9 @@ def calculate_speed(gps_data: pd.DataFrame) -> pd.Series:
 def calculate_heading(gps_data: pd.DataFrame) -> pd.Series:
     lat = np.radians(gps_data.position_lat)
     lon = np.radians(gps_data.position_long)
-    dlat = lat.diff()
-    dlon = lon.diff()
+    dlat = lat.diff() # type: ignore
+    dlon = lon.diff() # type: ignore
     x = np.sin(dlon) * np.cos(lat)
-    y = np.cos(lat).shift() * np.sin(lat) - np.sin(lat).shift() * np.cos(lat) * np.cos(dlon)
+    y = np.cos(lat).shift() * np.sin(lat) - np.sin(lat).shift() * np.cos(lat) * np.cos(dlon) # type: ignore
     heading = (np.degrees(np.arctan2(x, y)) + 360) % 360
-    return heading.fillna(method='ffill').fillna(0)
+    return heading.ffill().fillna(0)
