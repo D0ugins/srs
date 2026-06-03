@@ -172,17 +172,19 @@ class RollEvent(TimestampModel):
     
     id: Mapped[int] = mapped_column(primary_key=True)
     roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("file.id"), index=True)
     type: Mapped[str] = mapped_column()
     tag: Mapped[str | None] = mapped_column()
     timestamp_ms: Mapped[int] = mapped_column()
     raw_timestamp: Mapped[datetime | None] = mapped_column()
     
     roll: Mapped["Roll"] = relationship(back_populates="roll_events")
+    source: Mapped["File"] = relationship()
     
     __table_args__ = (Index("idx_rollevent_roll_type_tag_timestamp", "roll_id", "type", "tag", "timestamp_ms", unique=True),)
     
     def __repr__(self):
-        return f"RollEvent(id={self.id}, roll_id={self.roll_id}, type='{self.type}', tag={self.tag!r}, timestamp_ms={self.timestamp_ms})"
+        return f"RollEvent(id={self.id}, roll_id={self.roll_id}, type='{self.type}', tag={self.tag!r}, timestamp_ms={self.timestamp_ms}, source_id={self.source_id})"
 
 class RollHill(TimestampModel):
     __tablename__ = "rollhill"
