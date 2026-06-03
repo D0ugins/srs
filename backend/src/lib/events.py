@@ -2,6 +2,7 @@ from db.database import RollEvent
 
 def calculate_hill_times(roll_events: list[RollEvent]) -> dict[int, int | None]:
     """Calculate hill times in ms from roll events."""
+    roll_starts = [e.timestamp_ms for e in roll_events if e.type == 'roll_start']
     hill1_starts = [e.timestamp_ms for e in roll_events if e.type == 'hill_start' and e.tag == '1']
     hill2_starts = [e.timestamp_ms for e in roll_events if e.type == 'hill_start' and e.tag == '2']
     freeroll_starts = [e.timestamp_ms for e in roll_events if e.type == 'freeroll_start']
@@ -13,7 +14,10 @@ def calculate_hill_times(roll_events: list[RollEvent]) -> dict[int, int | None]:
     times: dict[int, int | None] = {1: None, 2: None, 3: None, 4: None, 5: None}
     
     if len(hill1_starts) == 1 and len(hill2_starts) == 1:
-        times[1] = hill2_starts[0] - hill1_starts[0]
+        if len(roll_starts) == 1:
+            times[1] = hill2_starts[0] - roll_starts[0]
+        else:
+            times[1] = hill2_starts[0] - hill1_starts[0]
     if len(hill2_starts) == 1 and len(freeroll_starts) == 1:
         times[2] = freeroll_starts[0] - hill2_starts[0]
     if len(hill3_starts) == 1 and len(hill4_starts) == 1:
