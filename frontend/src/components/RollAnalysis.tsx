@@ -165,7 +165,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         if (playing && videoRef.current.paused) videoRef.current.play();
         else if (!playing && !videoRef.current.paused) videoRef.current.pause();
     }, [playing]);
-    
+
     const currentLocation = useMemo(() => {
         if (!graphs.gps_data || timestamp === undefined || !positions) return undefined;
         let index = bisector<Position, number>(d => d.timestamp).left(positions, timestamp)
@@ -177,6 +177,30 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         if (d0 === undefined) return d1;
         return timestamp - d0.timestamp > d1.timestamp - timestamp ? d1 : d0;
     }, [graphs.gps_data, timestamp]);
+
+    const currentData = useMemo(() => {
+        if (!data) return undefined;
+        const currentValues: { label: string; value: number }[] = [];
+        if (data.speed) {
+            const index = bisector<number, number>(d => d).left(data.speed.timestamp, timestamp);
+            const speedValue = data.speed.values[index - 1];
+            if (speedValue !== undefined) currentValues.push({ label: "Speed (m/s)", value: speedValue });
+        }
+        if (data.centripetal) {
+            const index = bisector<number, number>(d => d).left(data.centripetal.timestamp, timestamp);
+            const centripetalValue = data.centripetal.values[index - 1];
+            if (centripetalValue !== undefined) currentValues.push({ label: "Centripetal Acceleration (m/s²)", value: centripetalValue });
+        }
+        if (data.energy) {
+            const index = bisector<number, number>(d => d).left(data.energy.timestamp, timestamp);
+            const energyValue = data.energy.values[index - 1];
+            if (energyValue !== undefined) currentValues.push({ label: "Energy (J/kg)", value: energyValue });
+        }
+        return {
+            timestamp,
+            values: currentValues,
+        };
+    }, [data, timestamp]);
 
     return (
         <div className="flex h-full gap-4 mb-2">
@@ -223,8 +247,20 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                     )}
                 </div>
                 {hasGraphData && (
-                    <div className="h-1/3 pl-6">
-                        <RollMapContainer positions={positions} currentLocation={currentLocation} />
+                    <div className="flex h-1/3 pl-6 gap-8">
+                        <div className="flex-1 min-w-1/2">
+                            <RollMapContainer positions={positions} currentLocation={currentLocation} />
+                        </div>
+                        <div className="overflow-y-auto flex-1 flex-col text-left">
+                            <div className="text-s text-gray-600">Time</div>
+                            <div className="font-mono text-m mb-2">{(timestamp / 1000).toFixed(3)}s</div>
+                            {currentData?.values.map((v) => (
+                                <div key={v.label} className="mb-1">
+                                    <div className="text-s text-gray-600">{v.label}</div>
+                                    <div className="font-mono text-m">{v.value.toFixed(2)}</div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
