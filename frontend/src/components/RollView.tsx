@@ -281,10 +281,29 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                         <span>{stats?.rollup_height !== undefined ? stats.rollup_height.toFixed(2) : '---'} m</span>
                     </div>
                 </div>
-                <div>
-                    <span className="font-semibold block">Freeroll Energy Loss</span>
-                    <span>{stats?.freeroll_energy_loss !== undefined ? stats.freeroll_energy_loss.toFixed(2) : '---'} J/kg</span>
-                </div>
+                {
+                    stats?.to_chute_energy_loss !== undefined ? (
+                        <div className="space-y-2">
+                            <div>
+                                <span className="font-semibold block">To Chute Energy Loss</span>
+                                <span>{stats.to_chute_energy_loss.toFixed(2)} J/kg</span>
+
+                            </div>
+                            <div>
+                                <span className="font-semibold block">Chute Energy Loss</span>
+                                <span>{stats?.chute_energy_loss !== undefined ? stats.chute_energy_loss.toFixed(2) : '---'} J/kg</span>
+                            </div>
+                        </div>
+                    )
+                        : (
+                            <div>
+                                <span className="font-semibold block">Freeroll Energy Loss</span>
+                                <span>{stats?.freeroll_energy_loss !== undefined ? stats.freeroll_energy_loss.toFixed(2) : '---'} J/kg</span>
+                            </div>
+                        )
+
+                }
+
             </div>
 
             {(roll.driver_notes || roll.mech_notes || roll.pusher_notes) && (

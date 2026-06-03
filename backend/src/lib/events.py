@@ -31,6 +31,7 @@ def calculate_freeroll_stats(graphs: dict, roll_events: list[RollEvent]) -> dict
     
     roll_starts = [e.timestamp_ms for e in roll_events if e.type == 'roll_start']
     freeroll_starts = [e.timestamp_ms for e in roll_events if e.type == 'freeroll_start']
+    chute_starts = [e.timestamp_ms for e in roll_events if e.type == 'chute_start']
     hill3_starts = [e.timestamp_ms for e in roll_events if e.type == 'hill_start' and e.tag == '3']
     roll_ends = [e.timestamp_ms for e in roll_events if e.type == 'roll_end']
     
@@ -62,6 +63,10 @@ def calculate_freeroll_stats(graphs: dict, roll_events: list[RollEvent]) -> dict
         hill3_starts = list(gps_data['timestamp'].iloc[gps_data.index.get_indexer(hill3_starts, method='nearest')]) # type: ignore
         freeroll_starts = list(gps_data['timestamp'].iloc[gps_data.index.get_indexer(freeroll_starts, method='nearest')]) # type: ignore
         if len(hill3_starts) == 1:
+            if len(chute_starts) == 1:
+                chute_start = gps_data['timestamp'].iloc[gps_data.index.get_indexer(chute_starts, method='nearest')[0]] # type: ignore
+                stats['to_chute_energy_loss'] = float(energy.max() - energy.loc[chute_start])
+                stats['chute_energy_loss'] = float(energy.loc[chute_start] - energy.loc[hill3_starts[0]])
             stats['freeroll_energy_loss'] = float(energy.max() - energy.loc[hill3_starts[0]])
         if len(freeroll_starts) == 1 and len(hill3_starts) == 1:
             pickup_timestamp = energy.loc[freeroll_starts[0]:hill3_starts[0] + 10_000].idxmin()

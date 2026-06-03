@@ -136,6 +136,7 @@ const guessList: EventGuess[] = [
     { type: 'hill_start', tag: '1' },
     { type: 'hill_start', tag: '2' },
     { type: 'freeroll_start' },
+    { type: 'chute_start' },
     { type: 'hill_start', tag: '3' },
     { type: 'hill_start', tag: '4' },
     { type: 'hill_start', tag: '5' },

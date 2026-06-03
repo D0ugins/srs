@@ -215,10 +215,13 @@ export interface RollStats {
     video_roll_start_ms?: number;
     video_roll_end_ms?: number;
 
-    max_speed: number;
-    max_energy: number;
-    freeroll_energy_loss: number;
+    max_speed?: number;
+    max_energy?: number;
 
-    pickup_speed: number;
-    rollup_height: number;
+    to_chute_energy_loss?: number;
+    chute_energy_loss?: number;
+    freeroll_energy_loss?: number;
+
+    pickup_speed?: number;
+    rollup_height?: number;
 }
