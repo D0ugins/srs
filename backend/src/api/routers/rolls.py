@@ -394,7 +394,7 @@ def get_graph_data(roll):
         data_file = fit_file = fit_files[0]
         fit_path = resolve_path(fit_file.file.uri)
         messages = load_fit_file(fit_path)
-        response = get_fit_graph_data(messages, fit_file.local_start_ms, fit_file.local_end_ms)
+        response = get_fit_graph_data(messages, fit_file.local_start_ms, fit_file.local_end_ms + 2000)
     elif gpx_files:
         data_file = gpx_file = gpx_files[0]
         gpx_data = load_gpx(resolve_path(gpx_file.file.uri))
