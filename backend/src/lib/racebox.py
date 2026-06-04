@@ -4,6 +4,7 @@ import os
 import httpx
 import pandas as pd
 from lib.geo import get_elevations, get_angular_velocity
+from datetime import datetime, timedelta, timezone
 
 DATA_PATH = os.getenv('DATA_PATH', '/app/data')
 CACHE_DIR = os.path.join(DATA_PATH, 'cache', 'racebox')
@@ -44,7 +45,7 @@ def load_session(session_id: str) -> dict:
     return data
 
 
-def get_racebox_graph_data(session_id: str) -> tuple[int, dict[str, pd.DataFrame]]:
+def get_racebox_graph_data(session_id: str) -> dict[str, pd.DataFrame]:
     """Extract graph data from a racebox session."""
     
     session_data = load_session(session_id)
@@ -95,5 +96,34 @@ def get_racebox_graph_data(session_id: str) -> tuple[int, dict[str, pd.DataFrame
         'y': df['GyroY'],
         'z': df['GyroZ'],
     })
-    start_time = session_data['session']['meta']['dateTimeStartedUTC']
-    return start_time, response
+    return response
+
+
+GPS_EPOCH = datetime(1980, 1, 6)
+GPS_UTC_OFFSET = 18
+SECONDS_PER_WEEK = 604800
+
+def itow_to_utc(itow_ms: int, utc_approx: datetime) -> datetime:
+    gps_approx = utc_approx + timedelta(seconds=GPS_UTC_OFFSET)
+
+    gps_seconds_since_epoch = (gps_approx - GPS_EPOCH).total_seconds()
+    estimated_week = int(gps_seconds_since_epoch // SECONDS_PER_WEEK)
+
+    best_utc = None
+    best_error = None
+    # Check neighboring weeks in case estimate is near a boundary
+    for week in (estimated_week - 1,
+                 estimated_week,
+                 estimated_week + 1):
+        gps_time = (
+            GPS_EPOCH + timedelta(weeks=week) + timedelta(milliseconds=itow_ms)
+        )
+
+        utc_time = gps_time - timedelta(seconds=GPS_UTC_OFFSET)
+
+        error = abs((utc_time - utc_approx).total_seconds())
+        if best_error is None or error < best_error:
+            best_error = error
+            best_utc = utc_time
+
+    return best_utc # type: ignore

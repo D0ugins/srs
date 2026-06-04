@@ -388,8 +388,7 @@ def get_graph_data(roll, include_imu: bool = True):
     if racebox_files:
         data_file = racebox_file = racebox_files[0]
         session_id = data_file.file.uri.split('/')[-1]
-        racebox_start, racebox_response = get_racebox_graph_data(session_id)
-        response = racebox_response
+        response = get_racebox_graph_data(session_id)
     elif fit_files:
         data_file = fit_file = fit_files[0]
         fit_path = resolve_path(fit_file.file.uri)
@@ -419,9 +418,9 @@ def get_graph_data(roll, include_imu: bool = True):
 
 @router.get("/{roll_id}/graphs")
 def get_roll_graphs(roll_id: int, session: SessionDep):
-    global cached_id, cached
-    if roll_id == cached_id and cached is not None:
-        return cached
+    # global cached_id, cached
+    # if roll_id == cached_id and cached is not None:
+    #     return cached
     
     roll = session.scalar(
         select(Roll).options(selectinload(Roll.roll_files).selectinload(RollFile.file)).where(Roll.id == roll_id)
