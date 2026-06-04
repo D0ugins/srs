@@ -25,7 +25,7 @@ def export_hills(
     rolls = session.scalars(query).all()
     
     output = StringIO()
-    output.write("Buggy,Driver,Pusher,Gender,Hill,Date,Time,Roll Type,Roll Number,Roll Start Time UTC\n")
+    output.write("Id,Buggy,Driver,Pusher,Gender,Hill,Date,Time,Roll Type,Roll Number,Roll Start Time UTC\n")
     
     for roll in rolls:
         hill_times = calculate_hill_times(roll.roll_events)
@@ -41,7 +41,7 @@ def export_hills(
             roll_number = str(roll.roll_number) if roll.roll_number is not None else ""
             
             row = [
-                roll.buggy.name, roll.driver.name,
+                str(roll.id), roll.buggy.name, roll.driver.name,
                 roll_hill.pusher.name, gender,
                 str(roll_hill.hill_number),
                 date_str,
@@ -75,7 +75,7 @@ def export_freeroll(
     rolls = session.scalars(query).all()
     
     output = StringIO()
-    output.write("Buggy,Driver,Date,Roll Number,Roll Start Time,Time,Max Speed,Max Energy,To Chute Energy Loss,Chute Energy Loss,Freeroll Energy Loss,Pickup Energy,Pickup Speed,Rollup Height\n")
+    output.write("Id,Buggy,Driver,Date,Roll Number,Roll Start Time,Time,Max Speed,Max Energy,To Chute Energy Loss,Chute Energy Loss,Freeroll Energy Loss,Pickup Energy,Pickup Speed,Rollup Height\n")
     
     for roll in rolls:
         date_str = f"{roll.roll_date.year}/{roll.roll_date.month:02d}/{roll.roll_date.day:02d}"
@@ -96,7 +96,7 @@ def export_freeroll(
         rollup_height = f"{stats['rollup_height']:.2f}" if 'rollup_height' in stats else ""
         
         row = [
-            roll.buggy.name, roll.driver.name,
+            str(roll.id), roll.buggy.name, roll.driver.name,
             date_str, roll_number, start_time,
             freeroll_time,
             max_speed, max_energy,
