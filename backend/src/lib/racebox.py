@@ -7,8 +7,18 @@ from lib.geo import get_elevations, get_angular_velocity
 
 DATA_PATH = os.getenv('DATA_PATH', '/app/data')
 CACHE_DIR = os.path.join(DATA_PATH, 'cache', 'racebox')
-COOKIES = {'racebox': os.getenv('RACEBOX_ID', '')}
+RACEBOX_EMAIL = os.getenv('RACEBOX_EMAIL')
+RACEBOX_PASS = os.getenv('RACEBOX_PASS')
 
+
+client = httpx.Client(follow_redirects=False)
+
+def login():
+    client.post('https://www.racebox.pro/webapp/login', data={
+        'email': RACEBOX_EMAIL,
+        'password': RACEBOX_PASS,
+        'redirect_to': '',
+    })
 
 def load_session(session_id: str) -> dict:
     os.makedirs(CACHE_DIR, exist_ok=True)
@@ -17,9 +27,15 @@ def load_session(session_id: str) -> dict:
     if os.path.exists(cache_path):
         with open(cache_path) as f:
             return json.load(f)
-    url = f'https://www.racebox.pro/webapp/session/{session_id}/json'
-    resp = httpx.get(url, cookies=COOKIES, timeout=30)
-    resp.raise_for_status()
+
+    try:        
+        resp = client.get(f'https://www.racebox.pro/webapp/session/{session_id}/json')
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as _:
+        login()
+        resp = client.get(f'https://www.racebox.pro/webapp/session/{session_id}/json')
+        resp.raise_for_status()
+        
     data = resp.json()
 
     with open(cache_path, 'w') as f:
