@@ -177,24 +177,3 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
             response['magnetometer'] = mag_data
     
     return response
-
-def calculate_speed(gps_data: pd.DataFrame) -> pd.Series:
-    lat = np.radians(gps_data.position_lat)
-    lon = np.radians(gps_data.position_long)
-    dlat = lat.diff() # type: ignore
-    dlon = lon.diff() # type: ignore
-    a = np.sin(dlat / 2)**2 + np.cos(lat).shift() * np.cos(lat) * np.sin(dlon / 2)**2 # type: ignore
-    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
-    distance = 6371000 * c # Earth radius in meters
-    speed = distance / gps_data.index.to_series().diff() # speed in m/s
-    return speed.fillna(0)
-
-def calculate_heading(gps_data: pd.DataFrame) -> pd.Series:
-    lat = np.radians(gps_data.position_lat)
-    lon = np.radians(gps_data.position_long)
-    dlat = lat.diff() # type: ignore
-    dlon = lon.diff() # type: ignore
-    x = np.sin(dlon) * np.cos(lat)
-    y = np.cos(lat).shift() * np.sin(lat) - np.sin(lat).shift() * np.cos(lat) * np.cos(dlon) # type: ignore
-    heading = (np.degrees(np.arctan2(x, y)) + 360) % 360
-    return heading.ffill().fillna(0)

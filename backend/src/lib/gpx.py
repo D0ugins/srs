@@ -1,4 +1,4 @@
-from lib.fit import calculate_heading, calculate_speed
+import numpy as np
 from lib.geo import get_angular_velocity, get_elevations
 import pandas as pd
 import gpxpy
@@ -8,9 +8,30 @@ def to_dict(point):
 def load_gpx(gpx_path):
   with open(gpx_path, 'r') as f:
     gpx = pd.DataFrame([to_dict(p) for p in gpxpy.parse(f).tracks[0].segments[0].points])
-    gpx.time = gpx.time.dt.tz_convert(None)
+    gpx['time'] = gpx.time.dt.tz_convert(None)
     return gpx
 
+
+def calculate_speed(gps_data: pd.DataFrame) -> pd.Series:
+    lat = np.radians(gps_data.position_lat)
+    lon = np.radians(gps_data.position_long)
+    dlat = lat.diff() # type: ignore
+    dlon = lon.diff() # type: ignore
+    a = np.sin(dlat / 2)**2 + np.cos(lat).shift() * np.cos(lat) * np.sin(dlon / 2)**2 # type: ignore
+    c = 2 * np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+    distance = 6371000 * c # Earth radius in meters
+    speed = distance / (gps_data.index.to_series().diff()/1000) # speed in m/s
+    return speed.fillna(0)
+
+def calculate_heading(gps_data: pd.DataFrame) -> pd.Series:
+    lat = np.radians(gps_data.position_lat)
+    lon = np.radians(gps_data.position_long)
+    dlat = lat.diff() # type: ignore
+    dlon = lon.diff() # type: ignore
+    x = np.sin(dlon) * np.cos(lat)
+    y = np.cos(lat).shift() * np.sin(lat) - np.sin(lat).shift() * np.cos(lat) * np.cos(dlon) # type: ignore
+    heading = (np.degrees(np.arctan2(x, y)) + 360) % 360
+    return heading.ffill().fillna(0)
   
 def get_gpx_graph_data(gpx_data: pd.DataFrame, local_start_ms: int | None = None, local_end_ms: int | None = None) -> dict[str, pd.DataFrame]:
     gps_data = gpx_data.loc[local_start_ms:local_end_ms]
