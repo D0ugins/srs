@@ -151,11 +151,12 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
 
     const videoStart = graphs.video_start ?? 0;
     const updateVideoTime = useCallback((time: number) => {
-        const adjustedTime = Math.min(Math.max(0, time - (videoStart / 1000)), duration)
         if (videoRef.current) {
+            const adjustedTime = Math.min(Math.max(0, time - (videoStart / 1000)), duration)
             videoRef.current.currentTime = adjustedTime
+            setCurrentTime(adjustedTime);
         }
-        setCurrentTime(adjustedTime);
+        else { setCurrentTime(time); } // TODO: clamp based on graph
     }, [duration, videoStart]);
 
     const timestamp = currentTime * 1000 + videoStart;
