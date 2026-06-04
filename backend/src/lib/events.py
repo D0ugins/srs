@@ -77,7 +77,7 @@ def calculate_freeroll_stats(graphs: dict, roll_events: list[RollEvent]) -> dict
             stats['pickup_timestamp_ms'] = int(pickup_timestamp)
             stats['pickup_energy'] = float(energy.loc[pickup_timestamp])
             stats['pickup_speed'] = float(gps_data['speed'].loc[pickup_timestamp])
-            stats['rollup_height'] = float(elevations.loc[hill3_starts[0]] - elevations.loc[pickup_timestamp])
+            stats['rollup_height'] = float(elevations.loc[pickup_timestamp] - elevations.loc[hill3_starts[0]])
     except Exception as e:
         print(f"Error loading graph data: {e}")
     
