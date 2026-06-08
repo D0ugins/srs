@@ -7,8 +7,9 @@ import { Line } from "@visx/shape";
 import { localPoint } from "@visx/event";
 
 import { bisector } from "d3-array";
-import { useMemo, memo, useRef, useEffect } from "react";
+import { useMemo, memo } from "react";
 import { GRAPH_MARGIN } from "@/lib/constants";
+import GraphLine from "./GraphLine";
 
 export interface GraphData {
     timestamp: number[];
@@ -74,46 +75,6 @@ export default memo(({
 
     const dataPoints = useMemo(() => data.timestamp.map((t, i) => ({ x: t, y: data.values[i] })), [data]);
 
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.save();
-        ctx.scale(dpr, dpr);
-
-        if (dataPoints.length === 0) {
-            ctx.restore();
-            return;
-        }
-
-        ctx.beginPath();
-        ctx.strokeStyle = '#7777ffff';
-        ctx.lineWidth = 2;
-        ctx.lineJoin = 'round';
-
-        let started = false;
-        for (const d of dataPoints) {
-            const x = xScale(d.x);
-            const y = yScale(d.y);
-            if (!started) {
-                ctx.moveTo(x, y);
-                started = true;
-            } else {
-                ctx.lineTo(x, y);
-            }
-        }
-
-        ctx.stroke();
-        ctx.restore();
-    }, [dataPoints, xScale, yScale, width, height, dpr]);
-
     const handleLocalMouseMove = (event: React.MouseEvent | React.TouchEvent) => {
         const point = localPoint(event);
         if (!point || !showTooltip) return;
@@ -174,14 +135,13 @@ export default memo(({
             numTicks={X_TICKS} tickFormat={(value) => (+value / 1000).toFixed(3)}
         />}
         <AxisLeft<typeof yScale> scale={yScale} numTicks={Y_TICKS} />
-        <foreignObject x={0} y={0} width={width} height={height}>
-            <canvas
-                ref={canvasRef}
-                width={width * dpr}
-                height={height * dpr}
-                style={{ width: `${width}px`, height: `${height}px`, pointerEvents: 'none' }}
-            />
-        </foreignObject>
+        <GraphLine
+            data={dataPoints}
+            xScale={xScale}
+            yScale={yScale}
+            width={width}
+            height={height}
+        />
         {min < 0 && <Line
             from={{ x: 0, y: yScale(0) }}
             to={{ x: width, y: yScale(0) }}
