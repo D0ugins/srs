@@ -483,10 +483,13 @@ def get_roll_stats(roll_id: int, session: SessionDep):
     
     if len(roll_starts) == 1 and len(roll_ends) == 1:
         stats['course_time_ms'] = roll_ends[0] - roll_starts[0]
-    
-    graphs = get_graph_data(roll, include_imu=False)
-    
-    freeroll_stats = calculate_freeroll_stats(graphs, roll.roll_events)
-    stats.update(freeroll_stats)
+        
+    racebox_files = [rf for rf in roll.roll_files if rf.file.type == 'racebox']
+    fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
+    if racebox_files or fit_files:
+        graphs = get_graph_data(roll, include_imu=False)
+        
+        freeroll_stats = calculate_freeroll_stats(graphs, roll.roll_events)
+        stats.update(freeroll_stats)
     
     return stats
