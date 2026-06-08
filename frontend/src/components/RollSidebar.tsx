@@ -1,14 +1,15 @@
-import { useState, useEffect, type ReactElement } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import RollTree from './RollTree'
 import { capitalize, formatDate } from '@/lib/format'
 import SidebarFilters from './SidebarFilters'
 import type { RollDataBase } from '@/lib/roll'
-import { Link, useLocation } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router'
 
-interface RollTreeLeaf {
+export interface RollTreeLeaf {
     kind: 'leaf'
-    element: ReactElement
+    roll: RollDataBase
+    displayName: string
 }
 
 interface RollTreeNode {
@@ -71,8 +72,7 @@ function groupRolls(rolls: RollDataBase[], leaves: Map<RollDataBase, RollTreeLea
     return result;
 }
 
-function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filters: unknown[] = [],
-    makeLeaf: (roll: RollDataBase, name: string) => RollTreeLeaf): RollDataTree[] {
+function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filters: unknown[] = []): RollDataTree[] {
 
     // Filter
     // TODO
@@ -84,7 +84,7 @@ function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filter
         if (!groupings.includes('buggy')) name += `${roll.buggy.name} `
         if (!groupings.includes('date')) name += `${formatDate(roll.roll_date)} `
 
-        leaves.set(roll, makeLeaf(roll, name.trim()));
+        leaves.set(roll, { kind: 'leaf', roll, displayName: name.trim() });
     }
     return groupRolls(rolls, leaves, groupings);
 }
@@ -136,7 +136,10 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
         } catch (e) { console.error('Failed to save groupings to localStorage', e); }
     }, [groupings]);
 
-    const location = useLocation();
+    const rollTrees = useMemo(() => {
+        if (!data) return [];
+        return buildRollTree(data, groupings, []);
+    }, [data, groupings]);
 
     if (isPending) {
         return <div>Loading...</div>
@@ -146,36 +149,6 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
         return <div>Error loading rolls.</div>
     }
 
-    const makeLeaf = (roll: RollDataBase, name: string): RollTreeLeaf => {
-        const pathParts = location.pathname.split('/');
-        pathParts[2] = roll.id.toString();
-        return {
-            kind: 'leaf' as const,
-            element: <Link
-                className="text-gray-700 block"
-                activeProps={{
-                    className: 'text-gray-700 block bg-gray-200',
-                    style: { marginLeft: `-${groupings.length}em`, paddingLeft: `${groupings.length}em` }
-                }}
-                to={pathParts.join('/')}
-                params={{ rollId: roll.id.toString() }}
-            >
-                <span>{name}{name !== "" ? " - " : ""}</span><span>
-                    {roll.start_time
-                        ? new Date(roll.start_time + "Z").toLocaleString('en-US', {
-                            timeZone: 'America/New_York',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            hour12: false
-                        })
-                        : <> Roll #{roll.roll_number} </>
-                    }
-                </span>
-            </Link>,
-        }
-    };
-
-    const rollTrees = buildRollTree(data, groupings, [], makeLeaf);
     return <>
         <SidebarFilters groupings={groupings} setGroupings={setGroupings} />
         <hr />
@@ -189,7 +162,7 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
                 </svg>
 
             </Link>
-            {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} path="" expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />))}
+            {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} path="" depth={groupings.length} expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />))}
         </div>
     </>
 }
