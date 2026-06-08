@@ -56,8 +56,13 @@ export default function RollGraphs({ data, events,
     {
         const width = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
         const xScale = useMemo(() => {
-            const allTimestamps = Object.values(data).flatMap(d => d?.timestamp);
-            const maxTime = Math.max(...allTimestamps);
+            let maxTime = 0;
+            for (const key in data) {
+                const d = data[key as keyof typeof data];
+                if (d) {
+                    maxTime = Math.max(maxTime, ...d.timestamp);
+                }
+            }
             return zoomXScale(zoom, scaleLinear({
                 domain: [0, maxTime],
                 range: [0, width],
@@ -119,7 +124,7 @@ export default function RollGraphs({ data, events,
                 No data available for this roll
             </div>
         }
-        
+
         return <div className="relative">
             <svg width={parent.width} height={parent.height}
                 // Transform ensures pixel alignment
