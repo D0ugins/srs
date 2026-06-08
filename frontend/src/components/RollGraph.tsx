@@ -11,6 +11,10 @@ import { useMemo, memo } from "react";
 import { GRAPH_MARGIN } from "@/lib/constants";
 import GraphLine from "./GraphLine";
 
+const MemoizedAxisLeft = memo(({ scale, numTicks }: { scale: ScaleLinear<number, number, never>; numTicks: number }) => (
+    <AxisLeft<typeof scale> scale={scale} numTicks={numTicks} />
+));
+
 export interface GraphData {
     timestamp: number[];
     values: number[];
@@ -68,7 +72,7 @@ export default memo(({
     const yScale = useMemo(() => scaleLinear({
         domain: [min, max],
         range: [height, 0],
-    }), [data, height, min, max]);
+    }), [height, min, max]);
 
     const X_TICKS = 9;
     const Y_TICKS = 7;
@@ -134,7 +138,7 @@ export default memo(({
             top={height}
             numTicks={X_TICKS} tickFormat={(value) => (+value / 1000).toFixed(3)}
         />}
-        <AxisLeft<typeof yScale> scale={yScale} numTicks={Y_TICKS} />
+        <MemoizedAxisLeft scale={yScale} numTicks={Y_TICKS} />
         <GraphLine
             data={dataPoints}
             xScale={xScale}
