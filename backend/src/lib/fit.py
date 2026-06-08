@@ -8,6 +8,7 @@ import orjson
 import json
 from functools import lru_cache
 from typing import List, TypedDict
+from datetime import timedelta
 import os
 
 FIT_EPOCH_S = 631065600
@@ -177,3 +178,26 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
             response['magnetometer'] = mag_data
     
     return response
+
+# TODO: check if this is off by 1 second
+def estimate_fit_timestamp(fit: FitMessages):
+  gps = get_gps_data(fit)
+  if gps is None: gps = pd.DataFrame()
+  
+  boundary_pairs = []
+  prev = None
+  for m in gps.itertuples():
+    if prev is not None:
+      if m.utc_timestamp > prev.utc_timestamp: # type: ignore
+        boundary_pairs.append((m.Index, m.timestamp_ms, prev.timestamp_ms))
+    prev = m
+    
+  if not len(boundary_pairs):
+    correlation = fit['timestamp_correlation_mesgs'][0]
+    if not correlation:
+        raise ValueError("No GPS data or timestamp correlation available in fit file.")
+    return fit_to_utc(correlation['timestamp'] - (correlation['system_timestamp'] + correlation['system_timestamp_ms'] / 1000))
+  else:
+    boundary_message = gps.loc[boundary_pairs[0][0]]
+    return boundary_message.utc_timestamp - timedelta(seconds=(boundary_message.timestamp + 50) / 1000)
+  
