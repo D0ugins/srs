@@ -14,6 +14,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as RollsIndexRouteImport } from './routes/rolls/index'
 import { Route as RollsNewRouteImport } from './routes/rolls/new'
 import { Route as RollsRollIdIndexRouteImport } from './routes/rolls/$rollId.index'
+import { Route as RollsCompareRollIdsRouteImport } from './routes/rolls/compare.$rollIds'
 import { Route as RollsRollIdRecordingRouteImport } from './routes/rolls/$rollId.recording'
 import { Route as RollsRollIdEditRouteImport } from './routes/rolls/$rollId.edit'
 
@@ -42,6 +43,11 @@ const RollsRollIdIndexRoute = RollsRollIdIndexRouteImport.update({
   path: '/$rollId/',
   getParentRoute: () => RollsRoute,
 } as any)
+const RollsCompareRollIdsRoute = RollsCompareRollIdsRouteImport.update({
+  id: '/compare/$rollIds',
+  path: '/compare/$rollIds',
+  getParentRoute: () => RollsRoute,
+} as any)
 const RollsRollIdRecordingRoute = RollsRollIdRecordingRouteImport.update({
   id: '/$rollId/recording',
   path: '/$rollId/recording',
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/rolls/': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
   '/rolls/$rollId/recording': typeof RollsRollIdRecordingRoute
+  '/rolls/compare/$rollIds': typeof RollsCompareRollIdsRoute
   '/rolls/$rollId': typeof RollsRollIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -68,6 +75,7 @@ export interface FileRoutesByTo {
   '/rolls': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
   '/rolls/$rollId/recording': typeof RollsRollIdRecordingRoute
+  '/rolls/compare/$rollIds': typeof RollsCompareRollIdsRoute
   '/rolls/$rollId': typeof RollsRollIdIndexRoute
 }
 export interface FileRoutesById {
@@ -78,6 +86,7 @@ export interface FileRoutesById {
   '/rolls/': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
   '/rolls/$rollId/recording': typeof RollsRollIdRecordingRoute
+  '/rolls/compare/$rollIds': typeof RollsCompareRollIdsRoute
   '/rolls/$rollId/': typeof RollsRollIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -89,6 +98,7 @@ export interface FileRouteTypes {
     | '/rolls/'
     | '/rolls/$rollId/edit'
     | '/rolls/$rollId/recording'
+    | '/rolls/compare/$rollIds'
     | '/rolls/$rollId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/rolls'
     | '/rolls/$rollId/edit'
     | '/rolls/$rollId/recording'
+    | '/rolls/compare/$rollIds'
     | '/rolls/$rollId'
   id:
     | '__root__'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/rolls/'
     | '/rolls/$rollId/edit'
     | '/rolls/$rollId/recording'
+    | '/rolls/compare/$rollIds'
     | '/rolls/$rollId/'
   fileRoutesById: FileRoutesById
 }
@@ -151,6 +163,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RollsRollIdIndexRouteImport
       parentRoute: typeof RollsRoute
     }
+    '/rolls/compare/$rollIds': {
+      id: '/rolls/compare/$rollIds'
+      path: '/compare/$rollIds'
+      fullPath: '/rolls/compare/$rollIds'
+      preLoaderRoute: typeof RollsCompareRollIdsRouteImport
+      parentRoute: typeof RollsRoute
+    }
     '/rolls/$rollId/recording': {
       id: '/rolls/$rollId/recording'
       path: '/$rollId/recording'
@@ -173,6 +192,7 @@ interface RollsRouteChildren {
   RollsIndexRoute: typeof RollsIndexRoute
   RollsRollIdEditRoute: typeof RollsRollIdEditRoute
   RollsRollIdRecordingRoute: typeof RollsRollIdRecordingRoute
+  RollsCompareRollIdsRoute: typeof RollsCompareRollIdsRoute
   RollsRollIdIndexRoute: typeof RollsRollIdIndexRoute
 }
 
@@ -181,6 +201,7 @@ const RollsRouteChildren: RollsRouteChildren = {
   RollsIndexRoute: RollsIndexRoute,
   RollsRollIdEditRoute: RollsRollIdEditRoute,
   RollsRollIdRecordingRoute: RollsRollIdRecordingRoute,
+  RollsCompareRollIdsRoute: RollsCompareRollIdsRoute,
   RollsRollIdIndexRoute: RollsRollIdIndexRoute,
 }
 
