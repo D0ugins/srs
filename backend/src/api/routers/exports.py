@@ -30,20 +30,28 @@ def export_hills(
     for roll in rolls:
         hill_times = calculate_hill_times(roll.roll_events)
         date_str = f"{roll.roll_date.year}/{roll.roll_date.month:02d}/{roll.roll_date.day:02d}"
+        start_time = roll.start_time.strftime("%H:%M") if roll.start_time else ""
+        roll_number = str(roll.roll_number) if roll.roll_number is not None else ""
         
-        for roll_hill in roll.roll_hills:
-            if roll_hill.pusher.name == "MECH": continue
+        hill_map = {rh.hill_number: rh for rh in roll.roll_hills}
+        
+        for hill_number in range(1, 6):
+            roll_hill = hill_map.get(hill_number)
+            time_ms = hill_times.get(hill_number)
             
-            time_ms = hill_times.get(roll_hill.hill_number)
+            if roll_hill is None and time_ms is None:
+                continue
+            if roll_hill is not None and roll_hill.pusher.name == "MECH":
+                continue
+            
             time_str = f"{time_ms / 1000:.1f}" if time_ms is not None else ""
-            gender = roll_hill.pusher.gender.value if roll_hill.pusher.gender else ""
-            start_time = roll.start_time.strftime("%H:%M") if roll.start_time else ""
-            roll_number = str(roll.roll_number) if roll.roll_number is not None else ""
+            pusher_name = roll_hill.pusher.name if roll_hill is not None else ""
+            gender = roll_hill.pusher.gender.value if roll_hill is not None and roll_hill.pusher.gender else ""
             
             row = [
                 str(roll.id), roll.buggy.name, roll.driver.name,
-                roll_hill.pusher.name, gender,
-                str(roll_hill.hill_number),
+                pusher_name, gender,
+                str(hill_number),
                 date_str,
                 time_str,
                 roll.roll_date.type.value,
