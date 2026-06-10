@@ -20,5 +20,5 @@ def unfiorm_sample(data: pd.DataFrame, fs_target: float | None = None):
     start_time = data.index.min()
     end_time = data.index.max()
     target_index = pd.RangeIndex(start=start_time, stop=end_time + 1, step=int(1000 / fs_target))
-    resampled_data = data.reindex(target_index).interpolate(method='linear')
-    return resampled_data
+    resampled_data = data.reindex(data.index.union(target_index)).interpolate(method='index')
+    return resampled_data.loc[target_index]
