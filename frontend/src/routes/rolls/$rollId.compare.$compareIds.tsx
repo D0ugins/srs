@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute('/rolls/compare/$rollIds')({
+export const Route = createFileRoute('/rolls/$rollId/compare/$compareIds')({
     component: RouteComponent,
 })
 
 function RouteComponent() {
-    const { rollIds } = Route.useParams();
+    const { rollId, compareIds } = Route.useParams();
     return <> </>;
 }
