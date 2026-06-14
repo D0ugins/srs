@@ -37,7 +37,7 @@ export default memo(({ width, height, zoom, paths }:
         range: [height, 0],
     });
 
-    const drawSize = Math.max(1 / zoom.transformMatrix.scaleX, 0.33);
+    const drawSize = Math.max(1 / zoom.transformMatrix.scaleX, 0.1);
 
     const resolved = (paths ?? []).map((path, idx) => ({
         ...path,
@@ -67,7 +67,7 @@ export default memo(({ width, height, zoom, paths }:
                         x={d => xScale(d.long)}
                         y={d => yScale(d.lat)}
                         stroke="red"
-                        strokeWidth={3}
+                        strokeWidth={1 * drawSize}
                         fill="none"
                         strokeLinecap='square'
                         shapeRendering="geometricPrecision"
