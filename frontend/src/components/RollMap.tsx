@@ -1,4 +1,4 @@
-import { HILL_LINES, SRS_GOLD } from '@/lib/constants';
+import { GRAPH_SERIES_COLORS, HILL_LINES } from '@/lib/constants';
 import { Group } from '@visx/group';
 import { scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
@@ -11,13 +11,21 @@ export interface Position {
     long: number,
     timestamp: number,
 }
+
+export interface MapPath {
+    positions: Position[];
+    currentLocation?: Position;
+    // optional per-path overrides
+    color?: string;
+    label?: string;
+}
+
 export interface RollMapProps {
-    positions?: Position[]
-    currentLocation?: Position
+    paths?: MapPath[]
 }
 
 
-export default memo(({ width, height, zoom, positions, currentLocation }:
+export default memo(({ width, height, zoom, paths }:
     RollMapProps & { width: number; height: number, zoom: ZoomType<SVGSVGElement> }) => {
     const xScale = scaleLinear({
         domain: [-79.948599138, -79.940837694],
@@ -31,18 +39,26 @@ export default memo(({ width, height, zoom, positions, currentLocation }:
 
     const drawSize = Math.max(1 / zoom.transformMatrix.scaleX, 0.33);
 
+    const resolved = (paths ?? []).map((path, idx) => ({
+        ...path,
+        color: path.color ?? GRAPH_SERIES_COLORS[idx % GRAPH_SERIES_COLORS.length],
+    }));
+
     return <svg width={width} height={height} ref={zoom.containerRef} className='touch-none'>
         <Group transform={zoom.toString()}>
             <image href={`${import.meta.env.BASE_URL || '/'}course_sat.png`} width="100%" height="100%" />
-            <LinePath
-                data={positions ?? []}
-                x={d => xScale(d.long)}
-                y={d => yScale(d.lat)}
-                stroke={SRS_GOLD}
-                strokeWidth={2 * drawSize}
-                fill="none"
-                shapeRendering="geometricPrecision"
-            />
+            {resolved.map((path, idx) => (
+                <LinePath
+                    key={idx}
+                    data={path.positions}
+                    x={d => xScale(d.long)}
+                    y={d => yScale(d.lat)}
+                    stroke={path.color}
+                    strokeWidth={2 * drawSize}
+                    fill="none"
+                    shapeRendering="geometricPrecision"
+                />
+            ))}
             {
                 HILL_LINES.map((line, idx) => {
                     return <LinePath
@@ -58,14 +74,15 @@ export default memo(({ width, height, zoom, positions, currentLocation }:
                     />
                 })
             }
-            {currentLocation && <circle
-                cx={xScale(currentLocation.long)}
-                cy={yScale(currentLocation.lat)}
+            {resolved.map((path, idx) => path.currentLocation && <circle
+                key={idx}
+                cx={xScale(path.currentLocation.long)}
+                cy={yScale(path.currentLocation.lat)}
                 r={3 * drawSize}
-                fill="black"
+                fill={path.color}
                 stroke="white"
                 strokeWidth={drawSize}
-            />}
+            />)}
         </Group>
     </svg>
 })

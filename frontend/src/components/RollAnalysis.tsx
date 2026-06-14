@@ -5,7 +5,7 @@ import { useTooltip } from "@visx/tooltip";
 import { applyMatrixToPoint, Zoom, type TransformMatrix } from "@visx/zoom";
 import RollGraphs, { type RollGraphsProps } from "./RollGraphs";
 import RollVideo from "./RollVideo";
-import RollMap, { type Position, type RollMapProps } from "./RollMap";
+import RollMap, { type MapPath, type Position, type RollMapProps } from "./RollMap";
 import { bisector } from "d3-array";
 import RollEventList from "./RollEventList";
 import type { RollEventInput } from "@/routes/rolls/$rollId.recording";
@@ -179,6 +179,11 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         return timestamp - d0.timestamp > d1.timestamp - timestamp ? d1 : d0;
     }, [graphs.gps_data, timestamp]);
 
+    const mapPaths = useMemo<MapPath[]>(() => {
+        if (!positions) return [];
+        return [{ positions, currentLocation }];
+    }, [positions, currentLocation]);
+
     const currentData = useMemo(() => {
         if (!data) return undefined;
         const currentValues: { label: string; value: number }[] = [];
@@ -250,7 +255,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                 {hasGraphData && (
                     <div className="flex h-1/3 pl-6 gap-8">
                         <div className="flex-1 min-w-1/2">
-                            <RollMapContainer positions={positions} currentLocation={currentLocation} />
+                            <RollMapContainer paths={mapPaths} />
                         </div>
                         <div className="overflow-y-auto flex-1 flex-col text-left">
                             <div className="text-s text-neutral-600">Time</div>
