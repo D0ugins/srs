@@ -65,7 +65,7 @@ function RouteComponent() {
         {isCollapsed ? (
             <button
                 onClick={() => { setIsCollapsed(false); setSidebarWidth(DEFAULT_SIDEBAR_WIDTH); }}
-                className="w-4 border-r bg-gray-100 hover:bg-gray-300 flex items-center justify-center"
+                className="w-4 border-r bg-neutral-100 hover:bg-neutral-300 flex items-center justify-center"
                 aria-label="Expand sidebar"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
@@ -81,7 +81,7 @@ function RouteComponent() {
                 <RollSidebar expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />
             </div>
             <div
-                className="w-2 hover:w-2 bg-transparent hover:bg-gray-200 cursor-col-resize transition-all"
+                className="w-2 hover:w-2 bg-transparent hover:bg-neutral-200 cursor-col-resize transition-all"
                 onMouseDown={() => setIsResizing(true)}
             />
         </>}

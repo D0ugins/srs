@@ -6,7 +6,7 @@ export default function RollHeader({ roll }: { roll: RollDetails | RollDataBase 
         {roll.roll_date.month}/{roll.roll_date.day}/{roll.roll_date.year}{' '}
         {roll.roll_number && `Roll #${roll.roll_number} `}
         {roll.start_time && (
-            <span className="text-base text-gray-500">
+            <span className="text-base text-neutral-500">
                 ({new Date(roll.start_time + "Z").toLocaleString('en-US', {
                     timeZone: 'America/New_York',
                     hour: '2-digit',

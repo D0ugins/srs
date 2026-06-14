@@ -94,7 +94,7 @@ export default function VideoTimeline({
                     <div className="flex-1">
                         <div
                             ref={timelineRef}
-                            className="relative h-8 bg-gray-800 rounded cursor-pointer"
+                            className="relative h-8 bg-neutral-800 rounded cursor-pointer"
                             onClick={handleTimelineClick}
                         >
                             <div
@@ -102,19 +102,19 @@ export default function VideoTimeline({
                                 style={{ width: `${progress}%` }}
                             />
                             <div
-                                className="absolute top-0 bottom-0 w-3 bg-gray-400 cursor-grab active:cursor-grabbing rounded-sm"
+                                className="absolute top-0 bottom-0 w-3 bg-neutral-400 cursor-grab active:cursor-grabbing rounded-sm"
                                 style={{ left: `${progress}%`, transform: 'translateX(-50%)' }}
                                 onMouseDown={handlePlayheadMouseDown}
                             />
                         </div>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <div className="flex justify-between text-sm text-neutral-600 mt-1">
                             <span>{formatVidTime(currentTime)}</span>
                             <span>{formatVidTime(duration)}</span>
                         </div>
                     </div>
                     <button
                         onClick={togglePlay}
-                        className="w-10 h-10 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded shrink-0"
+                        className="w-10 h-10 flex items-center justify-center bg-neutral-200 hover:bg-neutral-300 rounded shrink-0"
                         title={playing ? "Pause" : "Play"}
                     >
                         {playing ? (

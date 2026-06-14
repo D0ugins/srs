@@ -243,7 +243,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                                 updateVideoTime={updateVideoTime}
                                 videoStart={videoStart}
                             />
-                            <div className="text-gray-500 text-center">No graph data available</div>
+                            <div className="text-neutral-500 text-center">No graph data available</div>
                         </>
                     )}
                 </div>
@@ -253,11 +253,11 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                             <RollMapContainer positions={positions} currentLocation={currentLocation} />
                         </div>
                         <div className="overflow-y-auto flex-1 flex-col text-left">
-                            <div className="text-s text-gray-600">Time</div>
+                            <div className="text-s text-neutral-600">Time</div>
                             <div className="font-mono text-m mb-2">{(timestamp / 1000).toFixed(3)}s</div>
                             {currentData?.values.map((v) => (
                                 <div key={v.label} className="mb-1">
-                                    <div className="text-s text-gray-600">{v.label}</div>
+                                    <div className="text-s text-neutral-600">{v.label}</div>
                                     <div className="font-mono text-m">{v.value.toFixed(2)}</div>
                                 </div>
                             ))}

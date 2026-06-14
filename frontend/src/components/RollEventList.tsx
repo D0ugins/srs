@@ -20,11 +20,11 @@ interface RollEventListProps {
 function RollEvent({ event, onEdit, onDelete }: { event: RollEventInput, onEdit: () => void, onDelete: () => void }) {
     return <>
         <span className="font-medium ">{event.type}{event.tag ? `: ${event.tag}` : ''}</span>
-        <span className="text-gray-700 ml-auto">{formatTimestamp(event.timestamp_ms)}</span>
+        <span className="text-neutral-700 ml-auto">{formatTimestamp(event.timestamp_ms)}</span>
         {/* Edit */}
         <button
             onClick={onEdit}
-            className="text-gray-600 hover:text-gray-800 py-1"
+            className="text-neutral-600 hover:text-neutral-800 py-1"
         >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
@@ -111,7 +111,7 @@ function RollEventEdit({ event, setEvents, updateVideoTime, onDone, onDelete }: 
             {/* Ok */}
             <button
                 onClick={(e) => { e.stopPropagation(); onDone(); }}
-                className="text-gray-600 hover:text-gray-800"
+                className="text-neutral-600 hover:text-neutral-800"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
@@ -231,7 +231,7 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
                 <h3 className="text-sm font-semibold">Events</h3>
                 <button
                     onClick={addEvent}
-                    className="text-sm text-gray-600 flex items-center gap-1 bg-green-200 hover:bg-green-300 rounded"
+                    className="text-sm text-neutral-600 flex items-center gap-1 bg-green-200 hover:bg-green-300 rounded"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -239,11 +239,11 @@ export default function RollEventList({ events, setEvents, updateVideoTime, vide
                 </button>
             </div>
             {events.length === 0 ? (
-                <div className="text-gray-500 text-sm flex-1">No events recorded</div>
+                <div className="text-neutral-500 text-sm flex-1">No events recorded</div>
             ) : (
                 <ul className="overflow-y-auto space-y-1 text-sm flex-1">
                     {events.map((event) => (
-                        <li className="flex items-center gap-2 py-0 px-1 rounded hover:bg-gray-100" key={event.key}
+                        <li className="flex items-center gap-2 py-0 px-1 rounded hover:bg-neutral-100" key={event.key}
                             onClick={() => onEventClick(event)}
                             style={{ cursor: 'pointer', borderLeft: `4px solid ${EVENT_COLORS[event.type]}`, backgroundColor: `${EVENT_COLORS[event.type]}10` }}>
                             {event.editing ?

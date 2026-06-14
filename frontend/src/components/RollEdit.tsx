@@ -299,7 +299,7 @@ export default function RollEdit({ formData, setFormData }: { formData: RollUpda
                         <h2 className="text-xl font-semibold">Roll Files</h2>
                         <button
                             onClick={addRollFile}
-                            className="px-3 py-1 bg-gray-300 rounded hover:bg-gray-500"
+                            className="px-3 py-1 bg-neutral-300 rounded hover:bg-neutral-500"
                         >
                             + Add File
                         </button>

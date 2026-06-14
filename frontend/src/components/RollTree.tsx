@@ -11,9 +11,9 @@ function RollLeaf({ leaf, depth }: { leaf: RollTreeLeaf; depth: number }) {
 
     return (
         <Link
-            className="text-gray-700 block"
+            className="text-neutral-700 block"
             activeProps={{
-                className: 'text-gray-700 block bg-gray-200',
+                className: 'text-neutral-700 block bg-neutral-200',
                 style: { marginLeft: `-${depth}em`, paddingLeft: `${depth}em` }
             }}
             to={pathParts.join('/')}

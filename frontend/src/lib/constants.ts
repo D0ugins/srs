@@ -1,8 +1,10 @@
 export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 12, left: 50 };
 
 // Default graph colors
+
+export const SRS_GOLD = '#fdb724';
 export const GRAPH_SERIES_COLORS = [
-    '#fdb724',
+    SRS_GOLD,
     '#000000',
     '#e61100',
     '#39b0d2',

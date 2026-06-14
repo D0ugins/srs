@@ -220,7 +220,7 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                         onClick={handleVideoClick}
                     >
                         Your browser does not support the video tag.
-                    </video> : <div className="w-1/2 flex items-center justify-center bg-gray-200 text-gray-500">No video available</div>
+                    </video> : <div className="w-1/2 flex items-center justify-center bg-neutral-200 text-neutral-500">No video available</div>
                 }
 
                 <div className="flex-1">
@@ -334,7 +334,7 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                     <div className="flex-1">
                         <div
                             ref={timelineRef}
-                            className="relative h-8 bg-gray-800 rounded cursor-pointer"
+                            className="relative h-8 bg-black rounded cursor-pointer"
                             onClick={handleTimelineClick}
                         >
                             <div
@@ -342,12 +342,12 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                                 style={{ width: `${(currentTime / duration) * 100}%` }}
                             />
                             <div
-                                className="absolute top-0 bottom-0 w-3 bg-gray-400 cursor-grab active:cursor-grabbing rounded-sm"
+                                className="absolute top-0 bottom-0 w-3 bg-neutral-400 cursor-grab active:cursor-grabbing rounded-sm"
                                 style={{ left: `${(currentTime / duration) * 100}%`, transform: 'translateX(-50%)' }}
                                 onMouseDown={handlePlayheadMouseDown}
                             />
                         </div>
-                        <div className="flex justify-between text-sm text-gray-600 mt-1">
+                        <div className="flex justify-between text-sm text-neutral-600 mt-1">
                             <span>{formatVidTime(currentTime)}</span>
                             <span>{formatVidTime(duration)}</span>
                         </div>
@@ -355,7 +355,7 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                     <div className="flex items-center gap-2">
                         <button
                             onClick={togglePlay}
-                            className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded"
+                            className="w-8 h-8 flex items-center justify-center bg-neutral-200 hover:bg-neutral-300 rounded"
                             title={isPlaying ? "Pause" : "Play"}
                         >
                             {isPlaying ? (
@@ -370,7 +370,7 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                         </button>
                         <button
                             onClick={toggleMute}
-                            className="w-8 h-8 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded"
+                            className="w-8 h-8 flex items-center justify-center bg-neutral-200 hover:bg-neutral-300 rounded"
                             title={isMuted ? "Unmute" : "Mute"}
                         >
                             {isMuted ? (

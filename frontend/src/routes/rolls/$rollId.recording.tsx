@@ -128,7 +128,7 @@ function RouteComponent() {
                     <button
                         onClick={() => saveEventsMutation.mutate(events)}
                         disabled={saveEventsMutation.isPending}
-                        className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        className="px-4 py-1.5 bg-green-300 rounded hover:bg-green-400 disabled:bg-neutral-300 disabled:cursor-not-allowed"
                     >
                         {saveEventsMutation.isPending ? 'Saving...' : 'Save'}
                     </button>

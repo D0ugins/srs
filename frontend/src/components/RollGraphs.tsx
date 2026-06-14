@@ -124,7 +124,7 @@ export default function RollGraphs({ data, events,
         }, [isDragging, wasPlaying, xScale]);
 
         if (!Object.values(data).some(d => d !== undefined)) {
-            return <div className="flex items-center justify-center h-full text-gray-500">
+            return <div className="flex items-center justify-center h-full text-neutral-500">
                 No data available for this roll
             </div>
         }

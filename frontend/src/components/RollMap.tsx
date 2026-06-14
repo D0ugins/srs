@@ -1,4 +1,4 @@
-import { HILL_LINES } from '@/lib/constants';
+import { HILL_LINES, SRS_GOLD } from '@/lib/constants';
 import { Group } from '@visx/group';
 import { scaleLinear } from '@visx/scale';
 import { LinePath } from '@visx/shape';
@@ -38,7 +38,7 @@ export default memo(({ width, height, zoom, positions, currentLocation }:
                 data={positions ?? []}
                 x={d => xScale(d.long)}
                 y={d => yScale(d.lat)}
-                stroke="gold"
+                stroke={SRS_GOLD}
                 strokeWidth={2 * drawSize}
                 fill="none"
                 shapeRendering="geometricPrecision"
