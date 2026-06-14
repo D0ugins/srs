@@ -1,5 +1,18 @@
 export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 12, left: 50 };
 
+// Default graph colors
+export const GRAPH_SERIES_COLORS = [
+    '#fdb724',
+    '#000000',
+    '#e61100',
+    '#39b0d2',
+    '#22c55e',
+    '#aaaaaa',
+    '#ff7755',
+    '#a855f7',
+    '#ec4899',
+] as const;
+
 export const EVENT_TYPES = ['roll_start', 'hill_start', 'freeroll_start', 'chute_start', 'roll_end', 'note'] as const;
 export type EventType = typeof EVENT_TYPES[number];
 export const EVENT_COLORS = {

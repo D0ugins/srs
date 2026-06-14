@@ -69,6 +69,10 @@ export default function RollGraphs({ data, events,
             }))
         }, [data, zoom.transformMatrix, width]);
 
+        const speedSeries = useMemo(() => data.speed ? [data.speed] : undefined, [data.speed]);
+        const centripetalSeries = useMemo(() => data.centripetal ? [data.centripetal] : undefined, [data.centripetal]);
+        const energySeries = useMemo(() => data.energy ? [data.energy] : undefined, [data.energy]);
+
         const [wasPlaying, setWasPlaying] = useState(false);
 
         const handlePlayheadMouseDown = (e: React.MouseEvent) => {
@@ -131,40 +135,40 @@ export default function RollGraphs({ data, events,
                 className="cursor-move touch-none select-none"
                 ref={zoom.containerRef}
                 onDoubleClick={handleDoubleClick}>
-                {data.speed &&
+                {speedSeries &&
                     <RollGraph
                         parentWidth={parent.width}
                         parentHeight={parent.height / 4}
                         title="Speed (m/s)"
                         xScale={xScale}
-                        data={data.speed}
+                        data={speedSeries}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
                         showAxis={false}
                     />
                 }
-                {data.centripetal &&
+                {centripetalSeries &&
                     <RollGraph
                         parentWidth={parent.width}
                         parentHeight={parent.height / 4}
                         top={parent.height / 4}
                         title="Centripetal Acceleration (m/s²)"
                         xScale={xScale}
-                        data={data.centripetal}
+                        data={centripetalSeries}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
                         showAxis={false}
                     />
                 }
                 {
-                    data.energy &&
+                    energySeries &&
                     <RollGraph
                         parentWidth={parent.width}
                         parentHeight={parent.height / 4}
                         top={parent.height / 2}
                         title="Specific Energy (J/kg)"
                         xScale={xScale}
-                        data={data.energy}
+                        data={energySeries}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
                         showAxis={true}
@@ -235,8 +239,14 @@ export default function RollGraphs({ data, events,
                     <div>
                         <strong>Time: {(tooltipData.timestamp / 1000).toFixed(3)}s</strong>
                         {tooltipData.values.map((v, i) => (
-                            <div key={i}>
-                                {v.label}: {v.value.toFixed(2)}
+                            <div key={i} className="flex items-center gap-1.5">
+                                {v.color && (
+                                    <span
+                                        className="inline-block rounded-full"
+                                        style={{ width: 8, height: 8, backgroundColor: v.color }}
+                                    />
+                                )}
+                                <span>{v.label}: {v.value.toFixed(2)}</span>
                             </div>
                         ))}
                     </div>

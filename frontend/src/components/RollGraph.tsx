@@ -8,7 +8,7 @@ import { localPoint } from "@visx/event";
 
 import { bisector } from "d3-array";
 import { useMemo, memo } from "react";
-import { GRAPH_MARGIN } from "@/lib/constants";
+import { GRAPH_MARGIN, GRAPH_SERIES_COLORS } from "@/lib/constants";
 import GraphLine from "./GraphLine";
 
 const MemoizedAxisLeft = memo(({ scale, numTicks }: { scale: ScaleLinear<number, number, never>; numTicks: number }) => (
@@ -18,20 +18,38 @@ const MemoizedAxisLeft = memo(({ scale, numTicks }: { scale: ScaleLinear<number,
 export interface GraphData {
     timestamp: number[];
     values: number[];
+    // optional per-series overrides
+    color?: string;
+    label?: string;
 }
 
 export interface TooltipData {
     timestamp: number;
-    values: { label: string; value: number }[];
+    values: { label: string; value: number; color?: string }[];
 }
 
-const bisectTimestamp = bisector<{ x: number; y: number }, number>(d => d.x).left;
+type Point = { x: number; y: number };
+
+const bisectTimestamp = bisector<Point, number>(d => d.x).left;
+
+// Find the data point nearest to `timestamp`, mirroring the original snap logic.
+function nearestPoint(points: Point[], timestamp: number): Point | undefined {
+    if (points.length === 0) return undefined;
+    const index = bisectTimestamp(points, timestamp, 1);
+    const d0 = points[index - 1];
+    const d1 = points[index];
+    let d = d0;
+    if (d1 && d1.x) {
+        d = timestamp - d0.x > d1.x - timestamp ? d1 : d0;
+    }
+    return d;
+}
 
 
 interface RollGraphProps {
     parentWidth: number;
     parentHeight: number;
-    data: GraphData;
+    data: GraphData[];
     title: string;
     top?: number;
     xScale: ScaleLinear<number, number, never>;
@@ -59,9 +77,23 @@ export default memo(({
     const width = parentWidth - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
     const height = showAxis ? parentHeight - GRAPH_MARGIN.bottom : parentHeight - GRAPH_MARGIN.bottom
 
+    // resolve colors
+    const series = useMemo(() => data.map((s, i) => ({
+        points: s.timestamp.map((t, j) => ({ x: t, y: s.values[j] })),
+        color: s.color ?? GRAPH_SERIES_COLORS[i % GRAPH_SERIES_COLORS.length],
+        label: s.label ?? title,
+    })), [data, title]);
+
     const { min, max } = useMemo(() => {
-        let min = Math.min(...data.values);
-        let max = Math.max(...data.values);
+        let min = Infinity;
+        let max = -Infinity;
+        for (const s of data) {
+            if (s.values.length === 0) continue;
+            min = Math.min(min, ...s.values);
+            max = Math.max(max, ...s.values);
+        }
+        if (!isFinite(min) || !isFinite(max)) return { min: 0, max: 1 };
+
         if (min > 0 && min / max < 0.1) min = 0;
         else min = min - (max - min) * 0.1;
 
@@ -77,28 +109,34 @@ export default memo(({
     const X_TICKS = 9;
     const Y_TICKS = 7;
 
-    const dataPoints = useMemo(() => data.timestamp.map((t, i) => ({ x: t, y: data.values[i] })), [data]);
-
     const handleLocalMouseMove = (event: React.MouseEvent | React.TouchEvent) => {
         const point = localPoint(event);
         if (!point || !showTooltip) return;
 
         const x = point.x - GRAPH_MARGIN.left;
         const timestamp = xScale.invert(x);
-        const index = bisectTimestamp(dataPoints, timestamp, 1);
-        const d0 = dataPoints[index - 1];
-        const d1 = dataPoints[index];
-        let d = d0;
-        if (d1 && d1.x) {
-            d = timestamp - d0.x > d1.x - timestamp ? d1 : d0;
+
+        const values: { label: string; value: number; color: string }[] = [];
+        let tooltipTimestamp = timestamp;
+        let snapped = false;
+        for (const s of series) {
+            const d = nearestPoint(s.points, timestamp);
+            if (!d) continue;
+            values.push({ label: s.label, value: d.y, color: s.color });
+            // snap only to first series
+            if (!snapped) {
+                tooltipTimestamp = d.x;
+                snapped = true;
+            }
         }
+        if (values.length === 0) return;
 
         showTooltip({
             tooltipData: {
-                timestamp: d.x,
-                values: [{ label: title, value: d.y }],
+                timestamp: tooltipTimestamp,
+                values,
             },
-            tooltipLeft: xScale(d.x) + GRAPH_MARGIN.left,
+            tooltipLeft: xScale(tooltipTimestamp) + GRAPH_MARGIN.left,
             tooltipTop: point.y,
         });
 
@@ -139,13 +177,17 @@ export default memo(({
             numTicks={X_TICKS} tickFormat={(value) => (+value / 1000).toFixed(3)}
         />}
         <MemoizedAxisLeft scale={yScale} numTicks={Y_TICKS} />
-        <GraphLine
-            data={dataPoints}
-            xScale={xScale}
-            yScale={yScale}
-            width={width}
-            height={height}
-        />
+        {series.map((s, i) => (
+            <GraphLine
+                key={i}
+                data={s.points}
+                xScale={xScale}
+                yScale={yScale}
+                width={width}
+                height={height}
+                stroke={s.color}
+            />
+        ))}
         {min < 0 && <Line
             from={{ x: 0, y: yScale(0) }}
             to={{ x: width, y: yScale(0) }}
