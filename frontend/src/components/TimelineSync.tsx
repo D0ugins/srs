@@ -17,10 +17,8 @@ interface TimelineSyncProps {
     rolls: TimelineRoll[];
     offsets: number[];              // master = native - offset
     playhead: number;               // master time (ms)
-    view: [number, number];         // visible master-time window (shared with the graphs)
-    fullDomain: [number, number];   // master extent at default offsets (zoom/pan bounds)
+    view: [number, number];         // visible master-time window (driven by the graphs)
     onOffsetChange: (index: number, offset: number) => void;
-    onViewChange: (view: [number, number]) => void;
     onPrimaryClick: (masterTime: number) => void;
     onReset: () => void;
 }
@@ -30,15 +28,13 @@ const BAR_H = 18;
 const PAD_TOP = 6;
 const GAP = 6;
 const PRIMARY_GAP = 10;
-const MIN_SPAN = 200; // ms
 
 type Gesture =
     | { type: "offset"; index: number; startOffset: number; startClientX: number; msPerPx: number; moved: boolean }
-    | { type: "pan"; startView: [number, number]; startClientX: number; msPerPx: number; moved: boolean }
     | { type: "primary"; masterAtDown: number; startClientX: number; msPerPx: number; moved: boolean };
 
 export default function TimelineSync({
-    rolls, offsets, playhead, view, fullDomain, onOffsetChange, onViewChange, onPrimaryClick, onReset,
+    rolls, offsets, playhead, view, onOffsetChange, onPrimaryClick, onReset,
 }: TimelineSyncProps) {
     const outerRef = useRef<HTMLDivElement>(null);
     const svgRef = useRef<SVGSVGElement>(null);
@@ -52,12 +48,6 @@ export default function TimelineSync({
     const rowsH = rolls.length * ROW_H + extraGap;
     const height = PAD_TOP + rowsH + GAP;
 
-    // Refs so the once-attached native wheel handler reads live state.
-    const viewRef = useRef(view); viewRef.current = view;
-    const innerWRef = useRef(innerW); innerWRef.current = innerW;
-    const fullDomainRef = useRef(fullDomain); fullDomainRef.current = fullDomain;
-    const onViewChangeRef = useRef(onViewChange); onViewChangeRef.current = onViewChange;
-
     useEffect(() => {
         const el = outerRef.current;
         if (!el) return;
@@ -66,37 +56,6 @@ export default function TimelineSync({
         setWidth(el.clientWidth);
         return () => ro.disconnect();
     }, []);
-
-    const clampView = (v: [number, number], bounds: [number, number]): [number, number] => {
-        let [a, b] = v;
-        const span = b - a;
-        if (a < bounds[0]) { a = bounds[0]; b = a + span; }
-        if (b > bounds[1]) { b = bounds[1]; a = b - span; }
-        if (a < bounds[0]) a = bounds[0];
-        return [a, b];
-    };
-
-    // Non-passive wheel listener so we can preventDefault and zoom (around cursor).
-    useEffect(() => {
-        const el = svgRef.current;
-        if (!el) return;
-        const onWheel = (e: WheelEvent) => {
-            e.preventDefault();
-            const [v0, v1] = viewRef.current;
-            const w = innerWRef.current;
-            const bounds = fullDomainRef.current;
-            const rect = el.getBoundingClientRect();
-            const px = Math.min(w, Math.max(0, e.clientX - rect.left - marginL));
-            const cursor = v0 + (px / w) * (v1 - v0);
-            const fullSpan = Math.max(MIN_SPAN, bounds[1] - bounds[0]);
-            const factor = e.deltaY > 0 ? 1.15 : 1 / 1.15;
-            const span = Math.min(fullSpan, Math.max(MIN_SPAN, (v1 - v0) * factor));
-            const ratio = (cursor - v0) / (v1 - v0);
-            onViewChangeRef.current(clampView([cursor - ratio * span, cursor - ratio * span + span], bounds));
-        };
-        el.addEventListener("wheel", onWheel, { passive: false });
-        return () => el.removeEventListener("wheel", onWheel);
-    }, [marginL]);
 
     const xScale = scaleLinear({ domain: view, range: [0, innerW] });
     const localX = (clientX: number) => clientX - (svgRef.current?.getBoundingClientRect().left ?? 0) - marginL;
@@ -108,7 +67,6 @@ export default function TimelineSync({
         if (Math.abs(dPx) > 3) g.moved = true;
         const dMaster = dPx * g.msPerPx;
         if (g.type === "offset") onOffsetChange(g.index, g.startOffset - dMaster);
-        else if (g.type === "pan") onViewChange(clampView([g.startView[0] - dMaster, g.startView[1] - dMaster], fullDomainRef.current));
     };
     const onUp = () => {
         const g = gesture.current;
@@ -134,11 +92,6 @@ export default function TimelineSync({
                 reset sync
             </button>
             <svg ref={svgRef} width={width} height={height} className="touch-none select-none">
-                <rect
-                    x={0} y={0} width={width} height={height} fill="transparent"
-                    style={{ cursor: "grab" }}
-                    onPointerDown={e => start(e, { type: "pan", startView: [...view], startClientX: e.clientX, msPerPx: msPerPx(), moved: false })}
-                />
                 <Group left={marginL} top={PAD_TOP}>
                     <RectClipPath id="timeline-clip" x={0} y={0} width={innerW} height={rowsH + GAP} />
                     <Group clipPath="url(#timeline-clip)">

@@ -143,15 +143,11 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
     }, [derived, defaultOffsets]);
 
     // Visible time window, shared between the graphs and the timeline. The graph's zoom
-    // is the source of truth: it reports changes here, and the timeline drives it back.
+    // is the source of truth: it reports changes here and the timeline follows.
     const [view, setView] = useState<[number, number]>(fullDomain);
     const graphSetViewRef = useRef<((v: [number, number]) => void) | null>(null);
     const registerGraphSetView = useCallback((fn: (v: [number, number]) => void) => { graphSetViewRef.current = fn; }, []);
     const handleGraphViewChange = useCallback((v: [number, number]) => setView(v), []);
-    const handleTimelineViewChange = useCallback((v: [number, number]) => {
-        setView(v);
-        graphSetViewRef.current?.(v);
-    }, []);
     useEffect(() => {
         setView(fullDomain);
         graphSetViewRef.current?.(fullDomain);
@@ -314,9 +310,7 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
                             offsets={offsets}
                             playhead={timestamp}
                             view={view}
-                            fullDomain={fullDomain}
                             onOffsetChange={setOffset}
-                            onViewChange={handleTimelineViewChange}
                             onPrimaryClick={onPrimaryClick}
                             onReset={resetSync}
                         />
