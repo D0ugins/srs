@@ -249,6 +249,14 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         };
     }, [data, timestamp]);
 
+    const graphData = useMemo(() => {
+        return {
+            speed: data.speed && [data.speed],
+            centripetal: data.centripetal && [data.centripetal],
+            energy: data.energy && [data.energy],
+        }
+    }, [data]);
+
     return (
         <div className="flex h-full gap-4 mb-2">
             <div className="flex flex-col flex-[1] min-w-0">
@@ -266,11 +274,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                 <div className="h-2/3 pb-2">
                     {hasGraphData ? (
                         <RollGraphsContainer
-                            data={{
-                                speed: data.speed && [data.speed],
-                                centripetal: data.centripetal && [data.centripetal],
-                                energy: data.energy && [data.energy],
-                            }}
+                            data={graphData}
                             tooltipLeft={tooltipLeft}
                             tooltipTop={tooltipTop}
                             tooltipData={tooltipData}
