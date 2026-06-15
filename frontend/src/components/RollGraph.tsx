@@ -178,17 +178,13 @@ export default memo(({
             numTicks={X_TICKS} tickFormat={(value) => (+value / 1000).toFixed(3)}
         />}
         <MemoizedAxisLeft scale={yScale} numTicks={Y_TICKS} />
-        {series.map((s, i) => (
-            <GraphLine
-                key={i}
-                data={s.points}
-                xScale={xScale}
-                yScale={yScale}
-                width={width}
-                height={height}
-                stroke={s.color}
-            />
-        ))}
+        <GraphLine
+            series={series}
+            xScale={xScale}
+            yScale={yScale}
+            width={width}
+            height={height}
+        />
         {min < 0 && <Line
             from={{ x: 0, y: yScale(0) }}
             to={{ x: width, y: yScale(0) }}
