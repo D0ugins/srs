@@ -26,6 +26,7 @@ const router = createRouter({
   defaultStructuralSharing: true,
   defaultPreloadStaleTime: 0,
   history: hashHistory,
+  pathParamsAllowedCharacters: [','],
 })
 
 // Register the router instance for type safety

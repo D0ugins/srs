@@ -4,7 +4,7 @@ import RollTree from './RollTree'
 import { capitalize, formatDate } from '@/lib/format'
 import SidebarFilters from './SidebarFilters'
 import type { RollDataBase } from '@/lib/roll'
-import { Link } from '@tanstack/react-router'
+import { Link, useLocation, useNavigate } from '@tanstack/react-router'
 
 export interface RollTreeLeaf {
     kind: 'leaf'
@@ -70,6 +70,17 @@ function groupRolls(rolls: RollDataBase[], leaves: Map<RollDataBase, RollTreeLea
     }
 
     return result;
+}
+
+// Node paths (as built in RollTree) of the groups a roll lives under, top-down.
+function ancestorPaths(roll: RollDataBase, groupings: RollOrderKey[]): string[] {
+    const paths: string[] = [];
+    let path = '';
+    for (const key of groupings) {
+        path = `${path}/${capitalize(getGroupKey(roll, key))}`;
+        paths.push(path);
+    }
+    return paths;
 }
 
 function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filters: unknown[] = []): RollDataTree[] {
@@ -141,6 +152,54 @@ function RollSidebar({ expandedNodes, setExpandedNodes }: {
         return buildRollTree(data, groupings, []);
     }, [data, groupings]);
 
+    // Active roll + comparison rolls come from the URL:
+    //   /rolls/{activeId}                       -> viewing one roll
+    //   /rolls/{activeId}/compare/{a,b,c}        -> comparing against a,b,c
+    const pathname = useLocation({ select: l => l.pathname });
+    const navigate = useNavigate();
+    const { activeId, compareIds } = useMemo(() => {
+        const parts = pathname.split('/');
+        return {
+            activeId: /^\d+$/.test(parts[2] ?? '') ? parts[2] : undefined,
+            compareIds: parts[3] === 'compare' && parts[4] ? parts[4].split(',').filter(Boolean) : [],
+        };
+    }, [pathname]);
+    const compareSet = useMemo(() => new Set(compareIds), [compareIds]);
+
+    const toggleCompare = (rollId: string) => {
+        const set = new Set(compareIds);
+        if (set.has(rollId)) set.delete(rollId);
+        else set.add(rollId);
+        set.delete(activeId ?? '');
+
+        const ids = [...set];
+        // Without an active roll yet, the first checked roll becomes the base.
+        const base = activeId ?? ids.shift();
+        if (base === undefined) return;
+
+        if (ids.length === 0) navigate({ to: '/rolls/$rollId', params: { rollId: base } });
+        else navigate({ to: '/rolls/$rollId/compare/$compareIds', params: { rollId: base, compareIds: ids.join(',') } });
+    };
+
+    // Expand the groups containing the active/comparison rolls when arriving from a URL.
+    const compareKey = compareIds.join(',');
+    useEffect(() => {
+        if (!data) return;
+        const targetIds = new Set([activeId, ...compareIds].filter(Boolean));
+        if (targetIds.size === 0) return;
+
+        const toExpand: string[] = [];
+        for (const roll of data) {
+            if (targetIds.has(roll.id.toString())) toExpand.push(...ancestorPaths(roll, groupings));
+        }
+        setExpandedNodes(prev => {
+            const next = new Set(prev);
+            let changed = false;
+            for (const p of toExpand) if (!next.has(p)) { next.add(p); changed = true; }
+            return changed ? next : prev;
+        });
+    }, [data, activeId, compareKey, groupings, setExpandedNodes]);
+
     if (isPending) {
         return <div>Loading...</div>
     }
@@ -162,7 +221,7 @@ function RollSidebar({ expandedNodes, setExpandedNodes }: {
                 </svg>
 
             </Link>
-            {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} path="" depth={groupings.length} expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />))}
+            {rollTrees.map((tree, i) => (<RollTree rollTree={tree} key={i} path="" depth={groupings.length} expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} activeId={activeId} compareSet={compareSet} onToggleCompare={toggleCompare} />))}
         </div>
     </>
 }

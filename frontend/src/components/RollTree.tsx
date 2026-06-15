@@ -2,48 +2,70 @@ import type { RollDataTree, RollTreeLeaf } from "./RollSidebar";
 import { Link, useLocation } from "@tanstack/react-router";
 
 
-function RollLeaf({ leaf, depth }: { leaf: RollTreeLeaf; depth: number }) {
+function RollLeaf({ leaf, depth, activeId, compareSet, onToggleCompare }: {
+    leaf: RollTreeLeaf;
+    depth: number;
+    activeId?: string;
+    compareSet: Set<string>;
+    onToggleCompare: (rollId: string) => void;
+}) {
     const location = useLocation();
     const { roll, displayName } = leaf;
+    const rollId = roll.id.toString();
+    const isActive = rollId === activeId;
 
     const pathParts = location.pathname.split('/');
-    pathParts[2] = roll.id.toString();
+    pathParts[2] = rollId;
 
     return (
-        <Link
-            className="text-neutral-700 block"
-            activeProps={{
-                className: 'text-neutral-700 block bg-neutral-200',
-                style: { marginLeft: `-${depth}em`, paddingLeft: `${depth}em` }
-            }}
-            to={pathParts.join('/')}
-            params={{ rollId: roll.id.toString() }}
-        >
-            <span>{displayName}{displayName !== "" ? " - " : ""}</span><span>
-                {roll.start_time
-                    ? new Date(roll.start_time + "Z").toLocaleString('en-US', {
-                        timeZone: 'America/New_York',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                    })
-                    : <> Roll #{roll.roll_number} </>
-                }
-            </span>
-        </Link>
+        <div className="relative flex items-center">
+            <Link
+                className="text-neutral-700 block flex-1 min-w-0 truncate pr-5"
+                activeProps={{
+                    className: 'text-neutral-700 block flex-1 min-w-0 truncate pr-5 bg-neutral-200',
+                    style: { marginLeft: `-${depth}em`, paddingLeft: `${depth}em` }
+                }}
+                to={pathParts.join('/')}
+                params={{ rollId }}
+            >
+                <span>{displayName}{displayName !== "" ? " - " : ""}</span><span>
+                    {roll.start_time
+                        ? new Date(roll.start_time + "Z").toLocaleString('en-US', {
+                            timeZone: 'America/New_York',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            hour12: false
+                        })
+                        : <> Roll #{roll.roll_number} </>
+                    }
+                </span>
+            </Link>
+            {!isActive && (
+                <input
+                    type="checkbox"
+                    className="absolute right-0 shrink-0 cursor-pointer accent-neutral-500"
+                    title="Compare with active roll"
+                    checked={compareSet.has(rollId)}
+                    onChange={() => onToggleCompare(rollId)}
+                />
+            )}
+        </div>
     );
 }
 
 
-export default function RollTree({ rollTree, path, depth, expandedNodes, setExpandedNodes }: {
+export default function RollTree({ rollTree, path, depth, expandedNodes, setExpandedNodes, activeId, compareSet, onToggleCompare }: {
     rollTree: RollDataTree;
     path: string;
     depth: number;
     expandedNodes: Set<string>;
     setExpandedNodes: React.Dispatch<React.SetStateAction<Set<string>>>;
+    activeId?: string;
+    compareSet: Set<string>;
+    onToggleCompare: (rollId: string) => void;
 }) {
     if (rollTree.kind == 'leaf') {
-        return <RollLeaf leaf={rollTree} depth={depth} />;
+        return <RollLeaf leaf={rollTree} depth={depth} activeId={activeId} compareSet={compareSet} onToggleCompare={onToggleCompare} />;
     }
 
     const nodePath = `${path}/${rollTree.header}`
@@ -66,7 +88,7 @@ export default function RollTree({ rollTree, path, depth, expandedNodes, setExpa
             {
                 expanded && <div className="ml-[1em]">
                     {rollTree.children.map((child, index) => (
-                        <RollTree key={index} rollTree={child} path={nodePath} depth={depth} expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} />
+                        <RollTree key={index} rollTree={child} path={nodePath} depth={depth} expandedNodes={expandedNodes} setExpandedNodes={setExpandedNodes} activeId={activeId} compareSet={compareSet} onToggleCompare={onToggleCompare} />
                     ))}
                 </div>
             }
