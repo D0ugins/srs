@@ -2,6 +2,7 @@ import json
 import os
 
 import httpx
+from lib.signal import lowpass_filter
 import pandas as pd
 from lib.geo import get_elevations, get_angular_velocity
 from datetime import datetime, timedelta, timezone
@@ -78,9 +79,11 @@ def get_racebox_graph_data(session_id: str) -> dict[str, pd.DataFrame]:
     
     # Centripetal: angular_velocity * speed
     angular_velocity = get_angular_velocity(df['Heading'], df['Speed'], cutoff=1.0)
+    centripetal = angular_velocity * df['Speed'].loc[angular_velocity.index]
+    centripetal = lowpass_filter(centripetal, 2, fs=25)
     response['centripetal'] = pd.DataFrame({
         'timestamp': angular_velocity.index,
-        'values': angular_velocity * df['Speed'].loc[angular_velocity.index],
+        'values': centripetal,
     })
     
     response['accelerometer'] = pd.DataFrame({

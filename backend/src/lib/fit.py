@@ -1,5 +1,5 @@
 from garmin_fit_sdk import Decoder, Stream
-from lib.signal import unfiorm_sample
+from lib.signal import lowpass_filter, unfiorm_sample
 from lib.geo import get_elevations, get_angular_velocity
 import pandas as pd
 import numpy as np
@@ -139,9 +139,11 @@ def get_fit_graph_data(messages: dict, local_start_ms: int | None = None, local_
             'speed': gps_data.speed,
         })
         angular_velocity = get_angular_velocity(gps_data.heading, gps_data.speed, cutoff=1)
+        centripetal = angular_velocity * gps_data.speed.loc[angular_velocity.index]
+        centripetal = lowpass_filter(centripetal, 2, fs=10)
         response['centripetal'] = pd.DataFrame({
             'timestamp': angular_velocity.index,
-            'values': angular_velocity * gps_data.speed.loc[angular_velocity.index]
+            'values': centripetal
         })
     
     if include_imu and 'three_d_sensor_calibration_mesgs' in messages:
