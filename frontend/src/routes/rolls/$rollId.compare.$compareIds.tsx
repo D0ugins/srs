@@ -1,4 +1,4 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useQueries } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo } from "react";
 import type { CompareRoll } from "@/components/RollCompare";
@@ -36,11 +36,6 @@ function RouteComponent() {
         })),
     });
 
-    const { data: events } = useQuery({
-        queryKey: ['roll', rollId, 'events'],
-        queryFn: () => fetchJson(`${import.meta.env.VITE_BACKEND_URL}/rolls/${rollId}/events`),
-    });
-
     const rollsLoading = rollQueries.some(q => q.isLoading);
     const rollsError = rollQueries.some(q => q.isError);
 
@@ -56,6 +51,6 @@ function RouteComponent() {
 
     // min-w-0 needed to prevent issues when resize sidebar
     return <div className="flex-1 min-w-0 h-full">
-        <RollCompare rolls={rolls} events={events ?? []} />
+        <RollCompare rolls={rolls} />
     </div>;
 }

@@ -96,15 +96,7 @@ export interface RollDetails extends RollDataBase {
         };
     })[];
 
-    roll_events: {
-        id: number;
-        event_type: string;
-        timestamp: string;
-        description: string;
-
-        created_at: string;
-        updated_at: string;
-    }[];
+    roll_events: RollEvent[];
 
     roll_hills: {
         id: number;

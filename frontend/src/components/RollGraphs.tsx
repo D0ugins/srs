@@ -28,6 +28,7 @@ export interface RollGraphsProps {
         centripetal?: GraphData[];
         energy?: GraphData[];
     }
+    xDomain?: [number, number];
     tooltipLeft?: number;
     tooltipTop?: number;
     tooltipData?: TooltipData;
@@ -38,6 +39,9 @@ export interface RollGraphsProps {
     handleMouseLeave: () => void;
     updateVideoTime: (time: number) => void;
     setPlaying: (playing: boolean) => void;
+    // Sharing the horizontal zoom/pan with an external view (e.g. the comparison timeline).
+    onViewChange?: (view: [number, number]) => void;
+    registerSetView?: (setView: (view: [number, number]) => void) => void;
 }
 
 export function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, never>): ScaleLinear<number, number, never> {
@@ -48,7 +52,7 @@ export function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, n
     });
 }
 
-export default function RollGraphs({ data, events,
+export default function RollGraphs({ data, events, xDomain, onViewChange, registerSetView,
     tooltipLeft, tooltipTop, tooltipData, playing, isDragging,
     showTooltip, handleMouseLeave, updateVideoTime, setPlaying, setIsDragging,
     videoTime, zoom, parent }: RollGraphsProps &
@@ -56,18 +60,42 @@ export default function RollGraphs({ data, events,
     {
         const width = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
         const xScale = useMemo(() => {
-            let maxTime = 0;
-            for (const key in data) {
-                const series = data[key as keyof typeof data];
-                if (series) {
-                    for (const d of series) maxTime = Math.max(maxTime, ...d.timestamp);
+            let domain: [number, number];
+            if (xDomain) {
+                domain = xDomain;
+            } else {
+                let maxTime = 0;
+                for (const key in data) {
+                    const series = data[key as keyof typeof data];
+                    if (series) {
+                        for (const d of series) maxTime = Math.max(maxTime, ...d.timestamp);
+                    }
                 }
+                domain = [0, maxTime];
             }
             return zoomXScale(zoom, scaleLinear({
-                domain: [0, maxTime],
+                domain,
                 range: [0, width],
             }))
-        }, [data, zoom.transformMatrix, width]);
+        }, [data, zoom.transformMatrix, width, xDomain]);
+
+        // Report the visible time window so an external view (the timeline) can follow the zoom/pan.
+        useEffect(() => {
+            if (!onViewChange) return;
+            const [v0, v1] = xScale.domain();
+            onViewChange([v0, v1]);
+        }, [xScale, onViewChange]);
+
+        // Expose a setter so an external view can drive this graph's zoom/pan.
+        useEffect(() => {
+            if (!registerSetView || !xDomain) return;
+            const [a, b] = xDomain;
+            registerSetView(([v0, v1]) => {
+                const scaleX = (b - a) / (v1 - v0);
+                const translateX = -((v0 - a) * width) / (v1 - v0);
+                zoom.setTransformMatrix({ ...zoom.transformMatrix, scaleX, scaleY: 1, translateX, translateY: 0, skewX: 0, skewY: 0 });
+            });
+        }, [registerSetView, xDomain, width, zoom]);
 
         const speedSeries = data.speed;
         const centripetalSeries = data.centripetal;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, memo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import RollTree from './RollTree'
 import { capitalize, formatDate } from '@/lib/format'
@@ -90,7 +90,7 @@ function buildRollTree(rolls: RollDataBase[], groupings: RollOrderKey[], _filter
 }
 
 
-export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
+function RollSidebar({ expandedNodes, setExpandedNodes }: {
     expandedNodes: Set<string>;
     setExpandedNodes: React.Dispatch<React.SetStateAction<Set<string>>>;
 }) {
@@ -166,3 +166,5 @@ export default function RollSidebar({ expandedNodes, setExpandedNodes }: {
         </div>
     </>
 }
+
+export default memo(RollSidebar)

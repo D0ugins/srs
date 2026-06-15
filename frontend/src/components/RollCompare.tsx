@@ -3,6 +3,7 @@ import { useTooltip } from "@visx/tooltip";
 import { bisector } from "d3-array";
 import { RollGraphsContainer, RollMapContainer } from "./RollAnalysis";
 import RollHeader from "./RollHeader";
+import TimelineSync, { type TimelineRoll } from "./TimelineSync";
 import type { GraphData } from "./RollGraph";
 import type { MapPath, Position } from "./RollMap";
 import type { RollDetails, RollEvent, RollGraphData } from "@/lib/roll";
@@ -41,6 +42,22 @@ function positionAt(positions: Array<Position> | undefined, t: number): Position
     return t - d0.timestamp > d1.timestamp - t ? d1 : d0;
 }
 
+// Index of the position geographically closest to a target lat/long, considering
+// only points at/after minTimestamp. Returns -1 if no candidate qualifies.
+function closestPositionIndex(positions: Array<Position>, target: Position, minTimestamp = -Infinity): number {
+    const cosLat = Math.cos((target.lat * Math.PI) / 180);
+    let best = -1;
+    let bestDist = Infinity;
+    for (let j = 0; j < positions.length; j++) {
+        if (positions[j].timestamp < minTimestamp) continue;
+        const dLat = positions[j].lat - target.lat;
+        const dLong = (positions[j].long - target.long) * cosLat;
+        const dist = dLat * dLat + dLong * dLong;
+        if (dist < bestDist) { bestDist = dist; best = j; }
+    }
+    return best;
+}
+
 interface Derived {
     color: string;
     label: string;
@@ -50,9 +67,13 @@ interface Derived {
     centripetal?: GraphData;
     energy?: GraphData;
     positions?: Array<Position>;
+    events: Array<RollEvent>;
+    tMin: number;
+    tMax: number;
+    rollStart?: number;
 }
 
-export default function RollCompare({ rolls, events }: { rolls: Array<CompareRoll>; events: Array<RollEvent> }) {
+export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
     const [timestamp, setTimestamp] = useState(0);
     const [playing, setPlaying] = useState(false);
     const [showVideo, setShowVideo] = useState<Array<boolean>>(() =>
@@ -78,8 +99,63 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
             ? gps.timestamp.map((t, j) => ({ lat: gps.lat[j], long: gps.long[j], timestamp: t }))
             : undefined;
 
-        return { color, label, videoUrl: pickVideoUrl(roll), videoStart: graphs?.video_start ?? 0, speed, centripetal, energy, positions };
+        const events = roll.roll_events ?? [];
+        const ts = gps?.timestamp ?? graphs?.centripetal?.timestamp ?? [];
+        const tMin = ts.length ? ts[0] : 0;
+        const tMax = ts.length ? ts[ts.length - 1] : 0;
+        const rollStart = events.find(e => e.type === 'roll_start')?.timestamp_ms;
+
+        return {
+            color, label, videoUrl: pickVideoUrl(roll), videoStart: graphs?.video_start ?? 0,
+            speed, centripetal, energy, positions, events, tMin, tMax, rollStart,
+        };
     }), [rolls]);
+
+    // Per-roll time offset: master_time = native_time - offset. Primary (0) anchors the axis.
+    // Default aligns each roll's roll_start to the primary's, falling back to no offset.
+    const defaultOffsets = useMemo(() => {
+        const primaryStart = derived[0]?.rollStart;
+        return derived.map((d, i) => {
+            if (i === 0) return 0;
+            if (primaryStart != null && d.rollStart != null) return d.rollStart - primaryStart;
+            return 0;
+        });
+    }, [derived]);
+
+    const [offsets, setOffsets] = useState<Array<number>>(defaultOffsets);
+    const offsetsRef = useRef(offsets);
+    offsetsRef.current = offsets;
+
+    const rollKey = rolls.map(r => r.roll.id).join(',');
+    useEffect(() => { setOffsets(defaultOffsets); }, [rollKey]);
+
+    // Stable canvas for the timeline: union of all roll extents at default offsets.
+    const fullDomain = useMemo<[number, number]>(() => {
+        let lo = Infinity, hi = -Infinity;
+        derived.forEach((d, i) => {
+            const off = defaultOffsets[i] ?? 0;
+            lo = Math.min(lo, d.tMin - off);
+            hi = Math.max(hi, d.tMax - off);
+        });
+        if (!isFinite(lo) || !isFinite(hi) || hi <= lo) return [0, 1000];
+        const pad = (hi - lo) * 0.02;
+        return [lo - pad, hi + pad];
+    }, [derived, defaultOffsets]);
+
+    // Visible time window, shared between the graphs and the timeline. The graph's zoom
+    // is the source of truth: it reports changes here, and the timeline drives it back.
+    const [view, setView] = useState<[number, number]>(fullDomain);
+    const graphSetViewRef = useRef<((v: [number, number]) => void) | null>(null);
+    const registerGraphSetView = useCallback((fn: (v: [number, number]) => void) => { graphSetViewRef.current = fn; }, []);
+    const handleGraphViewChange = useCallback((v: [number, number]) => setView(v), []);
+    const handleTimelineViewChange = useCallback((v: [number, number]) => {
+        setView(v);
+        graphSetViewRef.current?.(v);
+    }, []);
+    useEffect(() => {
+        setView(fullDomain);
+        graphSetViewRef.current?.(fullDomain);
+    }, [fullDomain[0], fullDomain[1]]);
 
     const {
         tooltipData, tooltipLeft, tooltipTop, showTooltip, hideTooltip,
@@ -92,7 +168,7 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
         derived.forEach((d, i) => {
             const v = videoRefs.current[i];
             if (!v) return;
-            const target = (t - d.videoStart) / 1000;
+            const target = (t - (d.videoStart - (offsetsRef.current[i] ?? 0))) / 1000;
             v.currentTime = isFinite(v.duration) ? Math.min(Math.max(0, target), v.duration) : Math.max(0, target);
         });
     }, [derived]);
@@ -103,7 +179,7 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
             const v = videoRefs.current[i];
             if (!v) return;
             if (playing) {
-                const target = (timestampRef.current - d.videoStart) / 1000;
+                const target = (timestampRef.current - (d.videoStart - (offsetsRef.current[i] ?? 0))) / 1000;
                 if (isFinite(v.duration)) v.currentTime = Math.min(Math.max(0, target), v.duration);
                 v.play().catch(() => { });
             } else {
@@ -111,6 +187,20 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
             }
         });
     }, [playing, showVideo, derived]);
+
+    // Re-seek a roll's video when its timeline is shifted, so the preview reflects the new sync.
+    const prevOffsetsRef = useRef(offsets);
+    useEffect(() => {
+        const prev = prevOffsetsRef.current;
+        derived.forEach((d, i) => {
+            if ((offsets[i] ?? 0) === (prev[i] ?? 0)) return;
+            const v = videoRefs.current[i];
+            if (!v) return;
+            const target = (timestampRef.current - (d.videoStart - (offsets[i] ?? 0))) / 1000;
+            v.currentTime = isFinite(v.duration) ? Math.min(Math.max(0, target), v.duration) : Math.max(0, target);
+        });
+        prevOffsetsRef.current = offsets;
+    }, [offsets, derived]);
 
     // While playing, the first mounted video drives the shared timestamp / playhead.
     useEffect(() => {
@@ -121,9 +211,9 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
         }
         if (masterIdx === -1) return;
         const master = videoRefs.current[masterIdx] as any;
-        const masterStart = derived[masterIdx].videoStart;
         let handle: number | null = null;
         const tick = () => {
+            const masterStart = derived[masterIdx].videoStart - (offsetsRef.current[masterIdx] ?? 0);
             setTimestamp(master.currentTime * 1000 + masterStart);
             handle = master.requestVideoFrameCallback(tick);
         };
@@ -135,29 +225,71 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
         const onKey = (e: KeyboardEvent) => {
             if (e.key === ' ') { e.preventDefault(); setPlaying(p => !p); }
             else if (e.key === 'ArrowRight') { e.preventDefault(); updateVideoTime(timestampRef.current / 1000 + (e.shiftKey ? 5 : 1 / 30)); }
-            else if (e.key === 'ArrowLeft') { e.preventDefault(); updateVideoTime(Math.max(0, timestampRef.current / 1000 - (e.shiftKey ? 5 : 1 / 30))); }
+            else if (e.key === 'ArrowLeft') { e.preventDefault(); updateVideoTime(timestampRef.current / 1000 - (e.shiftKey ? 5 : 1 / 30)); }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, [updateVideoTime]);
 
+    // Graph series shifted into master time so all rolls align on a shared axis.
     const graphData = useMemo(() => {
-        const speed = derived.map(d => d.speed).filter((s): s is GraphData => !!s);
-        const centripetal = derived.map(d => d.centripetal).filter((s): s is GraphData => !!s);
-        const energy = derived.map(d => d.energy).filter((s): s is GraphData => !!s);
+        const shift = (s: GraphData | undefined, off: number) =>
+            s ? { ...s, timestamp: s.timestamp.map(t => t - off) } : undefined;
+        const speed: GraphData[] = [];
+        const centripetal: GraphData[] = [];
+        const energy: GraphData[] = [];
+        derived.forEach((d, i) => {
+            const off = offsets[i] ?? 0;
+            const sp = shift(d.speed, off); if (sp) speed.push(sp);
+            const ce = shift(d.centripetal, off); if (ce) centripetal.push(ce);
+            const en = shift(d.energy, off); if (en) energy.push(en);
+        });
         return {
             speed: speed.length ? speed : undefined,
             centripetal: centripetal.length ? centripetal : undefined,
             energy: energy.length ? energy : undefined,
         };
-    }, [derived]);
+    }, [derived, offsets]);
 
     const hasGraphData = graphData.speed || graphData.centripetal || graphData.energy;
 
     const mapPaths = useMemo<Array<MapPath>>(() => derived
         .filter(d => d.positions && d.positions.length > 0)
-        .map(d => ({ positions: d.positions!, currentLocation: positionAt(d.positions, timestamp), color: d.color, label: d.label })),
-        [derived, timestamp]);
+        .map((d, i) => ({
+            positions: d.positions!,
+            currentLocation: positionAt(d.positions, timestamp + (offsets[i] ?? 0)),
+            color: d.color,
+            label: d.label,
+        })),
+        [derived, timestamp, offsets]);
+
+    const timelineRolls = useMemo<Array<TimelineRoll>>(() =>
+        derived.map(d => ({ color: d.color, tMin: d.tMin, tMax: d.tMax, events: d.events })),
+        [derived]);
+
+    // Click on the primary timeline: align every other roll so its geographically
+    // closest point sits at the clicked timestamp.
+    const onPrimaryClick = useCallback((masterTime: number) => {
+        const target = positionAt(derived[0]?.positions, masterTime + (offsetsRef.current[0] ?? 0));
+        const newOffsets = offsetsRef.current.map((o, i) => {
+            if (i === 0) return o;
+            const positions = derived[i].positions;
+            if (!target || !positions || positions.length === 0) return o;
+            // Only match against points after the roll's start, when known.
+            const idx = closestPositionIndex(positions, target, derived[i].rollStart);
+            if (idx < 0) return o;
+            return positions[idx].timestamp - masterTime;
+        });
+        offsetsRef.current = newOffsets;
+        setOffsets(newOffsets);
+        updateVideoTime(masterTime / 1000); // seeks videos using the new offsets
+    }, [derived, updateVideoTime]);
+
+    const setOffset = useCallback((index: number, offset: number) => {
+        setOffsets(prev => prev.map((o, i) => i === index ? offset : o));
+    }, []);
+
+    const resetSync = useCallback(() => setOffsets(defaultOffsets), [defaultOffsets]);
 
     return (
         <div className="flex h-full gap-4 p-2">
@@ -194,7 +326,7 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
                                         playsInline
                                         onLoadedMetadata={e => {
                                             const v = e.currentTarget;
-                                            const target = (timestampRef.current - d.videoStart) / 1000;
+                                            const target = (timestampRef.current - (d.videoStart - (offsetsRef.current[i] ?? 0))) / 1000;
                                             v.currentTime = Math.min(Math.max(0, target), v.duration || 0);
                                         }}
                                         onClick={() => setPlaying(p => !p)}
@@ -204,9 +336,9 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
                                 )
                             )}
                             <div className="mt-1 grid grid-cols-3 gap-2 text-center">
-                                <Stat label="Speed (m/s)" value={valueAt(d.speed, timestamp)} />
-                                <Stat label="Centrip. (m/s²)" value={valueAt(d.centripetal, timestamp)} />
-                                <Stat label="Energy (J/kg)" value={valueAt(d.energy, timestamp)} />
+                                <Stat label="Speed (m/s)" value={valueAt(d.speed, timestamp + (offsets[i] ?? 0))} />
+                                <Stat label="Centrip. (m/s²)" value={valueAt(d.centripetal, timestamp + (offsets[i] ?? 0))} />
+                                <Stat label="Energy (J/kg)" value={valueAt(d.energy, timestamp + (offsets[i] ?? 0))} />
                             </div>
                         </div>
                     ))}
@@ -214,27 +346,42 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
             </div>
 
             <div className="flex-[3] flex flex-col min-h-0 min-w-0">
-                <div className="h-3/5 pb-2">
-                    {hasGraphData ? (
-                        <RollGraphsContainer
-                            data={graphData}
-                            tooltipLeft={tooltipLeft}
-                            tooltipTop={tooltipTop}
-                            tooltipData={tooltipData}
-                            videoTime={timestamp}
-                            showTooltip={showTooltip}
-                            handleMouseLeave={handleMouseLeave}
-                            updateVideoTime={updateVideoTime}
-                            playing={playing}
-                            setPlaying={setPlaying}
-                            events={events}
-                        />
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-neutral-500">No graph data available</div>
-                    )}
-                </div>
-                <div className="h-2/5">
-                    <RollMapContainer paths={mapPaths} />
+                <TimelineSync
+                    rolls={timelineRolls}
+                    offsets={offsets}
+                    playhead={timestamp}
+                    view={view}
+                    fullDomain={fullDomain}
+                    onOffsetChange={setOffset}
+                    onViewChange={handleTimelineViewChange}
+                    onPrimaryClick={onPrimaryClick}
+                    onReset={resetSync}
+                />
+                <div className="flex-1 flex flex-col min-h-0">
+                    <div className="h-3/5 pb-2">
+                        {hasGraphData ? (
+                            <RollGraphsContainer
+                                data={graphData}
+                                xDomain={fullDomain}
+                                onViewChange={handleGraphViewChange}
+                                registerSetView={registerGraphSetView}
+                                tooltipLeft={tooltipLeft}
+                                tooltipTop={tooltipTop}
+                                tooltipData={tooltipData}
+                                videoTime={timestamp}
+                                showTooltip={showTooltip}
+                                handleMouseLeave={handleMouseLeave}
+                                updateVideoTime={updateVideoTime}
+                                playing={playing}
+                                setPlaying={setPlaying}
+                            />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-neutral-500">No graph data available</div>
+                        )}
+                    </div>
+                    <div className="h-2/5">
+                        <RollMapContainer paths={mapPaths} />
+                    </div>
                 </div>
             </div>
         </div>
