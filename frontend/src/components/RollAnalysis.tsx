@@ -2,7 +2,7 @@ import type { RollDetails, RollGraphData } from "@/lib/roll";
 import { useMemo, useCallback, useRef, useState, useEffect, memo } from "react";
 import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
-import { applyMatrixToPoint, Zoom, type TransformMatrix } from "@visx/zoom";
+import { applyMatrixToPoint, Zoom, type TransformMatrix, type ZoomProps } from "@visx/zoom";
 import RollGraphs, { type RollGraphsProps } from "./RollGraphs";
 import RollVideo from "./RollVideo";
 import RollMap, { type MapPath, type Position, type RollMapProps } from "./RollMap";
@@ -11,6 +11,8 @@ import RollEventList from "./RollEventList";
 import type { RollEventInput } from "@/routes/rolls/$rollId.recording";
 import { GRAPH_MARGIN } from "@/lib/constants";
 import VideoTimeline from "./VideoTimeline";
+
+type ZoomType<ElementType extends Element> = ZoomProps<ElementType>['children'] extends (zoom: infer U) => any ? U : never;
 
 export function RollGraphsContainer(props: RollGraphsProps) {
     const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
@@ -50,6 +52,28 @@ export function RollGraphsContainer(props: RollGraphsProps) {
 }
 
 export const RollMapContainer = memo((props: RollMapProps) => {
+    const [rotation, setRotation] = useState(0);
+    // Kept in sync so the Zoom's constrain (and rotateAround's setTransformMatrix, which
+    // runs before the state re-renders) always sees the up-to-date angle.
+    const rotationRef = useRef(0);
+    rotationRef.current = rotation;
+
+    // Rotation happens around svg center, so adjust translate to make it appear to be around view point
+    const rotateAround = (zoom: ZoomType<SVGSVGElement>, w: number, h: number, next: number) => {
+        const { scaleX: s, translateX: tx, translateY: ty } = zoom.transformMatrix;
+        const dr = ((next - rotation) * Math.PI) / 180;
+        const cos = Math.cos(dr), sin = Math.sin(dr);
+        const qx = (w / 2 - tx) / s - w / 2;
+        const qy = (h / 2 - ty) / s - h / 2;
+        rotationRef.current = next;
+        zoom.setTransformMatrix({
+            ...zoom.transformMatrix,
+            translateX: (1 - s) * (w / 2) - s * (cos * qx - sin * qy),
+            translateY: (1 - s) * (h / 2) - s * (sin * qx + cos * qy),
+        });
+        setRotation(next);
+    };
+
     return <div className="h-full relative">
         <ParentSize>
             {(parent) => {
@@ -57,24 +81,48 @@ export const RollMapContainer = memo((props: RollMapProps) => {
                     width={parent.width}
                     height={parent.height}
                     constrain={(transformMatrix, _prev) => {
-                        let { scaleX, scaleY, translateX, translateY } = transformMatrix;
-                        scaleX = Math.max(1, scaleX);
-                        scaleY = Math.max(1, scaleY);
+                        const scaleX = Math.max(1, transformMatrix.scaleX);
+                        const scaleY = Math.max(1, transformMatrix.scaleY);
+                        const w = parent.width, h = parent.height;
+                        const rad = (rotationRef.current * Math.PI) / 180;
+                        const cos = Math.cos(rad), sin = Math.sin(rad);
 
-                        const scaledWidth = parent.width * scaleX;
-                        const scaledHeight = parent.height * scaleY;
-                        const maxTranslateX = Math.max(0, scaledWidth - parent.width);
-                        const maxTranslateY = Math.max(0, scaledHeight - parent.height);
-                        const constrainedTranslateX = Math.min(0, Math.max(-maxTranslateX, translateX));
-                        const constrainedTranslateY = Math.min(0, Math.max(-maxTranslateY, translateY));
+                        // Content point under the screen centre: undo translate+scale, then rotation.
+                        const qx = (w / 2 - transformMatrix.translateX) / scaleX - w / 2;
+                        const qy = (h / 2 - transformMatrix.translateY) / scaleY - h / 2;
+                        let px = cos * qx + sin * qy;
+                        let py = -sin * qx + cos * qy;
+
+                        // Clamp it so the viewport stays over the content.
+                        const marginX = w / (2 * scaleX) - w / 2;
+                        const marginY = h / (2 * scaleY) - h / 2;
+                        px = Math.min(-marginX, Math.max(marginX, px));
+                        py = Math.min(-marginY, Math.max(marginY, py));
+
+                        // Map the clamped point back to a translate (rotation then scale).
+                        const rx = cos * px - sin * py;
+                        const ry = sin * px + cos * py;
                         return {
                             ...transformMatrix, scaleX, scaleY,
-                            translateX: constrainedTranslateX,
-                            translateY: constrainedTranslateY,
+                            translateX: w / 2 - scaleX * (w / 2 + rx),
+                            translateY: h / 2 - scaleY * (h / 2 + ry),
                         };
                     }}
                 >
-                    {(zoom) => <RollMap width={parent.width} height={parent.height} zoom={zoom} {...props} />}
+                    {(zoom) => <>
+                        <RollMap width={parent.width} height={parent.height} zoom={zoom} rotation={rotation} {...props} />
+                        <div className="absolute bottom-1 left-1/4 right-1/4 z-10 flex items-center gap-2 bg-black/30 rounded px-2 py-0.5 text-xs text-white">
+                            <input
+                                type="range"
+                                min={-180}
+                                max={180}
+                                value={rotation}
+                                onChange={e => rotateAround(zoom, parent.width, parent.height, Number(e.target.value))}
+                                className="flex-1 min-w-0 accent-[#fdb724]"
+                            />
+                            <span className="font-mono w-9 text-right shrink-0">{rotation}°</span>
+                        </div>
+                    </>}
                 </Zoom>
             }
             }

@@ -168,7 +168,7 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
                 </div>
                 <div className="overflow-y-auto flex-1 pr-1 divide-y divide-gray-300">
                     {derived.map((d, i) => (
-                        <div key={i} className="py-3 first:pt-0">
+                        <div key={i} className="py-2 first:pt-0">
                             <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
                                     <span className="shrink-0 w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
@@ -203,7 +203,7 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
                                     <div className="mt-2 py-4 text-center text-xs text-neutral-500 bg-neutral-100">No video</div>
                                 )
                             )}
-                            <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+                            <div className="mt-1 grid grid-cols-3 gap-2 text-center">
                                 <Stat label="Speed (m/s)" value={valueAt(d.speed, timestamp)} />
                                 <Stat label="Centrip. (m/s²)" value={valueAt(d.centripetal, timestamp)} />
                                 <Stat label="Energy (J/kg)" value={valueAt(d.energy, timestamp)} />
@@ -213,8 +213,8 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
                 </div>
             </div>
 
-            <div className="flex-[2] flex flex-col min-h-0 min-w-0">
-                <div className="h-2/3 pb-2">
+            <div className="flex-[3] flex flex-col min-h-0 min-w-0">
+                <div className="h-3/5 pb-2">
                     {hasGraphData ? (
                         <RollGraphsContainer
                             data={graphData}
@@ -233,7 +233,7 @@ export default function RollCompare({ rolls, events }: { rolls: Array<CompareRol
                         <div className="flex items-center justify-center h-full text-neutral-500">No graph data available</div>
                     )}
                 </div>
-                <div className="h-1/3">
+                <div className="h-2/5">
                     <RollMapContainer paths={mapPaths} />
                 </div>
             </div>

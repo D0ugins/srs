@@ -28,10 +28,9 @@ export interface RollMapProps {
 // Satellite image (course_sat.png) dimensions, used to letterbox it within the SVG.
 const IMAGE_ASPECT = 6912 / 4608;
 
-export default memo(({ width, height, zoom, paths }:
-    RollMapProps & { width: number; height: number, zoom: ZoomType<SVGSVGElement> }) => {
-    // Fit the image into a centered rect, preserving aspect ratio (blank bars on the
-    // short side at zoom 1; zooming in scales it up to fill the full width).
+export default memo(({ width, height, zoom, paths, rotation = 0 }:
+    RollMapProps & { width: number; height: number, zoom: ZoomType<SVGSVGElement>, rotation?: number }) => {
+    // Fit the image into a centered rect, blank bars on side at low zoom
     const containerAspect = width / height;
     const imgW = containerAspect > IMAGE_ASPECT ? height * IMAGE_ASPECT : width;
     const imgH = containerAspect > IMAGE_ASPECT ? height : width / IMAGE_ASPECT;
@@ -57,43 +56,45 @@ export default memo(({ width, height, zoom, paths }:
 
     return <svg width={width} height={height} ref={zoom.containerRef} className='touch-none'>
         <Group transform={zoom.toString()}>
-            <image href={`${import.meta.env.BASE_URL || '/'}course_sat.png`} x={imgX} y={imgY} width={imgW} height={imgH} />
-            {resolved.map((path, idx) => (
-                <LinePath
-                    key={idx}
-                    data={path.positions}
-                    x={d => xScale(d.long)}
-                    y={d => yScale(d.lat)}
-                    stroke={path.color}
-                    strokeWidth={2 * drawSize}
-                    fill="none"
-                    shapeRendering="geometricPrecision"
-                />
-            ))}
-            {
-                HILL_LINES.map((line, idx) => {
-                    return <LinePath
+            <Group transform={`rotate(${rotation} ${width / 2} ${height / 2})`}>
+                <image href={`${import.meta.env.BASE_URL || '/'}course_sat.png`} x={imgX} y={imgY} width={imgW} height={imgH} />
+                {resolved.map((path, idx) => (
+                    <LinePath
                         key={idx}
-                        data={line}
+                        data={path.positions}
                         x={d => xScale(d.long)}
                         y={d => yScale(d.lat)}
-                        stroke="red"
-                        strokeWidth={1 * drawSize}
+                        stroke={path.color}
+                        strokeWidth={2 * drawSize}
                         fill="none"
-                        strokeLinecap='square'
                         shapeRendering="geometricPrecision"
                     />
-                })
-            }
-            {resolved.map((path, idx) => path.currentLocation && <circle
-                key={idx}
-                cx={xScale(path.currentLocation.long)}
-                cy={yScale(path.currentLocation.lat)}
-                r={3 * drawSize}
-                fill={path.color}
-                stroke="white"
-                strokeWidth={drawSize}
-            />)}
+                ))}
+                {
+                    HILL_LINES.map((line, idx) => {
+                        return <LinePath
+                            key={idx}
+                            data={line}
+                            x={d => xScale(d.long)}
+                            y={d => yScale(d.lat)}
+                            stroke="red"
+                            strokeWidth={1 * drawSize}
+                            fill="none"
+                            strokeLinecap='square'
+                            shapeRendering="geometricPrecision"
+                        />
+                    })
+                }
+                {resolved.map((path, idx) => path.currentLocation && <circle
+                    key={idx}
+                    cx={xScale(path.currentLocation.long)}
+                    cy={yScale(path.currentLocation.lat)}
+                    r={3 * Math.max(drawSize, 0.33)}
+                    fill={path.color}
+                    stroke="white"
+                    strokeWidth={drawSize}
+                />)}
+            </Group>
         </Group>
     </svg>
 })
