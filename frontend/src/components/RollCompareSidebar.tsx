@@ -1,5 +1,5 @@
 import { memo, useContext, createContext, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { bisector } from "d3-array";
 import RollHeader from "./RollHeader";
 import type { GraphData } from "./RollGraph";
@@ -85,7 +85,15 @@ const SidebarBody = memo(function SidebarBody({
                                     <span className="shrink-0 size-5" />
                                 )}
                                 <span className="shrink-0 w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
-                                <RollHeader roll={rolls[i].roll} compact />
+                                <Link
+                                    to="/rolls/$rollId"
+                                    params={{ rollId: ids[i] }}
+                                    target="_blank"
+                                    className="min-w-0 hover:underline"
+                                    title="Open roll page in new tab"
+                                >
+                                    <RollHeader roll={rolls[i].roll} compact />
+                                </Link>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                                 {d.videoUrl && (
