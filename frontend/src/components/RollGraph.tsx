@@ -88,9 +88,10 @@ export default memo(({
         let min = Infinity;
         let max = -Infinity;
         for (const s of data) {
-            if (s.values.length === 0) continue;
-            min = Math.min(min, ...s.values);
-            max = Math.max(max, ...s.values);
+            for (const v of s.values) {
+                if (v < min) min = v;
+                if (v > max) max = v;
+            }
         }
         if (!isFinite(min) || !isFinite(max)) return { min: 0, max: 1 };
 

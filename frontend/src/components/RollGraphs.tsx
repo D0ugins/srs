@@ -59,7 +59,7 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
     { zoom: ZoomType<SVGSVGElement>, parent: { width: number; height: number }, isDragging: boolean, setIsDragging: (dragging: boolean) => void }) {
     {
         const width = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
-        const xScale = useMemo(() => {
+        const baseScale = useMemo(() => {
             let domain: [number, number];
             if (xDomain) {
                 domain = xDomain;
@@ -68,16 +68,16 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                 for (const key in data) {
                     const series = data[key as keyof typeof data];
                     if (series) {
-                        for (const d of series) maxTime = Math.max(maxTime, ...d.timestamp);
+                        for (const d of series) {
+                            for (const t of d.timestamp) if (t > maxTime) maxTime = t;
+                        }
                     }
                 }
                 domain = [0, maxTime];
             }
-            return zoomXScale(zoom, scaleLinear({
-                domain,
-                range: [0, width],
-            }))
-        }, [data, zoom.transformMatrix, width, xDomain]);
+            return scaleLinear({ domain, range: [0, width] });
+        }, [data, width, xDomain]);
+        const xScale = useMemo(() => zoomXScale(zoom, baseScale), [zoom.transformMatrix, baseScale]);
 
         // Report the visible time window so an external view (the timeline) can follow the zoom/pan.
         useEffect(() => {
