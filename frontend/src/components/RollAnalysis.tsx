@@ -25,8 +25,9 @@ export function RollGraphsContainer(props: RollGraphsProps) {
                 scaleXMin={1}
                 wheelDelta={(event) => ({ scaleX: event.deltaY > 0 ? 0.9 : 1.1, scaleY: 1 })}
                 constrain={(transformMatrix: TransformMatrix, prev: TransformMatrix) => {
+                    // Prevent rerender when dragging playhead
+                    if (isPlayheadDragging) return prev;
                     if (transformMatrix.scaleX <= 1) return { ...transformMatrix, scaleX: 1, translateX: 0 };
-                    if (isPlayheadDragging) transformMatrix = { ...transformMatrix, translateX: prev.translateX };
                     const min = applyMatrixToPoint(transformMatrix, { x: 0, y: 0 });
                     const innerWidth = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
                     const max = applyMatrixToPoint(transformMatrix, { x: innerWidth, y: 0 });
