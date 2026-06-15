@@ -2,11 +2,20 @@ import { useRef, useState, useEffect } from "react";
 import { transformMediaUrl } from "@/lib/format";
 import type { RollDetails, RollStats } from "@/lib/roll";
 
+const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
+const VIDEO_LABELS: Record<string, string> = {
+    video_preview: 'Preview',
+    edited_vid: 'Edited',
+    video_preview_c: 'Preview c',
+    edited_vid_c: 'Edited c',
+};
+
 export default function RollView({ roll, stats }: { roll: RollDetails, stats?: RollStats }) {
-    const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
-    const video = VIDEO_CHOICES
+    const availableVideos = VIDEO_CHOICES
         .map(type => roll.roll_files.find(file => file.type === type))
-        .find(f => f !== undefined);
+        .filter(f => f !== undefined);
+    const [videoType, setVideoType] = useState(availableVideos[0]?.type);
+    const video = availableVideos.find(f => f.type === videoType) ?? availableVideos[0];
 
     const videoUrl = transformMediaUrl(video?.uri);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -209,18 +218,33 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
         <>
             <div className="flex gap-4 max-h-[40%]">
                 {
-                    videoUrl ? <video
-                        ref={videoRef}
-                        className="w-1/2 cursor-pointer"
-                        autoPlay
-                        muted
-                        src={videoUrl}
-                        key={videoUrl}
-                        onLoadedMetadata={handleLoadedMetadata}
-                        onClick={handleVideoClick}
-                    >
-                        Your browser does not support the video tag.
-                    </video> : <div className="w-1/2 flex items-center justify-center bg-neutral-200 text-neutral-500">No video available</div>
+                    videoUrl ? <div className="relative w-1/2 overflow-hidden">
+                        <video
+                            ref={videoRef}
+                            className="w-full h-full object-contain cursor-pointer"
+                            autoPlay
+                            muted
+                            src={videoUrl}
+                            key={videoUrl}
+                            onLoadedMetadata={handleLoadedMetadata}
+                            onClick={handleVideoClick}
+                        >
+                            Your browser does not support the video tag.
+                        </video>
+                        {availableVideos.length > 1 && (
+                            <select
+                                value={video?.type}
+                                onChange={(e) => setVideoType(e.target.value)}
+                                className="absolute top-2 right-2 bg-black/60 text-white text-sm rounded px-1 py-0.5 cursor-pointer"
+                            >
+                                {availableVideos.map(f => (
+                                    <option key={f.type} value={f.type} className="bg-neutral-800 text-white">
+                                        {VIDEO_LABELS[f.type] ?? f.type}
+                                    </option>
+                                ))}
+                            </select>
+                        )}
+                    </div> : <div className="w-1/2 flex items-center justify-center bg-neutral-200 text-neutral-500">No video available</div>
                 }
 
                 <div className="flex-1">
