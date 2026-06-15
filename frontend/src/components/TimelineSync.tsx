@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { Group } from "@visx/group";
-import { AxisBottom } from "@visx/axis";
 import { RectClipPath } from "@visx/clip-path";
 import { scaleLinear } from "@visx/scale";
 import { Line } from "@visx/shape";
@@ -30,8 +29,7 @@ const ROW_H = 22;
 const BAR_H = 18;
 const PAD_TOP = 6;
 const GAP = 6;
-const PRIMARY_GAP = 6;
-const AXIS_H = 22;
+const PRIMARY_GAP = 10;
 const MIN_SPAN = 200; // ms
 
 type Gesture =
@@ -52,7 +50,7 @@ export default function TimelineSync({
     const innerW = Math.max(1, width - marginL - marginR);
     const extraGap = rolls.length > 1 ? PRIMARY_GAP : 0; // gap between the primary row and the rest
     const rowsH = rolls.length * ROW_H + extraGap;
-    const height = PAD_TOP + rowsH + GAP + AXIS_H;
+    const height = PAD_TOP + rowsH + GAP;
 
     // Refs so the once-attached native wheel handler reads live state.
     const viewRef = useRef(view); viewRef.current = view;
@@ -179,18 +177,9 @@ export default function TimelineSync({
                     {rolls.length > 1 && (
                         <Line
                             from={{ x: 0, y: ROW_H + extraGap / 2 }} to={{ x: innerW, y: ROW_H + extraGap / 2 }}
-                            stroke="#9ca3af" strokeWidth={1} pointerEvents="none"
+                            stroke="#9ca3af" strokeWidth={2} pointerEvents="none"
                         />
                     )}
-                </Group>
-                <Group left={marginL} top={PAD_TOP + rowsH + GAP} pointerEvents="none">
-                    <AxisBottom
-                        scale={xScale}
-                        numTicks={8}
-                        tickLength={3}
-                        tickFormat={v => `${(+v / 1000).toFixed(1)}s`}
-                        tickLabelProps={() => ({ fontSize: 9, textAnchor: "middle", dy: "0.2em", fill: "#555" })}
-                    />
                 </Group>
             </svg>
         </div>
