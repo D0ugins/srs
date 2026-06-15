@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTooltip } from "@visx/tooltip";
 import { bisector } from "d3-array";
 import { RollGraphsContainer, RollMapContainer } from "./RollAnalysis";
-import RollHeader from "./RollHeader";
+import RollCompareSidebar from "./RollCompareSidebar";
 import TimelineSync, { type TimelineRoll } from "./TimelineSync";
 import type { GraphData } from "./RollGraph";
 import type { MapPath, Position } from "./RollMap";
@@ -22,14 +22,6 @@ function pickVideoUrl(roll: RollDetails): string | undefined {
         .map(type => roll.roll_files.find(file => file.type === type))
         .find(f => f !== undefined);
     return transformMediaUrl(video?.uri);
-}
-
-const bisectNumber = bisector<number, number>(d => d).left;
-
-function valueAt(series: GraphData | undefined, t: number): number | undefined {
-    if (!series || series.timestamp.length === 0) return undefined;
-    const i = bisectNumber(series.timestamp, t);
-    return series.values[i - 1];
 }
 
 function positionAt(positions: Array<Position> | undefined, t: number): Position | undefined {
@@ -58,7 +50,7 @@ function closestPositionIndex(positions: Array<Position>, target: Position, minT
     return best;
 }
 
-interface Derived {
+export interface Derived {
     color: string;
     label: string;
     videoUrl?: string;
@@ -293,57 +285,18 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
 
     return (
         <div className="flex h-full gap-4 p-2">
-            <div className="flex-[1] flex flex-col min-h-0 min-w-0">
-                <div className="shrink-0 mb-2 pb-1 border-b border-gray-300">
-                    <span className="text-xs text-neutral-600">Time </span>
-                    <span className="font-mono text-sm">{(timestamp / 1000).toFixed(3)}s</span>
-                </div>
-                <div className="overflow-y-auto flex-1 pr-1 divide-y divide-gray-300">
-                    {derived.map((d, i) => (
-                        <div key={i} className="py-2 first:pt-0">
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <span className="shrink-0 w-3 h-3 rounded-full" style={{ backgroundColor: d.color }} />
-                                    <RollHeader roll={rolls[i].roll} compact />
-                                </div>
-                                <label className="flex items-center gap-1 text-xs text-neutral-600 cursor-pointer shrink-0">
-                                    <input
-                                        type="checkbox"
-                                        checked={showVideo[i] ?? false}
-                                        onChange={() => setShowVideo(prev => prev.map((v, j) => j === i ? !v : v))}
-                                    />
-                                    Show video
-                                </label>
-                            </div>
-                            {showVideo[i] && (
-                                d.videoUrl ? (
-                                    <video
-                                        ref={el => { videoRefs.current[i] = el; }}
-                                        className="w-full mt-2 cursor-pointer bg-black"
-                                        src={d.videoUrl}
-                                        key={d.videoUrl}
-                                        muted
-                                        playsInline
-                                        onLoadedMetadata={e => {
-                                            const v = e.currentTarget;
-                                            const target = (timestampRef.current - (d.videoStart - (offsetsRef.current[i] ?? 0))) / 1000;
-                                            v.currentTime = Math.min(Math.max(0, target), v.duration || 0);
-                                        }}
-                                        onClick={() => setPlaying(p => !p)}
-                                    />
-                                ) : (
-                                    <div className="mt-2 py-4 text-center text-xs text-neutral-500 bg-neutral-100">No video</div>
-                                )
-                            )}
-                            <div className="mt-1 grid grid-cols-3 gap-2 text-center">
-                                <Stat label="Speed (m/s)" value={valueAt(d.speed, timestamp + (offsets[i] ?? 0))} />
-                                <Stat label={<>a<sub>y</sub> (m/s²)</>} value={valueAt(d.centripetal, timestamp + (offsets[i] ?? 0))} />
-                                <Stat label="Energy (J/kg)" value={valueAt(d.energy, timestamp + (offsets[i] ?? 0))} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+            <RollCompareSidebar
+                rolls={rolls}
+                derived={derived}
+                showVideo={showVideo}
+                setShowVideo={setShowVideo}
+                offsets={offsets}
+                videoRefs={videoRefs}
+                timestampRef={timestampRef}
+                offsetsRef={offsetsRef}
+                setPlaying={setPlaying}
+                timestamp={timestamp}
+            />
 
             <div className="flex-[3] flex flex-col min-h-0 min-w-0">
                 <TimelineSync
@@ -386,11 +339,4 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
             </div>
         </div>
     );
-}
-
-function Stat({ label, value }: { label: ReactNode; value?: number }) {
-    return <div>
-        <div className="text-[10px] text-neutral-500 leading-tight">{label}</div>
-        <div className="font-mono text-sm">{value !== undefined ? value.toFixed(2) : '---'}</div>
-    </div>;
 }
