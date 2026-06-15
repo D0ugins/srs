@@ -307,37 +307,39 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
             />
 
             <div className="flex-[3] flex flex-col min-h-0 min-w-0">
-                <TimelineSync
-                    rolls={timelineRolls}
-                    offsets={offsets}
-                    playhead={timestamp}
-                    view={view}
-                    fullDomain={fullDomain}
-                    onOffsetChange={setOffset}
-                    onViewChange={handleTimelineViewChange}
-                    onPrimaryClick={onPrimaryClick}
-                    onReset={resetSync}
-                />
                 <div className="flex-1 flex flex-col min-h-0">
-                    <div className="h-3/5 pb-2">
+                    <div className="h-3/5 pb-2 overflow-y-auto flex flex-col">
+                        <TimelineSync
+                            rolls={timelineRolls}
+                            offsets={offsets}
+                            playhead={timestamp}
+                            view={view}
+                            fullDomain={fullDomain}
+                            onOffsetChange={setOffset}
+                            onViewChange={handleTimelineViewChange}
+                            onPrimaryClick={onPrimaryClick}
+                            onReset={resetSync}
+                        />
                         {hasGraphData ? (
-                            <RollGraphsContainer
-                                data={graphData}
-                                xDomain={fullDomain}
-                                onViewChange={handleGraphViewChange}
-                                registerSetView={registerGraphSetView}
-                                tooltipLeft={tooltipLeft}
-                                tooltipTop={tooltipTop}
-                                tooltipData={tooltipData}
-                                videoTime={timestamp}
-                                showTooltip={showTooltip}
-                                handleMouseLeave={handleMouseLeave}
-                                updateVideoTime={updateVideoTime}
-                                playing={playing}
-                                setPlaying={setPlaying}
-                            />
+                            <div className="flex-1 min-h-[55vh]">
+                                <RollGraphsContainer
+                                    data={graphData}
+                                    xDomain={fullDomain}
+                                    onViewChange={handleGraphViewChange}
+                                    registerSetView={registerGraphSetView}
+                                    tooltipLeft={tooltipLeft}
+                                    tooltipTop={tooltipTop}
+                                    tooltipData={tooltipData}
+                                    videoTime={timestamp}
+                                    showTooltip={showTooltip}
+                                    handleMouseLeave={handleMouseLeave}
+                                    updateVideoTime={updateVideoTime}
+                                    playing={playing}
+                                    setPlaying={setPlaying}
+                                />
+                            </div>
                         ) : (
-                            <div className="flex items-center justify-center h-full text-neutral-500">No graph data available</div>
+                            <div className="flex-1 flex items-center justify-center text-neutral-500">No graph data available</div>
                         )}
                     </div>
                     <div className="h-2/5">
