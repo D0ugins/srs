@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTooltip } from "@visx/tooltip";
 import { bisector } from "d3-array";
 import { RollGraphsContainer, RollMapContainer } from "./RollAnalysis";
@@ -337,7 +337,7 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
                             )}
                             <div className="mt-1 grid grid-cols-3 gap-2 text-center">
                                 <Stat label="Speed (m/s)" value={valueAt(d.speed, timestamp + (offsets[i] ?? 0))} />
-                                <Stat label="Centrip. (m/s²)" value={valueAt(d.centripetal, timestamp + (offsets[i] ?? 0))} />
+                                <Stat label={<>a<sub>y</sub> (m/s²)</>} value={valueAt(d.centripetal, timestamp + (offsets[i] ?? 0))} />
                                 <Stat label="Energy (J/kg)" value={valueAt(d.energy, timestamp + (offsets[i] ?? 0))} />
                             </div>
                         </div>
@@ -388,7 +388,7 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
     );
 }
 
-function Stat({ label, value }: { label: string; value?: number }) {
+function Stat({ label, value }: { label: ReactNode; value?: number }) {
     return <div>
         <div className="text-[10px] text-neutral-500 leading-tight">{label}</div>
         <div className="font-mono text-sm">{value !== undefined ? value.toFixed(2) : '---'}</div>
