@@ -25,16 +25,27 @@ export interface RollMapProps {
 }
 
 
+// Satellite image (course_sat.png) dimensions, used to letterbox it within the SVG.
+const IMAGE_ASPECT = 6912 / 4608;
+
 export default memo(({ width, height, zoom, paths }:
     RollMapProps & { width: number; height: number, zoom: ZoomType<SVGSVGElement> }) => {
+    // Fit the image into a centered rect, preserving aspect ratio (blank bars on the
+    // short side at zoom 1; zooming in scales it up to fill the full width).
+    const containerAspect = width / height;
+    const imgW = containerAspect > IMAGE_ASPECT ? height * IMAGE_ASPECT : width;
+    const imgH = containerAspect > IMAGE_ASPECT ? height : width / IMAGE_ASPECT;
+    const imgX = (width - imgW) / 2;
+    const imgY = (height - imgH) / 2;
+
     const xScale = scaleLinear({
         domain: [-79.948599138, -79.940837694],
-        range: [0, width],
+        range: [imgX, imgX + imgW],
     });
 
     const yScale = scaleLinear({
         domain: [40.4383888, 40.442326861],
-        range: [height, 0],
+        range: [imgY + imgH, imgY],
     });
 
     const drawSize = Math.max(1 / zoom.transformMatrix.scaleX, 0.1);
@@ -46,7 +57,7 @@ export default memo(({ width, height, zoom, paths }:
 
     return <svg width={width} height={height} ref={zoom.containerRef} className='touch-none'>
         <Group transform={zoom.toString()}>
-            <image href={`${import.meta.env.BASE_URL || '/'}course_sat.png`} width="100%" height="100%" />
+            <image href={`${import.meta.env.BASE_URL || '/'}course_sat.png`} x={imgX} y={imgY} width={imgW} height={imgH} />
             {resolved.map((path, idx) => (
                 <LinePath
                     key={idx}

@@ -24,9 +24,9 @@ const tooltipStyles = {
 
 export interface RollGraphsProps {
     data: {
-        speed?: GraphData;
-        centripetal?: GraphData;
-        energy?: GraphData;
+        speed?: GraphData[];
+        centripetal?: GraphData[];
+        energy?: GraphData[];
     }
     tooltipLeft?: number;
     tooltipTop?: number;
@@ -58,9 +58,9 @@ export default function RollGraphs({ data, events,
         const xScale = useMemo(() => {
             let maxTime = 0;
             for (const key in data) {
-                const d = data[key as keyof typeof data];
-                if (d) {
-                    maxTime = Math.max(maxTime, ...d.timestamp);
+                const series = data[key as keyof typeof data];
+                if (series) {
+                    for (const d of series) maxTime = Math.max(maxTime, ...d.timestamp);
                 }
             }
             return zoomXScale(zoom, scaleLinear({
@@ -69,9 +69,9 @@ export default function RollGraphs({ data, events,
             }))
         }, [data, zoom.transformMatrix, width]);
 
-        const speedSeries = useMemo(() => data.speed ? [data.speed] : undefined, [data.speed]);
-        const centripetalSeries = useMemo(() => data.centripetal ? [data.centripetal] : undefined, [data.centripetal]);
-        const energySeries = useMemo(() => data.energy ? [data.energy] : undefined, [data.energy]);
+        const speedSeries = data.speed;
+        const centripetalSeries = data.centripetal;
+        const energySeries = data.energy;
 
         const [wasPlaying, setWasPlaying] = useState(false);
 
@@ -123,7 +123,7 @@ export default function RollGraphs({ data, events,
             };
         }, [isDragging, wasPlaying, xScale]);
 
-        if (!Object.values(data).some(d => d !== undefined)) {
+        if (!Object.values(data).some(d => d && d.length > 0)) {
             return <div className="flex items-center justify-center h-full text-neutral-500">
                 No data available for this roll
             </div>

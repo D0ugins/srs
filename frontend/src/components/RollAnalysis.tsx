@@ -12,7 +12,7 @@ import type { RollEventInput } from "@/routes/rolls/$rollId.recording";
 import { GRAPH_MARGIN } from "@/lib/constants";
 import VideoTimeline from "./VideoTimeline";
 
-function RollGraphsContainer(props: RollGraphsProps) {
+export function RollGraphsContainer(props: RollGraphsProps) {
     const [isPlayheadDragging, setIsPlayheadDragging] = useState(false);
 
     return <div className="h-full relative">
@@ -49,21 +49,13 @@ function RollGraphsContainer(props: RollGraphsProps) {
     </div>
 }
 
-const IMAGE_WIDTH = 6912;
-const IMAGE_HEIGHT = 4608;
-
-const RollMapContainer = memo((props: RollMapProps) => {
+export const RollMapContainer = memo((props: RollMapProps) => {
     return <div className="h-full relative">
         <ParentSize>
             {(parent) => {
-                const imageAspectRatio = IMAGE_WIDTH / IMAGE_HEIGHT;
-                const containerAspectRatio = parent.width / parent.height;
-
-                const renderedWidth = containerAspectRatio > imageAspectRatio ? parent.height * imageAspectRatio : parent.width;
-                const renderedHeight = containerAspectRatio > imageAspectRatio ? parent.height : parent.width / imageAspectRatio;
                 return <Zoom<SVGSVGElement>
-                    width={renderedWidth}
-                    height={renderedHeight}
+                    width={parent.width}
+                    height={parent.height}
                     constrain={(transformMatrix, _prev) => {
                         let { scaleX, scaleY, translateX, translateY } = transformMatrix;
                         scaleX = Math.max(1, scaleX);
@@ -82,7 +74,7 @@ const RollMapContainer = memo((props: RollMapProps) => {
                         };
                     }}
                 >
-                    {(zoom) => <RollMap width={renderedWidth} height={renderedHeight} zoom={zoom} {...props} />}
+                    {(zoom) => <RollMap width={parent.width} height={parent.height} zoom={zoom} {...props} />}
                 </Zoom>
             }
             }
@@ -225,7 +217,11 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                 <div className="h-2/3 pb-2">
                     {hasGraphData ? (
                         <RollGraphsContainer
-                            data={data}
+                            data={{
+                                speed: data.speed && [data.speed],
+                                centripetal: data.centripetal && [data.centripetal],
+                                energy: data.energy && [data.energy],
+                            }}
                             tooltipLeft={tooltipLeft}
                             tooltipTop={tooltipTop}
                             tooltipData={tooltipData}

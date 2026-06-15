@@ -1,12 +1,12 @@
 import type { RollDataBase, RollDetails } from "@/lib/roll";
 
-export default function RollHeader({ roll }: { roll: RollDetails | RollDataBase }) {
-    return <h1 className="text-2xl">
+export default function RollHeader({ roll, compact = false }: { roll: RollDetails | RollDataBase, compact?: boolean }) {
+    const content = <>
         {roll.driver.name} - {roll.buggy.name} - {' '}
         {roll.roll_date.month}/{roll.roll_date.day}/{roll.roll_date.year}{' '}
         {roll.roll_number && `Roll #${roll.roll_number} `}
         {roll.start_time && (
-            <span className="text-base text-neutral-500">
+            <span className={compact ? "text-neutral-500" : "text-base text-neutral-500"}>
                 ({new Date(roll.start_time + "Z").toLocaleString('en-US', {
                     timeZone: 'America/New_York',
                     hour: '2-digit',
@@ -14,5 +14,8 @@ export default function RollHeader({ roll }: { roll: RollDetails | RollDataBase 
                 })})
             </span>
         )}
-    </h1>
+    </>;
+
+    if (compact) return <span className="text-sm font-medium truncate">{content}</span>;
+    return <h1 className="text-2xl">{content}</h1>;
 }
