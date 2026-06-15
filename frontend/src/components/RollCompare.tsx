@@ -63,6 +63,7 @@ export interface Derived {
     tMin: number;
     tMax: number;
     rollStart?: number;
+    freerollStart?: number;
 }
 
 export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
@@ -96,20 +97,21 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
         const tMin = ts.length ? ts[0] : 0;
         const tMax = ts.length ? ts[ts.length - 1] : 0;
         const rollStart = events.find(e => e.type === 'roll_start')?.timestamp_ms;
+        const freerollStart = events.find(e => e.type === 'freeroll_start')?.timestamp_ms;
 
         return {
             color, label, videoUrl: pickVideoUrl(roll), videoStart: graphs?.video_start ?? 0,
-            speed, centripetal, energy, positions, events, tMin, tMax, rollStart,
+            speed, centripetal, energy, positions, events, tMin, tMax, rollStart, freerollStart,
         };
     }), [rolls]);
 
     // Per-roll time offset: master_time = native_time - offset. Primary (0) anchors the axis.
     // Default aligns each roll's roll_start to the primary's, falling back to no offset.
     const defaultOffsets = useMemo(() => {
-        const primaryStart = derived[0]?.rollStart;
+        const primaryStart = derived[0]?.freerollStart;
         return derived.map((d, i) => {
             if (i === 0) return 0;
-            if (primaryStart != null && d.rollStart != null) return d.rollStart - primaryStart;
+            if (primaryStart != null && d.freerollStart != null) return d.freerollStart - primaryStart;
             return 0;
         });
     }, [derived]);
@@ -120,6 +122,12 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
 
     const rollKey = rolls.map(r => r.roll.id).join(',');
     useEffect(() => { setOffsets(defaultOffsets); }, [rollKey]);
+
+    // Start the playhead at the primary roll's freeroll start (master time) when available.
+    useEffect(() => {
+        const fr = derived[0]?.freerollStart;
+        if (fr != null) setTimestamp(fr - (defaultOffsets[0] ?? 0));
+    }, [rollKey]);
 
     // Stable canvas for the timeline: union of all roll extents at default offsets.
     const fullDomain = useMemo<[number, number]>(() => {
