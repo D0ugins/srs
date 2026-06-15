@@ -2,7 +2,6 @@ import { Group } from "@visx/group";
 import { scaleLinear } from "@visx/scale";
 import type { ScaleLinear } from "d3-scale";
 import { AxisBottom, AxisLeft } from "@visx/axis";
-import { Grid } from "@visx/grid";
 import { Line } from "@visx/shape";
 import { localPoint } from "@visx/event";
 
@@ -162,16 +161,6 @@ export default memo(({
         >
             {title}
         </text>
-        <Grid
-            width={width}
-            height={height}
-            xScale={xScale}
-            yScale={yScale}
-            numTicksRows={Y_TICKS}
-            numTicksColumns={X_TICKS}
-            stroke="#E7E7E7"
-            shapeRendering="geometricPrecision"
-        />
         {showAxis && <AxisBottom<typeof xScale>
             scale={xScale}
             top={height}
@@ -184,6 +173,9 @@ export default memo(({
             yScale={yScale}
             width={width}
             height={height}
+            numTicksX={X_TICKS}
+            numTicksY={Y_TICKS}
+            gridColor="#E7E7E7"
         />
         {min < 0 && <Line
             from={{ x: 0, y: yScale(0) }}

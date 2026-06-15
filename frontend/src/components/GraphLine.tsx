@@ -14,6 +14,9 @@ interface GraphLineProps {
     width: number;
     height: number;
     strokeWidth?: number;
+    numTicksX?: number;
+    numTicksY?: number;
+    gridColor?: string;
 }
 
 function hexToRgba(hex: string): [number, number, number, number] {
@@ -36,10 +39,14 @@ export default memo(({
     width,
     height,
     strokeWidth = 2,
+    numTicksX = 9,
+    numTicksY = 7,
+    gridColor = "#E7E7E7",
 }: GraphLineProps) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const wglpRef = useRef<WebglPlot | null>(null);
     const plotRef = useRef<WebglLinePlot | null>(null);
+    const gridPlotRef = useRef<WebglLinePlot | null>(null);
     const loseTimerRef = useRef<number | null>(null);
     // X is uploaded relative to this reference to keep float32 precision when
     // timestamps are large; folded back into the offset at draw time.
@@ -51,13 +58,39 @@ export default memo(({
     const yScaleRef = useRef(yScale); yScaleRef.current = yScale;
     const widthRef = useRef(width); widthRef.current = width;
     const heightRef = useRef(height); heightRef.current = height;
+    const numTicksXRef = useRef(numTicksX); numTicksXRef.current = numTicksX;
+    const numTicksYRef = useRef(numTicksY); numTicksYRef.current = numTicksY;
+    const gridColorRef = useRef(gridColor); gridColorRef.current = gridColor;
+
+    // Rebuild the grid lines at the current d3 tick positions and draw them.
+    // Geometry is computed directly in clip space [-1, 1] (identity transform),
+    // so the grid tracks zoom/pan and stays aligned with the SVG axis ticks.
+    const drawGrid = useCallback((w: number, h: number) => {
+        const grid = gridPlotRef.current;
+        if (!grid) return;
+        const xs = xScaleRef.current;
+        const ys = yScaleRef.current;
+        const color = hexToRgba(gridColorRef.current);
+
+        const configs: LineConfig[] = [];
+        for (const t of xs.ticks(numTicksXRef.current)) {
+            const cx = (xs(t) / w) * 2 - 1;
+            configs.push({ points: new Float32Array([cx, -1, cx, 1]), color, enabled: true });
+        }
+        for (const t of ys.ticks(numTicksYRef.current)) {
+            const cy = 1 - (ys(t) / h) * 2;
+            configs.push({ points: new Float32Array([-1, cy, 1, cy]), color, enabled: true });
+        }
+        grid.initLines(configs);
+        grid.setGlobalTransform([1, 1], [0, 0]);
+        grid.draw();
+    }, []);
 
     // Map data coords -> WebGL clip space [-1, 1] so the line aligns with the
-    // d3 scales (and thus the SVG grid/axes), then draw.
+    // d3 scales (and thus the SVG axes), then draw grid behind the lines.
     const redraw = useCallback(() => {
         const wglp = wglpRef.current;
-        const plot = plotRef.current;
-        if (!wglp || !plot) return;
+        if (!wglp) return;
 
         const xs = xScaleRef.current;
         const ys = yScaleRef.current;
@@ -65,15 +98,20 @@ export default memo(({
         const h = heightRef.current;
         if (w <= 0 || h <= 0) return;
 
+        wglp.clear();
+        drawGrid(w, h);
+
+        const plot = plotRef.current;
+        if (!plot) return;
+
         const scaleX = ((xs(1) - xs(0)) * 2) / w;
         const offsetX = (xs(xRefRef.current) * 2) / w - 1;
         const scaleY = (-(ys(1) - ys(0)) * 2) / h;
         const offsetY = 1 - (ys(0) * 2) / h;
 
         plot.setGlobalTransform([scaleX, scaleY], [offsetX, offsetY]);
-        wglp.clear();
         plot.draw();
-    }, []);
+    }, [drawGrid]);
 
     // Create the WebGL context once. Transparent so the SVG grid shows through.
     useLayoutEffect(() => {
@@ -91,10 +129,13 @@ export default memo(({
         };
         const wglp = new WebglPlot(canvas, options as ConstructorParameters<typeof WebglPlot>[1]);
         wglpRef.current = wglp;
+        gridPlotRef.current = wglp.newThinLinePlotter(64);
 
         return () => {
             plotRef.current?.cleanup();
             plotRef.current = null;
+            gridPlotRef.current?.cleanup();
+            gridPlotRef.current = null;
             wglpRef.current = null;
             // Defer so a synchronous StrictMode remount can cancel it (above).
             // A real unmount has no remount, so this fires and frees the context.
@@ -150,9 +191,10 @@ export default memo(({
     }, [width, height, dpr, redraw]);
 
     // Zoom/pan: scales change every tick -> just re-apply the transform.
+    // Also redraws when the grid tick counts / color change.
     useLayoutEffect(() => {
         redraw();
-    }, [xScale, yScale, redraw]);
+    }, [xScale, yScale, numTicksX, numTicksY, gridColor, redraw]);
 
     return (
         <foreignObject x={0} y={0} width={width} height={height} style={{ overflow: "hidden" }}>
