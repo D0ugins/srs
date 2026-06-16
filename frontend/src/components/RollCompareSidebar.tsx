@@ -51,6 +51,15 @@ const SidebarBody = memo(function SidebarBody({
         navigate({ to: '/rolls/$rollId/compare/$compareIds', params: { rollId: id, compareIds: rest.join(',') } });
     };
 
+    const rollTitle = (roll: CompareRoll['roll']) => {
+        const d = roll.roll_date;
+        const time = roll.start_time
+            ? ` (${new Date(roll.start_time + "Z").toLocaleString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit' })})`
+            : '';
+        const number = roll.roll_number ? ` #${roll.roll_number}` : '';
+        return `${roll.driver.name.toLowerCase()} ${roll.buggy.abbreviation} ${d.month}/${d.day}/${d.year}${number}${time}`;
+    };
+
     const removeRoll = (id: string) => {
         const remaining = ids.filter(x => x !== id);
         if (remaining.length === 0) return;
@@ -89,8 +98,8 @@ const SidebarBody = memo(function SidebarBody({
                                     to="/rolls/$rollId"
                                     params={{ rollId: ids[i] }}
                                     target="_blank"
-                                    className="min-w-0 hover:underline"
-                                    title="Open roll page in new tab"
+                                    className="min-w-0 hover:underline truncate"
+                                    title={rollTitle(rolls[i].roll)}
                                 >
                                     <RollHeader roll={rolls[i].roll} compact />
                                 </Link>
