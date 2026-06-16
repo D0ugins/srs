@@ -41,13 +41,17 @@ function RollLeaf({ leaf, depth, activeId, compareSet, onToggleCompare }: {
                 </span>
             </Link>
             {!isActive && (
-                <input
-                    type="checkbox"
-                    className="absolute right-0 shrink-0 cursor-pointer accent-neutral-500"
+                <label
+                    className="absolute right-0 inset-y-0 flex items-center pl-4 pr-4 cursor-pointer"
                     title="Compare with active roll"
-                    checked={compareSet.has(rollId)}
-                    onChange={() => onToggleCompare(rollId)}
-                />
+                >
+                    <input
+                        type="checkbox"
+                        className="shrink-0 cursor-pointer accent-neutral-500"
+                        checked={compareSet.has(rollId)}
+                        onChange={() => onToggleCompare(rollId)}
+                    />
+                </label>
             )}
         </div>
     );
