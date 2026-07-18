@@ -15,3 +15,5 @@ ds-bundle/
 .design-sync/
 .design-sync.entry.tsx
 .claude/settings.local.json
+backend/cpp/factors/build/
+backend/src/srs_factors*.so
