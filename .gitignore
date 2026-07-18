@@ -6,3 +6,12 @@ tmp/
 *.mp4
 *.jpg
 .vscode
+# # design-sync working state (regenerated; durable inputs in .design-sync/ are committed)
+.ds-sync/
+ds-bundle/
+# .design-sync/.cache/
+# .design-sync/learnings/
+# .design-sync/node_modules.
+.design-sync/
+.design-sync.entry.tsx
+.claude/settings.local.json
