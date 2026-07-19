@@ -6,6 +6,8 @@
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NoiseModelFactorN.h>
 
+#include <memory>
+
 #include "spline2d.h"
 
 namespace srs {
@@ -54,23 +56,23 @@ class HeadingFactor : public gtsam::NoiseModelFactorN<Pose3, Vector3, Rot3> {
 // error = z - spline(east, north) - offset
 class ElevationFactor : public gtsam::NoiseModelFactorN<Pose3, Vector1> {
   using Base = gtsam::NoiseModelFactorN<Pose3, Vector1>;
-  Spline2D spline_;
+  std::shared_ptr<const Spline2D> spline_;  // shared: one spline serves ~10^3 factors
 
  public:
-  ElevationFactor(Key poseKey, Key offsetKey, const Spline2D& spline,
+  ElevationFactor(Key poseKey, Key offsetKey, std::shared_ptr<const Spline2D> spline,
                   const SharedNoiseModel& noise)
-      : Base(noise, poseKey, offsetKey), spline_(spline) {}
+      : Base(noise, poseKey, offsetKey), spline_(std::move(spline)) {}
 
   Vector evaluateError(const Pose3& pose, const Vector1& offset,
                        gtsam::OptionalMatrixType H_pose,
                        gtsam::OptionalMatrixType H_offset) const override {
     const gtsam::Point3 t = pose.translation();
     Vector1 error;
-    error << t.z() - spline_.ev(t.x(), t.y()) - offset(0);
+    error << t.z() - spline_->ev(t.x(), t.y()) - offset(0);
 
     if (H_pose) {
-      const Eigen::RowVector3d de_dt(-spline_.ev(t.x(), t.y(), 1, 0),
-                                     -spline_.ev(t.x(), t.y(), 0, 1), 1.0);
+      const Eigen::RowVector3d de_dt(-spline_->ev(t.x(), t.y(), 1, 0),
+                                     -spline_->ev(t.x(), t.y(), 0, 1), 1.0);
       H_pose->setZero(1, 6);
       H_pose->block<1, 3>(0, 3) = de_dt * pose.rotation().matrix();
     }
@@ -85,17 +87,17 @@ class ElevationFactor : public gtsam::NoiseModelFactorN<Pose3, Vector1> {
 // error = R_wi * R_vi^T * [0,0,1] - terrain_normal(east, north)
 class NormalFactor : public gtsam::NoiseModelFactorN<Pose3, Rot3> {
   using Base = gtsam::NoiseModelFactorN<Pose3, Rot3>;
-  Spline2D spline_;
+  std::shared_ptr<const Spline2D> spline_;
 
   Vector3 terrainNormal(double east, double north) const {
-    const Vector3 n(-spline_.ev(east, north, 1, 0), -spline_.ev(east, north, 0, 1), 1.0);
+    const Vector3 n(-spline_->ev(east, north, 1, 0), -spline_->ev(east, north, 0, 1), 1.0);
     return n / n.norm();
   }
 
  public:
-  NormalFactor(Key poseKey, Key rviKey, const Spline2D& spline,
+  NormalFactor(Key poseKey, Key rviKey, std::shared_ptr<const Spline2D> spline,
                const SharedNoiseModel& noise)
-      : Base(noise, poseKey, rviKey), spline_(spline) {}
+      : Base(noise, poseKey, rviKey), spline_(std::move(spline)) {}
 
   Vector evaluateError(const Pose3& pose, const Rot3& Rvi,
                        gtsam::OptionalMatrixType H_pose,
