@@ -17,3 +17,4 @@ ds-bundle/
 .claude/settings.local.json
 backend/cpp/factors/build/
 backend/src/srs_factors*.so
+**/__pycache__/*

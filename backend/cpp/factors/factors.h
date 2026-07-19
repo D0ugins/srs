@@ -122,4 +122,66 @@ class NormalFactor : public gtsam::NoiseModelFactorN<Pose3, Rot3> {
   }
 };
 
+// one-pole tracking state: error = w - beta*w_prev - (1-beta)*v_prev
+// models the receiver's velocity lowpass; doppler then measures w, not v
+class LowpassStateFactor : public gtsam::NoiseModelFactorN<Vector3, Vector3, Vector3> {
+  using Base = gtsam::NoiseModelFactorN<Vector3, Vector3, Vector3>;
+  double beta_;
+
+ public:
+  LowpassStateFactor(Key wKey, Key wPrevKey, Key vPrevKey, double beta,
+                     const SharedNoiseModel& noise)
+      : Base(noise, wKey, wPrevKey, vPrevKey), beta_(beta) {}
+
+  Vector evaluateError(const Vector3& w, const Vector3& wp, const Vector3& vp,
+                       gtsam::OptionalMatrixType Hw, gtsam::OptionalMatrixType Hwp,
+                       gtsam::OptionalMatrixType Hvp) const override {
+    if (Hw) *Hw = gtsam::Matrix3::Identity();
+    if (Hwp) *Hwp = -beta_ * gtsam::Matrix3::Identity();
+    if (Hvp) *Hvp = -(1.0 - beta_) * gtsam::Matrix3::Identity();
+    return w - beta_ * wp - (1.0 - beta_) * vp;
+  }
+};
+
+// error = v_w + bias - z, bias is a slowly-varying doppler velocity offset
+class BiasedVelocityFactor : public gtsam::NoiseModelFactorN<Vector3, Vector3> {
+  using Base = gtsam::NoiseModelFactorN<Vector3, Vector3>;
+  Vector3 z_;
+
+ public:
+  BiasedVelocityFactor(Key velKey, Key biasKey, const Vector3& z,
+                       const SharedNoiseModel& noise)
+      : Base(noise, velKey, biasKey), z_(z) {}
+
+  Vector evaluateError(const Vector3& v, const Vector3& b,
+                       gtsam::OptionalMatrixType H_v,
+                       gtsam::OptionalMatrixType H_b) const override {
+    if (H_v) *H_v = gtsam::Matrix3::Identity();
+    if (H_b) *H_b = gtsam::Matrix3::Identity();
+    return v + b - z_;
+  }
+};
+
+// error = t_wb + bias - z, bias is a slowly-varying world-frame gps offset
+class BiasedGPSFactor : public gtsam::NoiseModelFactorN<Pose3, Vector3> {
+  using Base = gtsam::NoiseModelFactorN<Pose3, Vector3>;
+  Vector3 z_;
+
+ public:
+  BiasedGPSFactor(Key poseKey, Key biasKey, const Vector3& z,
+                  const SharedNoiseModel& noise)
+      : Base(noise, poseKey, biasKey), z_(z) {}
+
+  Vector evaluateError(const Pose3& pose, const Vector3& b,
+                       gtsam::OptionalMatrixType H_pose,
+                       gtsam::OptionalMatrixType H_b) const override {
+    if (H_pose) {
+      H_pose->setZero(3, 6);
+      H_pose->block<3, 3>(0, 3) = pose.rotation().matrix();
+    }
+    if (H_b) *H_b = gtsam::Matrix3::Identity();
+    return pose.translation() + b - z_;
+  }
+};
+
 }  // namespace srs
