@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RollsRouteImport } from './routes/rolls'
+import { Route as ManageRouteImport } from './routes/manage'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RollsIndexRouteImport } from './routes/rolls/index'
 import { Route as RollsNewRouteImport } from './routes/rolls/new'
@@ -21,6 +22,11 @@ import { Route as RollsRollIdCompareCompareIdsRouteImport } from './routes/rolls
 const RollsRoute = RollsRouteImport.update({
   id: '/rolls',
   path: '/rolls',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManageRoute = ManageRouteImport.update({
+  id: '/manage',
+  path: '/manage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -62,6 +68,7 @@ const RollsRollIdCompareCompareIdsRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/manage': typeof ManageRoute
   '/rolls': typeof RollsRouteWithChildren
   '/rolls/new': typeof RollsNewRoute
   '/rolls/': typeof RollsIndexRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/manage': typeof ManageRoute
   '/rolls/new': typeof RollsNewRoute
   '/rolls': typeof RollsIndexRoute
   '/rolls/$rollId/edit': typeof RollsRollIdEditRoute
@@ -82,6 +90,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/manage': typeof ManageRoute
   '/rolls': typeof RollsRouteWithChildren
   '/rolls/new': typeof RollsNewRoute
   '/rolls/': typeof RollsIndexRoute
@@ -94,6 +103,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/manage'
     | '/rolls'
     | '/rolls/new'
     | '/rolls/'
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/manage'
     | '/rolls/new'
     | '/rolls'
     | '/rolls/$rollId/edit'
@@ -113,6 +124,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/manage'
     | '/rolls'
     | '/rolls/new'
     | '/rolls/'
@@ -124,6 +136,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ManageRoute: typeof ManageRoute
   RollsRoute: typeof RollsRouteWithChildren
 }
 
@@ -134,6 +147,13 @@ declare module '@tanstack/react-router' {
       path: '/rolls'
       fullPath: '/rolls'
       preLoaderRoute: typeof RollsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manage': {
+      id: '/manage'
+      path: '/manage'
+      fullPath: '/manage'
+      preLoaderRoute: typeof ManageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -210,6 +230,7 @@ const RollsRouteWithChildren = RollsRoute._addFileChildren(RollsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ManageRoute: ManageRoute,
   RollsRoute: RollsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
