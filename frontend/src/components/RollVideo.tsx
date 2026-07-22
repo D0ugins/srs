@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import type { RollDetails } from "@/lib/roll";
 import { transformMediaUrl } from "@/lib/format";
 
@@ -9,6 +9,35 @@ export interface RollVideoProps {
     setPlaying: React.Dispatch<React.SetStateAction<boolean>>;
     duration: number;
     setDuration: (duration: number) => void;
+}
+
+function isBuffered(video: HTMLVideoElement, time: number) {
+    for (let i = 0; i < video.buffered.length; i++) {
+        if (time >= video.buffered.start(i) && time <= video.buffered.end(i)) return true;
+    }
+    return false;
+}
+
+// Coalesces seeks to unbuffered positions so scrubbing keeps at most one request in flight
+export function useCoalescedSeek(videoRef: React.RefObject<HTMLVideoElement | null>) {
+    const pendingRef = useRef<number | null>(null);
+    return useCallback((time: number) => {
+        const video = videoRef.current;
+        if (!video) return;
+        if (video.seeking && !isBuffered(video, time)) {
+            if (pendingRef.current === null) {
+                video.addEventListener('seeked', () => {
+                    const target = pendingRef.current;
+                    pendingRef.current = null;
+                    if (target !== null) video.currentTime = target;
+                }, { once: true });
+            }
+            pendingRef.current = time;
+        } else {
+            pendingRef.current = null;
+            video.currentTime = time;
+        }
+    }, [videoRef]);
 }
 
 const FPS = 30; // TODO: store actaul fps in db

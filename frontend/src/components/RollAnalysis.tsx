@@ -4,7 +4,7 @@ import { ParentSize } from "@visx/responsive";
 import { useTooltip } from "@visx/tooltip";
 import { applyMatrixToPoint, Zoom, type TransformMatrix, type ZoomProps } from "@visx/zoom";
 import RollGraphs, { type RollGraphsProps } from "./RollGraphs";
-import RollVideo from "./RollVideo";
+import RollVideo, { useCoalescedSeek } from "./RollVideo";
 import RollMap, { type MapPath, type Position, type RollMapProps } from "./RollMap";
 import { bisector } from "d3-array";
 import RollEventList from "./RollEventList";
@@ -191,14 +191,15 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
     }, [hideTooltip]);
 
     const videoStart = graphs.video_start ?? 0;
+    const seek = useCoalescedSeek(videoRef);
     const updateVideoTime = useCallback((time: number) => {
         if (videoRef.current) {
             const adjustedTime = Math.min(Math.max(0, time - (videoStart / 1000)), duration)
-            videoRef.current.currentTime = adjustedTime
+            seek(adjustedTime);
             setCurrentTime(adjustedTime);
         }
         else { setCurrentTime(time); } // TODO: clamp based on graph
-    }, [duration, videoStart]);
+    }, [duration, videoStart, seek]);
 
     const timestamp = currentTime * 1000 + videoStart;
     useEffect(() => {
