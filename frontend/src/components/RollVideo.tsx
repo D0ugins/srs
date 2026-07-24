@@ -43,7 +43,7 @@ export function useCoalescedSeek(videoRef: React.RefObject<HTMLVideoElement | nu
 const FPS = 30; // TODO: store actaul fps in db
 
 export default function RollVideo({ roll, videoRef, setCurrentTime, setPlaying, duration, setDuration }: RollVideoProps) {
-    const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
+    const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c', 'follow_car_vid', 'misc_vid'];
     const video = VIDEO_CHOICES
         .map(type => roll.roll_files.find(file => file.type === type))
         .find(f => f !== undefined);

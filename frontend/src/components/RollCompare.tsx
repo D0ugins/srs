@@ -15,7 +15,7 @@ export interface CompareRoll {
     graphs?: RollGraphData;
 }
 
-const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
+const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c', 'follow_car_vid', 'misc_vid'];
 
 function pickVideoUrl(roll: RollDetails): string | undefined {
     const video = VIDEO_CHOICES

@@ -2,12 +2,14 @@ import { useRef, useState, useEffect } from "react";
 import { transformMediaUrl } from "@/lib/format";
 import type { RollDetails, RollStats } from "@/lib/roll";
 
-const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'];
+const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c', 'follow_car_vid', 'misc_vid'];
 const VIDEO_LABELS: Record<string, string> = {
     video_preview: 'Preview',
     edited_vid: 'Edited',
     video_preview_c: 'Preview c',
     edited_vid_c: 'Edited c',
+    follow_car_vid: 'Follow car',
+    misc_vid: 'Misc',
 };
 
 export default function RollView({ roll, stats }: { roll: RollDetails, stats?: RollStats }) {

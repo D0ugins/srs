@@ -377,7 +377,7 @@ def get_graph_data(roll, include_imu: bool = True):
     gpx_files = [rf for rf in roll.roll_files if rf.file.type == 'gpx'] + [rf for rf in roll.roll_files if rf.file.type == 'gpx_c']
     
     video_file = None
-    for t in ('video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c'):
+    for t in ('video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c', 'follow_car_vid', 'misc_vid'):
         f = next((rf for rf in roll.roll_files if rf.file.type == t), None)
         if f:
             video_file = f
