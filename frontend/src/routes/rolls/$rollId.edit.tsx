@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { RollDetails, RollUpdate } from "@/lib/roll";
 import RollEdit, { rollToRollUpdate } from "@/components/RollEdit";
 import RollHeader from "@/components/RollHeader";
+import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
 
 export const Route = createFileRoute('/rolls/$rollId/edit')({
     component: RouteComponent,
@@ -28,11 +29,18 @@ function RouteComponent() {
     const queryClient = useQueryClient();
     const navigate = Route.useNavigate();
     const [formData, setFormData] = useState<RollUpdate | null>(null);
+    const [initialFormData, setInitialFormData] = useState<RollUpdate | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        if (roll) setFormData(rollToRollUpdate(roll));
+        if (roll) {
+            const initial = rollToRollUpdate(roll);
+            setFormData(initial);
+            setInitialFormData(initial);
+        }
     }, [roll]);
+
+    useUnsavedChangesWarning(formData !== null && JSON.stringify(formData) !== JSON.stringify(initialFormData));
 
     const saveRollMutation = useMutation({
         mutationFn: async (updatedRoll: RollUpdate) => {
@@ -52,11 +60,12 @@ function RouteComponent() {
             }
             return response.json() as Promise<RollDetails>;
         },
-        onSuccess: (data) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['rolls'] });
             queryClient.invalidateQueries({ queryKey: ['roll', roll.id] });
             console.log('Roll updated successfully', data);
-            navigate({ to: '..' });
+            setInitialFormData(variables);
+            navigate({ to: '..', ignoreBlocker: true });
         },
         onError: (error: any) => {
             console.debug(formData)

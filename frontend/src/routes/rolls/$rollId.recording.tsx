@@ -2,6 +2,7 @@ import RollAnalysis from "@/components/RollAnalysis";
 import RollHeader from "@/components/RollHeader";
 import type { EventType } from "@/lib/constants";
 import type { RollEvent } from "@/lib/roll";
+import { useUnsavedChangesWarning } from "@/lib/useUnsavedChangesWarning";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -18,9 +19,17 @@ export interface RollEventInput {
     editing: boolean;
 }
 
+// Ignores key/editing (UI-only) so a saved snapshot compares equal regardless of edit-state churn.
+function normalizeEvents(events: RollEventInput[]) {
+    return events
+        .map(e => ({ type: e.type, tag: e.tag ?? undefined, timestamp_ms: e.timestamp_ms }))
+        .sort((a, b) => a.timestamp_ms - b.timestamp_ms || a.type.localeCompare(b.type) || (a.tag ?? '').localeCompare(b.tag ?? ''));
+}
+
 function RouteComponent() {
     const { rollId } = Route.useParams();
     const [events, setEvents] = useState<RollEventInput[]>([]);
+    const [initialEvents, setInitialEvents] = useState<RollEventInput[]>([]);
 
     const { data: graphs, isLoading: graphsLoading, error: graphsError } = useQuery({
         queryKey: ['roll', rollId, 'recording'],
@@ -62,22 +71,26 @@ function RouteComponent() {
 
     useEffect(() => {
         if (!eventsRaw) return;
-        setEvents(eventsRaw
+        const mapped = eventsRaw
             .sort((a: RollEvent, b: RollEvent) => a.timestamp_ms - b.timestamp_ms)
             .map((event: RollEvent, index: number) => ({
                 key: index,
                 type: event.type,
                 tag: event.tag,
                 timestamp_ms: event.timestamp_ms,
-                active: true,
-            })));
+                editing: false,
+            }));
+        setEvents(mapped);
+        setInitialEvents(mapped);
     }, [eventsRaw]);
+
+    useUnsavedChangesWarning(JSON.stringify(normalizeEvents(events)) !== JSON.stringify(normalizeEvents(initialEvents)));
 
     const queryClient = useQueryClient();
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const saveEventsMutation = useMutation({
-        mutationFn: async (events: RollEvent[]) => {
+        mutationFn: async (events: RollEventInput[]) => {
             console.debug('Saving events:', events);
             const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/rolls/${roll.id}/events`, {
                 method: 'PUT',
@@ -93,10 +106,11 @@ function RouteComponent() {
             }
             return response.json() as Promise<RollEvent[]>;
         },
-        onSuccess: (data) => {
+        onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['rolls'] });
             queryClient.invalidateQueries({ queryKey: ['roll', roll.id] });
             console.log('Roll Events updated successfully', data);
+            setInitialEvents(variables);
         },
         onError: (error: any) => {
             console.debug(events)
