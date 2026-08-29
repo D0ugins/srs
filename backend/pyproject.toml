@@ -24,6 +24,7 @@ dependencies = [
     "pandas>=2.3.2",
     "pandas-stubs~=2.3.2",
     "plotly>=6.3.0",
+    "pycolmap>=4.1.1",
     "pymap3d>=3.2.0",
     "pyproj>=3.7.2",
     "rasterio>=1.4.4",
