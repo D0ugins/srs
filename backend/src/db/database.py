@@ -119,6 +119,8 @@ class Roll(TimestampModel):
     roll_files: Mapped[list["RollFile"]] = relationship(back_populates="roll", cascade="delete, delete-orphan")
     roll_events: Mapped[list["RollEvent"]] = relationship(back_populates="roll", cascade="delete, delete-orphan")
     roll_hills: Mapped[list["RollHill"]] = relationship(back_populates="roll", cascade="delete, delete-orphan")
+    roll_traces: Mapped[list["RollTrace"]] = relationship(back_populates="roll", cascade="delete, delete-orphan")
+    roll_stats: Mapped[list["RollStat"]] = relationship(back_populates="roll", cascade="delete, delete-orphan")
     
     __table_args__ = (
         CheckConstraint(
@@ -201,6 +203,52 @@ class RollHill(TimestampModel):
     
     def __repr__(self):
         return f"RollHill(id={self.id}, roll_id={self.roll_id}, pusher_id={self.pusher_id}, hill_number={self.hill_number})"
+
+class RollTrace(TimestampModel):
+    __tablename__ = "rolltrace"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
+    kind: Mapped[str] = mapped_column()
+    file_id: Mapped[int | None] = mapped_column(ForeignKey("file.id"), index=True)
+
+    inputs_hash: Mapped[str | None] = mapped_column()
+    code_hash: Mapped[str | None] = mapped_column()
+    params_hash: Mapped[str | None] = mapped_column()
+    status: Mapped[str] = mapped_column()  # ok | outside_trace | in_gap | failed
+    note: Mapped[str | None] = mapped_column()
+    n_samples: Mapped[int | None] = mapped_column()
+    computed_at: Mapped[datetime] = mapped_column()
+
+    roll: Mapped["Roll"] = relationship(back_populates="roll_traces")
+    file: Mapped["File"] = relationship()
+
+    __table_args__ = (Index("idx_rolltrace_roll_kind", "roll_id", "kind", unique=True),)
+
+    def __repr__(self):
+        return f"RollTrace(id={self.id}, roll_id={self.roll_id}, kind='{self.kind}', status='{self.status}')"
+
+class RollStat(TimestampModel):
+    __tablename__ = "rollstat"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
+    quantity: Mapped[str] = mapped_column()
+
+    value: Mapped[float | None] = mapped_column()
+    sd: Mapped[float | None] = mapped_column()
+    unit: Mapped[str | None] = mapped_column()
+    status: Mapped[str] = mapped_column()  # ok | outside_trace | in_gap | failed
+    note: Mapped[str | None] = mapped_column()
+    inputs_hash: Mapped[str | None] = mapped_column()
+    computed_at: Mapped[datetime] = mapped_column()
+
+    roll: Mapped["Roll"] = relationship(back_populates="roll_stats")
+
+    __table_args__ = (Index("idx_rollstat_roll_quantity", "roll_id", "quantity", unique=True),)
+
+    def __repr__(self):
+        return f"RollStat(id={self.id}, roll_id={self.roll_id}, quantity='{self.quantity}', value={self.value}, status='{self.status}')"
 
 def create_db_and_tables():
     Base.metadata.create_all(engine)

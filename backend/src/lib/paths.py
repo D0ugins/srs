@@ -14,5 +14,9 @@ def resolve_path(path: str) -> str:
         return path.replace("[[gdrive]]/", f"{DATA_PATH}/gdrive/")
     elif path.startswith("[[masks]]/"):
         return path.replace("[[masks]]/", f"{DATA_PATH}/masks/")
+    elif path.startswith("[[traces]]/"):
+        return path.replace("[[traces]]/", f"{DATA_PATH}/traces/")
+    elif path.startswith("[[estimates]]/"):
+        return path.replace("[[estimates]]/", f"{DATA_PATH}/estimates/")
     else:
         raise ValueError(f"Unrecognized path prefix in {path}")
