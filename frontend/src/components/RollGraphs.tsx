@@ -26,7 +26,7 @@ export interface RollGraphsProps {
     data: {
         speed?: GraphData[];
         energy?: GraphData[];
-        a_fwd?: GraphData[];
+        a_drag?: GraphData[];
         a_lat?: GraphData[];
     }
     xDomain?: [number, number];
@@ -100,7 +100,7 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
 
         const speedSeries = data.speed;
         const energySeries = data.energy;
-        const a_fwdSeries = data.a_fwd;
+        const a_dragSeries = data.a_drag;
         const a_latSeries = data.a_lat;
 
         // Stack only the panels that have data, so a missing one (e.g. no centripetal) doesn't leave a gap.
@@ -108,7 +108,7 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
             speedSeries && { key: "speed", title: "Speed (m/s)", series: speedSeries },
             energySeries && { key: "energy", title: "Specific Energy (J/kg)", series: energySeries },
             a_latSeries && { key: "a_lat", title: "Lateral Acceleration (m/s²)", series: a_latSeries },
-            a_fwdSeries && { key: "a_fwd", title: "Forward Acceleration (m/s²)", series: a_fwdSeries },
+            a_dragSeries && { key: "a_drag", title: "Drag (m/s²)", series: a_dragSeries },
         ].filter((p): p is { key: string; title: string; series: Array<GraphData> } => !!p);
 
         const [wasPlaying, setWasPlaying] = useState(false);

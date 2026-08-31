@@ -170,6 +170,8 @@ export interface RollGraphData {
         a_lat?: number[];
         sd_a_fwd?: number[];
         sd_a_lat?: number[];
+        a_drag?: number[];        // a_fwd with the DEM's local gravity component removed
+        sd_a_drag?: number[];
     }
     gps_source?: 'trace' | 'racebox' | 'fit' | 'gpx';
     centripetal?: {

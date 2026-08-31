@@ -5,6 +5,7 @@ from lib.graphs import get_graph_data, video_roll_file
 from lib.events import calculate_hill_times, calculate_freeroll_stats
 from lib.paths import resolve_path
 from lib import cache
+from lib.drag import a_drag
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -374,6 +375,17 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
 
 TRACE_SOURCES = ('pnp', 'racebox')     # preference order; racebox serves the rolls with no camera
 ACCEL_COLS = ('a_fwd', 'a_lat', 'sd_a_fwd', 'sd_a_lat')   # present on every source's display
+
+
+def accel_cols(z):
+    """The stored acceleration columns plus `a_drag`: `a_fwd` with the DEM's local gravity
+    component removed, so a coast reads as drag.  Its sd is `sd_a_fwd` -- given the path the grade
+    is deterministic, and the two match to 1e-5 (`tmp/dragmeas`)."""
+    out = {c: z[c] for c in ACCEL_COLS if c in z.files}
+    if 'a_fwd' in out:
+        out['a_drag'] = a_drag(out['a_fwd'], np.c_[z['x'], z['y']])
+        out['sd_a_drag'] = out['sd_a_fwd']
+    return out
                                                           # artefact; see its accel_note
 
 
@@ -401,8 +413,8 @@ def trace_graph_data(session, roll):
             'sd_energy': z['sd_energy'], 'sd_x': z['sd_x'], 'sd_y': z['sd_y'],
             # The WNOJ fit diverges on a few rolls (up to 2e6 m/s2); the note records it, but a
             # served number would be plotted.  The artefact keeps the raw values for diagnosis.
-            **{c: (np.full(len(z['t']), np.nan) if 'accel_implausible' in (row.note or '') else z[c])
-               for c in ACCEL_COLS if c in z.files},
+            **{c: (np.full(len(z['t']), np.nan) if 'accel_implausible' in (row.note or '') else v)
+               for c, v in accel_cols(z).items()},
         }),
         'gps_source': 'trace' if source == 'pnp' else source,
         'video_start': video_start,

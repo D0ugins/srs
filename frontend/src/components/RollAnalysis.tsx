@@ -170,10 +170,10 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         };
     }, [graphs.gps_data]);
 
-    const a_fwdData = useMemo(() => ({
+    const a_dragData = useMemo(() => ({
         timestamp: graphs.gps_data?.timestamp ?? [],
-        values: graphs.gps_data?.a_fwd ?? [],
-        sd: graphs.gps_data?.sd_a_fwd
+        values: graphs.gps_data?.a_drag ?? [],
+        sd: graphs.gps_data?.sd_a_drag
     }), [graphs.gps_data]);
 
     const a_latData = useMemo(() => ({
@@ -185,11 +185,11 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
     const data = useMemo(() => ({
         speed: speedData.timestamp.length > 0 ? speedData : undefined,
         energy: energyData.timestamp.length > 0 ? energyData : undefined,
-        a_fwd: a_fwdData.timestamp.length > 0 ? a_fwdData : undefined,
+        a_drag: a_dragData.timestamp.length > 0 ? a_dragData : undefined,
         a_lat: a_latData.timestamp.length > 0 ? a_latData : undefined,
-    }), [speedData, energyData, a_fwdData, a_latData]);
+    }), [speedData, energyData, a_dragData, a_latData]);
 
-    const hasGraphData = data.speed || data.energy || data.a_fwd || data.a_lat;
+    const hasGraphData = data.speed || data.energy || data.a_drag || data.a_lat;
 
     const positions = useMemo(() => {
         if (!graphs.gps_data) return undefined;
@@ -247,7 +247,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         const labels = {
             speed: "Speed (m/s)",
             energy: "Energy (J/kg)",
-            a_fwd: "Forward Acceleration (m/s²)",
+            a_drag: "Drag (m/s²)",
             a_lat: "Lateral Acceleration (m/s²)",
         };
         for (const [key, series] of Object.entries(data)) {
@@ -266,7 +266,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         return {
             speed: data.speed && [data.speed],
             energy: data.energy && [data.energy],
-            a_fwd: data.a_fwd && [data.a_fwd],
+            a_drag: data.a_drag && [data.a_drag],
             a_lat: data.a_lat && [data.a_lat],
         };
     }, [data]);

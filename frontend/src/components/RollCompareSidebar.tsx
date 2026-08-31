@@ -164,10 +164,10 @@ function LiveStats({ d, offset, overlay = false }: { d: Derived; offset: number;
     const timestamp = useContext(TimestampContext);
     const t = timestamp + offset;
     return (
-        <div className={`mt-1 grid ${d.a_fwd ? 'grid-cols-4' : 'grid-cols-2'} gap-2 text-center`}>
+        <div className={`mt-1 grid ${d.a_drag ? 'grid-cols-4' : 'grid-cols-2'} gap-2 text-center`}>
             <Stat label="Speed (m/s)" value={valueAt(d.speed, t)} overlay={overlay} />
             <Stat label="Energy (J/kg)" value={valueAt(d.energy, t)} overlay={overlay} />
-            {d.a_fwd && <Stat label={<>a<sub>fwd</sub> (m/s²)</>} value={valueAt(d.a_fwd, t)} overlay={overlay} />}
+            {d.a_drag && <Stat label="Drag (m/s²)" value={valueAt(d.a_drag, t)} overlay={overlay} />}
             {d.a_lat && <Stat label={<>a<sub>lat</sub> (m/s²)</>} value={valueAt(d.a_lat, t)} overlay={overlay} />}
         </div>
     );

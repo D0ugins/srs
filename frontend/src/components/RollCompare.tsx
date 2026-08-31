@@ -57,7 +57,7 @@ export interface Derived {
     videoStart: number;
     speed?: GraphData;
     energy?: GraphData;
-    a_fwd?: GraphData;
+    a_drag?: GraphData;
     a_lat?: GraphData;
     positions?: Array<Position>;
     events: Array<RollEvent>;
@@ -92,8 +92,8 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
                 color, label,
             }
             : undefined;
-        const a_fwd = gps?.a_fwd
-            ? { timestamp: gps.timestamp, values: gps.a_fwd, sd: gps.sd_a_fwd, color, label }
+        const a_drag = gps?.a_drag
+            ? { timestamp: gps.timestamp, values: gps.a_drag, sd: gps.sd_a_drag, color, label }
             : undefined;
         const a_lat = gps?.a_lat
             ? { timestamp: gps.timestamp, values: gps.a_lat, sd: gps.sd_a_lat, color, label }
@@ -111,7 +111,7 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
 
         return {
             color, label, videoUrl: pickVideoUrl(roll), videoStart: graphs?.video_start ?? 0,
-            speed, energy, a_fwd, a_lat, positions, events, tMin, tMax, rollStart, freerollStart,
+            speed, energy, a_drag, a_lat, positions, events, tMin, tMax, rollStart, freerollStart,
         };
     }), [rolls]);
 
@@ -243,24 +243,24 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
             s ? { ...s, timestamp: s.timestamp.map(t => t - off) } : undefined;
         const speed: GraphData[] = [];
         const energy: GraphData[] = [];
-        const a_fwd: GraphData[] = [];
+        const a_drag: GraphData[] = [];
         const a_lat: GraphData[] = [];
         derived.forEach((d, i) => {
             const off = offsets[i] ?? 0;
             const sp = shift(d.speed, off); if (sp) speed.push(sp);
             const en = shift(d.energy, off); if (en) energy.push(en);
-            const af = shift(d.a_fwd, off); if (af) a_fwd.push(af);
+            const af = shift(d.a_drag, off); if (af) a_drag.push(af);
             const al = shift(d.a_lat, off); if (al) a_lat.push(al);
         });
         return {
             speed: speed.length ? speed : undefined,
             energy: energy.length ? energy : undefined,
-            a_fwd: a_fwd.length ? a_fwd : undefined,
+            a_drag: a_drag.length ? a_drag : undefined,
             a_lat: a_lat.length ? a_lat : undefined,
         };
     }, [derived, offsets]);
 
-    const hasGraphData = graphData.speed || graphData.energy || graphData.a_fwd || graphData.a_lat;
+    const hasGraphData = graphData.speed || graphData.energy || graphData.a_drag || graphData.a_lat;
 
     const mapPaths = useMemo<Array<MapPath>>(() => derived
         .filter(d => d.positions && d.positions.length > 0)
