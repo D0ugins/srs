@@ -1,5 +1,5 @@
 from io import StringIO
-from api.routers.rolls import get_graph_data
+from lib.graphs import get_graph_data
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from lib.events import calculate_hill_times, calculate_freeroll_stats

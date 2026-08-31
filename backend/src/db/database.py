@@ -183,7 +183,7 @@ class RollEvent(TimestampModel):
     roll: Mapped["Roll"] = relationship(back_populates="roll_events")
     source: Mapped["File"] = relationship()
     
-    __table_args__ = (Index("idx_rollevent_roll_type_tag_timestamp", "roll_id", "type", "tag", "timestamp_ms", unique=True),)
+    __table_args__ = (Index("idx_rollevent_roll_type_tag_timestamp", "roll_id", "type", "tag", "timestamp_ms", "source_id", unique=True),)
     
     def __repr__(self):
         return f"RollEvent(id={self.id}, roll_id={self.roll_id}, type='{self.type}', tag={self.tag!r}, timestamp_ms={self.timestamp_ms}, source_id={self.source_id})"
@@ -210,6 +210,7 @@ class RollTrace(TimestampModel):
     id: Mapped[int] = mapped_column(primary_key=True)
     roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
     kind: Mapped[str] = mapped_column()
+    source_id: Mapped[int] = mapped_column(ForeignKey("file.id"), index=True)
     file_id: Mapped[int | None] = mapped_column(ForeignKey("file.id"), index=True)
 
     inputs_hash: Mapped[str | None] = mapped_column()
@@ -221,18 +222,20 @@ class RollTrace(TimestampModel):
     computed_at: Mapped[datetime] = mapped_column()
 
     roll: Mapped["Roll"] = relationship(back_populates="roll_traces")
-    file: Mapped["File"] = relationship()
+    file: Mapped["File"] = relationship(foreign_keys=[file_id])
+    source: Mapped["File"] = relationship(foreign_keys=[source_id])
 
-    __table_args__ = (Index("idx_rolltrace_roll_kind", "roll_id", "kind", unique=True),)
+    __table_args__ = (Index("idx_rolltrace_roll_kind_source", "roll_id", "kind", "source_id", unique=True),)
 
     def __repr__(self):
-        return f"RollTrace(id={self.id}, roll_id={self.roll_id}, kind='{self.kind}', status='{self.status}')"
+        return f"RollTrace(id={self.id}, roll_id={self.roll_id}, kind='{self.kind}', source_id={self.source_id}, status='{self.status}')"
 
 class RollStat(TimestampModel):
     __tablename__ = "rollstat"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     roll_id: Mapped[int] = mapped_column(ForeignKey("roll.id"), index=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("file.id"), index=True)
     quantity: Mapped[str] = mapped_column()
 
     value: Mapped[float | None] = mapped_column()
@@ -244,11 +247,12 @@ class RollStat(TimestampModel):
     computed_at: Mapped[datetime] = mapped_column()
 
     roll: Mapped["Roll"] = relationship(back_populates="roll_stats")
+    source: Mapped["File"] = relationship()
 
-    __table_args__ = (Index("idx_rollstat_roll_quantity", "roll_id", "quantity", unique=True),)
+    __table_args__ = (Index("idx_rollstat_roll_quantity_source", "roll_id", "quantity", "source_id", unique=True),)
 
     def __repr__(self):
-        return f"RollStat(id={self.id}, roll_id={self.roll_id}, quantity='{self.quantity}', value={self.value}, status='{self.status}')"
+        return f"RollStat(id={self.id}, roll_id={self.roll_id}, quantity='{self.quantity}', source_id={self.source_id}, value={self.value}, status='{self.status}')"
 
 def create_db_and_tables():
     Base.metadata.create_all(engine)

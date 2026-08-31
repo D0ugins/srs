@@ -15,13 +15,14 @@ export const GRAPH_SERIES_COLORS = [
     '#ec4899',
 ] as const;
 
-export const EVENT_TYPES = ['roll_start', 'hill_start', 'freeroll_start', 'chute_start', 'roll_end', 'note'] as const;
+export const EVENT_TYPES = ['roll_start', 'hill_start', 'freeroll_start', 'chute_start', 'finish_line', 'roll_end', 'note'] as const;
 export type EventType = typeof EVENT_TYPES[number];
 export const EVENT_COLORS = {
     'roll_start': '#166534',
     'hill_start': '#4ade80',
     'freeroll_start': '#4ade80',
     'chute_start': '#4ade80',
+    'finish_line': '#4ade80',
     'roll_end': '#991b1b',
     'note': '#77a0ff',
 } as Record<EventType, string>;

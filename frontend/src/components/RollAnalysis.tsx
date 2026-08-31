@@ -160,8 +160,8 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
     const centripetalData = useMemo(() => graphs.centripetal ?? { timestamp: [], values: [] }, [graphs.centripetal]);
 
     const energyData = useMemo(() => {
-        if (!graphs.gps_data || !graphs.centripetal) return { timestamp: [], values: [] };
-        const values = graphs.gps_data.speed.map((v, i) => 0.5 * v * v + 9.81 * graphs.gps_data!.elevation[i]);
+        if (!graphs.gps_data) return { timestamp: [], values: [] };
+        const values = graphs.gps_data.energy ?? graphs.gps_data.speed.map((v, i) => 0.5 * v * v + 9.81 * graphs.gps_data!.elevation[i]);
         return {
             timestamp: graphs.gps_data.timestamp,
             values,

@@ -101,6 +101,13 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
         const centripetalSeries = data.centripetal;
         const energySeries = data.energy;
 
+        // Stack only the panels that have data, so a missing one (e.g. no centripetal) doesn't leave a gap.
+        const panels = [
+            speedSeries && { key: "speed", title: "Speed (m/s)", series: speedSeries },
+            centripetalSeries && { key: "centripetal", title: "Centripetal Acceleration (m/s²)", series: centripetalSeries },
+            energySeries && { key: "energy", title: "Specific Energy (J/kg)", series: energySeries },
+        ].filter((p): p is { key: string; title: string; series: Array<GraphData> } => !!p);
+
         const [wasPlaying, setWasPlaying] = useState(false);
 
         const handlePlayheadMouseDown = (e: React.MouseEvent) => {
@@ -163,45 +170,20 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                 className="cursor-move touch-none select-none"
                 ref={zoom.containerRef}
                 onDoubleClick={handleDoubleClick}>
-                {speedSeries &&
+                {panels.map((panel, i) =>
                     <RollGraph
+                        key={panel.key}
                         parentWidth={parent.width}
                         parentHeight={parent.height / 4}
-                        title="Speed (m/s)"
+                        top={i * (parent.height / 4)}
+                        title={panel.title}
                         xScale={xScale}
-                        data={speedSeries}
+                        data={panel.series}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
-                        showAxis={false}
+                        showAxis={i === panels.length - 1}
                     />
-                }
-                {centripetalSeries &&
-                    <RollGraph
-                        parentWidth={parent.width}
-                        parentHeight={parent.height / 4}
-                        top={parent.height / 4}
-                        title="Centripetal Acceleration (m/s²)"
-                        xScale={xScale}
-                        data={centripetalSeries}
-                        onMouseLeave={handleMouseLeave}
-                        showTooltip={showTooltip}
-                        showAxis={false}
-                    />
-                }
-                {
-                    energySeries &&
-                    <RollGraph
-                        parentWidth={parent.width}
-                        parentHeight={parent.height / 4}
-                        top={parent.height / 2}
-                        title="Specific Energy (J/kg)"
-                        xScale={xScale}
-                        data={energySeries}
-                        onMouseLeave={handleMouseLeave}
-                        showTooltip={showTooltip}
-                        showAxis={true}
-                    />
-                }
+                )}
                 {tooltipLeft !== undefined && (
                     <Line
                         from={{ x: tooltipLeft, y: 0 }}

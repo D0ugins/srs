@@ -1,14 +1,18 @@
 from db import Roll, SessionDep
 from db.database import Buggy, Driver, File, Pusher, RollDate, RollFile, RollHill, RollType, RollEvent, Sensor
-from lib.fit import get_fit_graph_data, load_fit_file
-from lib.gpx import load_gpx, get_gpx_graph_data
-from lib.racebox import get_racebox_graph_data
+from lib.geo import enu_to_wgs84
+from lib.graphs import get_graph_data, video_roll_file
 from lib.events import calculate_hill_times, calculate_freeroll_stats
 from lib.paths import resolve_path
+from lib import cache
 from fastapi import APIRouter, Query, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime
+import json
+import logging
+import numpy as np
+import os
 import pandas as pd
 from pydantic import BaseModel
 from typing import cast
@@ -229,7 +233,8 @@ def serialize_roll(roll: Roll, detailed: bool):
 
 def serialize_graph_response(response: dict):
     return {
-        key: value.to_dict(orient='list') if isinstance(value, pd.DataFrame) else value
+        key: {c: [None if v != v else v for v in s.tolist()] for c, s in value.items()}
+             if isinstance(value, pd.DataFrame) else value
         for key, value in response.items()
     }
 
@@ -367,73 +372,49 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
     
     return get_roll(roll.id, session)
 
-# TMP: for dev
-cached_id = None
-cached = None
+TRACE_SOURCES = ('pnp', 'racebox')     # preference order; racebox serves the rolls with no camera
 
-def get_graph_data(roll, include_imu: bool = True):
-    racebox_files = [rf for rf in roll.roll_files if rf.file.type == 'racebox']
-    fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
-    gpx_files = [rf for rf in roll.roll_files if rf.file.type == 'gpx'] + [rf for rf in roll.roll_files if rf.file.type == 'gpx_c']
-    
-    video_file = None
-    for t in ('video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c', 'follow_car_vid', 'misc_vid'):
-        f = next((rf for rf in roll.roll_files if rf.file.type == t), None)
-        if f:
-            video_file = f
-            break
-    
-    data_file = None
-    response: dict = {}
-    if racebox_files:
-        data_file = racebox_file = racebox_files[0]
-        session_id = data_file.file.uri.split('/')[-1]
-        response = get_racebox_graph_data(session_id)
-    elif fit_files:
-        data_file = fit_file = fit_files[0]
-        fit_path = resolve_path(fit_file.file.uri)
-        messages = load_fit_file(fit_path)
-        local_end_ms = None if fit_file.local_end_ms is None else fit_file.local_end_ms + 2000
-        response = get_fit_graph_data(messages, fit_file.local_start_ms, local_end_ms, include_imu=include_imu)
-    elif gpx_files:
-        data_file = gpx_file = gpx_files[0]
-        gpx_data = load_gpx(resolve_path(gpx_file.file.uri))
-        response = get_gpx_graph_data(gpx_data, gpx_file.local_start_ms, gpx_file.local_end_ms)
-    
-    if not data_file: return {}
-    
-    if data_file and video_file:
-        video_start = video_file.file.start_time
-        data_start = data_file.file.start_time
-        if video_start and data_start:
-            response['video_start'] = int((video_start - data_start).total_seconds() * 1000)
-            response['video_start'] -= data_file.local_start_ms or 0
-        else:
-            response['video_start'] = 0
-        if (video_file.local_start_ms is not None) and (video_file.local_end_ms is not None):
-            response['video_end'] = response['video_start'] + (video_file.local_end_ms - video_file.local_start_ms)
-    
+
+def trace_graph_data(session, roll):
+    """The roll's cached display trace as graph data, on the roll-local clock its events use, or
+    `{}` when the roll has no usable trace.  Never raises."""
+    source = next((k for k in TRACE_SOURCES if roll.id in cache.source_rolls(session, k)), None)
+    if source is None:
+        return {}
+    try:
+        if cache.ensure_fresh(session, roll.id, source).status != 'ok':
+            return {}
+        z = np.load(resolve_path(cache.display_uri(roll.id, source)), allow_pickle=False)
+        video_start = -int(json.loads(str(z['meta']))['event_offset_ms'])
+        lat, long = enu_to_wgs84(z['x'], z['y'], z['z'])
+    except Exception:                    # a schema/artefact fault must not look like "no trace"
+        logging.exception('trace graph data failed for roll %s', roll.id)
+        return {}
+    response = {
+        'gps_data': pd.DataFrame({
+            'timestamp': np.round(video_start + z['t'] * 1000).astype(int),
+            'lat': lat, 'long': long, 'elevation': z['z'], 'speed': z['speed'],
+            'energy': z['energy'], 'sd_speed': z['sd_speed'], 'sd_elevation': z['sd_z'],
+            'sd_energy': z['sd_energy'], 'sd_x': z['sd_x'], 'sd_y': z['sd_y'],
+        }),
+        'gps_source': 'trace' if source == 'pnp' else source,
+        'video_start': video_start,
+    }
+    video_file = video_roll_file(roll)
+    if video_file and (video_file.local_start_ms is not None) and (video_file.local_end_ms is not None):
+        response['video_end'] = video_start + (video_file.local_end_ms - video_file.local_start_ms)
     return response
 
 
 @router.get("/{roll_id}/graphs")
 def get_roll_graphs(roll_id: int, session: SessionDep):
-    # global cached_id, cached
-    # if roll_id == cached_id and cached is not None:
-    #     return cached
-    
     roll = session.scalar(
         select(Roll).options(selectinload(Roll.roll_files).selectinload(RollFile.file)).where(Roll.id == roll_id)
     )    
     if not roll:
         raise HTTPException(status_code=404, detail="Roll not found")
-    
-    
-    data = get_graph_data(roll)
-    response = serialize_graph_response(data)
-    cached_id = roll_id
-    cached = response
-    return response
+
+    return serialize_graph_response(trace_graph_data(session, roll))
 
 @router.get("/{roll_id}/events")
 def get_roll_events(roll_id: int, session: SessionDep):
@@ -487,7 +468,7 @@ def get_roll_stats(roll_id: int, session: SessionDep):
     racebox_files = [rf for rf in roll.roll_files if rf.file.type == 'racebox']
     fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
     if racebox_files or fit_files:
-        graphs = get_graph_data(roll, include_imu=False)
+        graphs = get_graph_data(roll, include_imu=False, session=session)
         
         freeroll_stats = calculate_freeroll_stats(graphs, roll.roll_events)
         stats.update(freeroll_stats)

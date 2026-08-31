@@ -14,6 +14,10 @@ services:
         - ./data/cache:/app/data/cache
         - ./data/gdrive:/app/data/gdrive
         - ./data/archive:/app/data/archive
+        - ./data/masks:/app/data/masks
+        - ./data/traces:/app/data/traces
+        - ./data/estimates:/app/data/estimates
+        - ./data/calib:/app/data/calib
       environment:
         - DB_URI=sqlite:////app/data/db/srs.db
       env_file:
@@ -59,6 +63,10 @@ services:
         - ./data/cache:/app/data/cache
         - ./data/gdrive:/app/data/gdrive
         - ./data/archive:/app/data/archive
+        - ./data/masks:/app/data/masks
+        - ./data/traces:/app/data/traces
+        - ./data/estimates:/app/data/estimates
+        - ./data/calib:/app/data/calib
       environment:
         - DB_URI=sqlite:////app/data/db/srs.db
   frontend_prod:
@@ -111,7 +119,7 @@ services:
         - ./backend/alembic:/app/alembic
         - ./data/db:/app/data/db
       environment:
-        - DB_PATH=/app/data/db/srs.db
+        - DB_URI=sqlite:////app/data/db/srs.db
       env_file:
         - ./backend/.env
 volumes:

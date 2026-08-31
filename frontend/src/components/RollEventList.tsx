@@ -140,6 +140,7 @@ const guessList: EventGuess[] = [
     { type: 'hill_start', tag: '3' },
     { type: 'hill_start', tag: '4' },
     { type: 'hill_start', tag: '5' },
+    { type: 'finish_line', tag: '5' },
     { type: 'roll_end' },
 ]
 function guessNextEvent(events: RollEventInput[], videoTimestamp?: number): EventGuess {

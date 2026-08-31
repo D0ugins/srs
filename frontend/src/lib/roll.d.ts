@@ -159,7 +159,14 @@ export interface RollGraphData {
         long: number[];
         elevation: number[];
         speed: number[];
+        energy?: number[];
+        sd_speed?: number[];
+        sd_elevation?: number[];
+        sd_energy?: number[];
+        sd_x?: number[];
+        sd_y?: number[];
     }
+    gps_source?: 'trace' | 'racebox' | 'fit' | 'gpx';
     centripetal?: {
         timestamp: number[];
         values: number[];

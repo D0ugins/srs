@@ -42,3 +42,33 @@ def get_angular_velocity(heading: pd.Series, speed: pd.Series, cutoff: float = 2
     heading_diffs = pd.Series(offsets[mins, np.arange(len(mins))], index=heading.index)
     
     return ((heading_diffs * (np.pi / 180)) / (heading_diffs.index.to_series().diff() / 1000)).dropna()
+
+
+LAT0, LON0, ALT0 = 40.44163016, -79.94165829, 288.42151354   # RTK base: the map frame's ENU origin
+_A, _F = 6378137.0, 1 / 298.257223563
+_E2 = _F * (2 - _F)
+
+
+def _ecef(lat, lon, alt):
+    la, lo = np.radians(lat), np.radians(lon)
+    n = _A / np.sqrt(1 - _E2 * np.sin(la) ** 2)
+    return np.stack([(n + alt) * np.cos(la) * np.cos(lo), (n + alt) * np.cos(la) * np.sin(lo),
+                     (n * (1 - _E2) + alt) * np.sin(la)], -1)
+
+
+def enu_to_wgs84(x, y, z):
+    """Map-frame ENU metres about the RTK base -> WGS84 latitude and longitude in degrees.
+
+    The inverse of `lib.estimate._enu`; the geodetic latitude is iterated to convergence."""
+    la, lo = np.radians(LAT0), np.radians(LON0)
+    R = np.array([[-np.sin(lo), np.cos(lo), 0],
+                  [-np.sin(la) * np.cos(lo), -np.sin(la) * np.sin(lo), np.cos(la)],
+                  [np.cos(la) * np.cos(lo), np.cos(la) * np.sin(lo), np.sin(la)]])
+    p = np.stack([x, y, z], -1) @ R + _ecef(LAT0, LON0, ALT0)
+    px, py, pz = p[..., 0], p[..., 1], p[..., 2]
+    r = np.hypot(px, py)
+    lat = np.arctan2(pz, r * (1 - _E2))
+    for _ in range(5):
+        s = np.sin(lat)
+        lat = np.arctan2(pz + _E2 * _A / np.sqrt(1 - _E2 * s * s) * s, r)
+    return np.degrees(lat), np.degrees(np.arctan2(py, px))

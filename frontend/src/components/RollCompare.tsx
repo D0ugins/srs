@@ -86,7 +86,7 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
             ? { timestamp: graphs.centripetal.timestamp, values: graphs.centripetal.values, color, label }
             : undefined;
         const energy = gps
-            ? { timestamp: gps.timestamp, values: gps.speed.map((v, j) => 0.5 * v * v + 9.81 * gps.elevation[j]), color, label }
+            ? { timestamp: gps.timestamp, values: gps.energy ?? gps.speed.map((v, j) => 0.5 * v * v + 9.81 * gps.elevation[j]), color, label }
             : undefined;
         const positions = gps
             ? gps.timestamp.map((t, j) => ({ lat: gps.lat[j], long: gps.long[j], timestamp: t }))

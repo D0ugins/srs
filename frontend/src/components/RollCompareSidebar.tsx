@@ -164,9 +164,9 @@ function LiveStats({ d, offset, overlay = false }: { d: Derived; offset: number;
     const timestamp = useContext(TimestampContext);
     const t = timestamp + offset;
     return (
-        <div className="mt-1 grid grid-cols-3 gap-2 text-center">
+        <div className={`mt-1 grid ${d.centripetal ? 'grid-cols-3' : 'grid-cols-2'} gap-2 text-center`}>
             <Stat label="Speed (m/s)" value={valueAt(d.speed, t)} overlay={overlay} />
-            <Stat label={<>a<sub>y</sub> (m/s²)</>} value={valueAt(d.centripetal, t)} overlay={overlay} />
+            {d.centripetal && <Stat label={<>a<sub>y</sub> (m/s²)</>} value={valueAt(d.centripetal, t)} overlay={overlay} />}
             <Stat label="Energy (J/kg)" value={valueAt(d.energy, t)} overlay={overlay} />
         </div>
     );

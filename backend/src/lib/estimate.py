@@ -727,13 +727,15 @@ def correction(t, y, i, T, k, kind='max', var_scale=1.0):
     return dict(offset=0.5 * a * mu2 + D, sd=beta, sd_t=float(1 / np.sqrt(inv)) if inv else np.nan)
 
 
-def estimate_roll(roll, events, n_draws=100):
+def estimate_roll(roll, events, n_draws=100, rec=None, s_corr=1.0):
     """Record -> s_roll by CV -> bounded robust WNOA fit -> Student-t posterior by Gibbs.
-    Returns the posterior mean and draws at the frame times and the 100 Hz interpolation."""
-    rec = load_record(roll, events)
+    Returns the posterior mean and draws at the frame times and the 100 Hz interpolation.
+    `rec` supplies a record from another source; `s_corr` scales the CV's noise level."""
+    rec = load_record(roll, events) if rec is None else rec
     prob = Problem(rec)
     q_int = np.full(len(prob.t) - 1, Q_ALONG)
-    s_roll = tune_s_roll(prob, q_int, seed=roll)
+    s_roll = tune_s_roll(prob, q_int, seed=roll) * s_corr
+    prob.s = s_roll
     sm, res, info = solve_bounded(prob, q_int)
     draws = gibbs(sm, res['q_int'], res['mean'], n_keep=n_draws, rng=np.random.default_rng(roll))
     mean = draws.mean(0)
