@@ -81,12 +81,18 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
         const label = `${roll.driver.name} ${roll.buggy.abbreviation}`;
         const gps = graphs?.gps_data;
 
-        const speed = gps ? { timestamp: gps.timestamp, values: gps.speed, color, label } : undefined;
+        const speed = gps ? { timestamp: gps.timestamp, values: gps.speed, sd: gps.sd_speed, color, label } : undefined;
         const centripetal = graphs?.centripetal
             ? { timestamp: graphs.centripetal.timestamp, values: graphs.centripetal.values, color, label }
             : undefined;
         const energy = gps
-            ? { timestamp: gps.timestamp, values: gps.energy ?? gps.speed.map((v, j) => 0.5 * v * v + 9.81 * gps.elevation[j]), color, label }
+            ? {
+                timestamp: gps.timestamp,
+                values: gps.energy ?? gps.speed.map((v, j) => 0.5 * v * v + 9.81 * gps.elevation[j]),
+                // sd_energy indexes the served energy, not the locally derived fallback.
+                sd: gps.energy ? gps.sd_energy : undefined,
+                color, label,
+            }
             : undefined;
         const positions = gps
             ? gps.timestamp.map((t, j) => ({ lat: gps.lat[j], long: gps.long[j], timestamp: t }))

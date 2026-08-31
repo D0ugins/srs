@@ -154,7 +154,8 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
 
     const speedData = useMemo(() => ({
         timestamp: graphs.gps_data?.timestamp ?? [],
-        values: graphs.gps_data?.speed ?? []
+        values: graphs.gps_data?.speed ?? [],
+        sd: graphs.gps_data?.sd_speed
     }), [graphs.gps_data]);
 
     const centripetalData = useMemo(() => graphs.centripetal ?? { timestamp: [], values: [] }, [graphs.centripetal]);
@@ -165,6 +166,8 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         return {
             timestamp: graphs.gps_data.timestamp,
             values,
+            // sd_energy indexes the served energy, not the locally derived fallback.
+            sd: graphs.gps_data.energy ? graphs.gps_data.sd_energy : undefined,
         };
     }, [graphs.gps_data]);
 

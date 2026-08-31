@@ -1,14 +1,38 @@
 import type { ScaleLinear } from "d3-scale";
 import { useRef, useLayoutEffect, useCallback, memo } from "react";
 import { WebglPlot, WebglLinePlot, type LineConfig } from "webgl-plot";
+import { WebglBandPlot, type BandPoint } from "@/lib/webglBand";
 
 export interface LineSeries {
     points: { x: number; y: number }[];
     color: string;
 }
 
+export interface BandSeries {
+    points: BandPoint[];
+    color: string;
+}
+
+// Stable default so the upload effect doesn't re-run for band-less graphs.
+const NO_BANDS: BandSeries[] = [];
+// The +-2 sd band is typically only 1-3 px tall (the estimate is precise), and the 2 px line
+// covers its middle, so the fill alone is invisible on most rolls; the edges carry it.
+const BAND_ALPHA = 0.3;
+const BAND_EDGE_ALPHA = 0.55;
+// Bands are drawn in a darkened form of the series colour: at these alphas a light hue like
+// SRS_GOLD washes out against the panel. Scaled by luminance, so pale colours darken and the
+// already-dark ones are left alone.
+const BAND_LUMA = 0.45;
+
+function darken(c: [number, number, number, number]): [number, number, number, number] {
+    const luma = 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+    const k = luma > BAND_LUMA ? BAND_LUMA / luma : 1;
+    return [c[0] * k, c[1] * k, c[2] * k, c[3]];
+}
+
 interface GraphLineProps {
     series: LineSeries[];
+    bands?: BandSeries[];
     xScale: ScaleLinear<number, number, never>;
     yScale: ScaleLinear<number, number, never>;
     width: number;
@@ -34,6 +58,7 @@ function hexToRgba(hex: string): [number, number, number, number] {
 // global transform on the GPU, so redraws are a uniform write + draw call.
 export default memo(({
     series,
+    bands = NO_BANDS,
     xScale,
     yScale,
     width,
@@ -46,6 +71,7 @@ export default memo(({
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const wglpRef = useRef<WebglPlot | null>(null);
     const plotRef = useRef<WebglLinePlot | null>(null);
+    const bandPlotRef = useRef<WebglBandPlot | null>(null);
     const gridPlotRef = useRef<WebglLinePlot | null>(null);
     const loseTimerRef = useRef<number | null>(null);
     // X is uploaded relative to this reference to keep float32 precision when
@@ -101,13 +127,20 @@ export default memo(({
         wglp.clear();
         drawGrid(w, h);
 
-        const plot = plotRef.current;
-        if (!plot) return;
-
         const scaleX = ((xs(1) - xs(0)) * 2) / w;
         const offsetX = (xs(xRefRef.current) * 2) / w - 1;
         const scaleY = (-(ys(1) - ys(0)) * 2) / h;
         const offsetY = 1 - (ys(0) * 2) / h;
+
+        // Bands first so they sit behind their lines.
+        const bandPlot = bandPlotRef.current;
+        if (bandPlot) {
+            bandPlot.setGlobalTransform([scaleX, scaleY], [offsetX, offsetY]);
+            bandPlot.draw();
+        }
+
+        const plot = plotRef.current;
+        if (!plot) return;
 
         plot.setGlobalTransform([scaleX, scaleY], [offsetX, offsetY]);
         plot.draw();
@@ -134,6 +167,8 @@ export default memo(({
         return () => {
             plotRef.current?.cleanup();
             plotRef.current = null;
+            bandPlotRef.current?.cleanup();
+            bandPlotRef.current = null;
             gridPlotRef.current?.cleanup();
             gridPlotRef.current = null;
             wglpRef.current = null;
@@ -155,9 +190,27 @@ export default memo(({
 
         let xRef = Infinity;
         for (const s of series) if (s.points.length) xRef = Math.min(xRef, s.points[0].x);
+        for (const b of bands) if (b.points.length) xRef = Math.min(xRef, b.points[0].x);
         xRefRef.current = isFinite(xRef) ? xRef : 0;
 
-        const plot = wglp.newThinLinePlotter(Math.max(1, series.length));
+        const edges: LineConfig[] = [];
+        for (const b of bands) {
+            for (const key of ["hi", "lo"] as const) {
+                const xy = new Float32Array(b.points.length * 2);
+                for (let i = 0; i < b.points.length; i++) {
+                    xy[2 * i] = b.points[i].x - xRefRef.current;
+                    xy[2 * i + 1] = b.points[i][key];
+                }
+                const color = darken(hexToRgba(b.color));
+                color[3] = BAND_EDGE_ALPHA;
+                edges.push({
+                    points: xy, color, thickness: dpr, scale: [1, 1], offset: [0, 0],
+                    enabled: b.points.length > 1,
+                });
+            }
+        }
+
+        const plot = wglp.newThinLinePlotter(Math.max(1, series.length + edges.length));
         plotRef.current = plot;
 
         const configs: LineConfig[] = series.map(s => {
@@ -175,9 +228,17 @@ export default memo(({
                 enabled: s.points.length > 1,
             };
         });
-        plot.initLines(configs);
+        plot.initLines([...edges, ...configs]);   // edges first so the series line draws over them
+
+        if (bands.length > 0 && !bandPlotRef.current) bandPlotRef.current = new WebglBandPlot(wglp.gl);
+        bandPlotRef.current?.initBands(bands.map(b => {
+            const color = darken(hexToRgba(b.color));
+            color[3] = BAND_ALPHA;
+            return { points: b.points, color };
+        }), xRefRef.current);
+
         redraw();
-    }, [series, strokeWidth, dpr, redraw]);
+    }, [series, bands, strokeWidth, dpr, redraw]);
 
     // Resize the drawing buffer / viewport, then redraw.
     useLayoutEffect(() => {

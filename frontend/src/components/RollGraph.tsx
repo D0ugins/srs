@@ -8,15 +8,19 @@ import { localPoint } from "@visx/event";
 import { bisector } from "d3-array";
 import { useMemo, memo } from "react";
 import { GRAPH_MARGIN, GRAPH_SERIES_COLORS } from "@/lib/constants";
-import GraphLine from "./GraphLine";
+import GraphLine, { type BandSeries } from "./GraphLine";
 
 const MemoizedAxisLeft = memo(({ scale, numTicks }: { scale: ScaleLinear<number, number, never>; numTicks: number }) => (
     <AxisLeft<typeof scale> scale={scale} numTicks={numTicks} />
 ));
 
+const BAND_DOMAIN_SLACK = 0.5;   // the band may grow the y-domain to at most 2x the data span
+
 export interface GraphData {
     timestamp: number[];
     values: number[];
+    // 1-sigma per point; drawn as a +/- 2 sd band. Absent for series without it.
+    sd?: number[];
     // optional per-series overrides
     color?: string;
     label?: string;
@@ -83,16 +87,52 @@ export default memo(({
         label: s.label ?? title,
     })), [data, title]);
 
+    const bands = useMemo(() => {
+        const out: BandSeries[] = [];
+        data.forEach((s, i) => {
+            const sd = s.sd;
+            if (!sd) return;
+            out.push({
+                color: s.color ?? GRAPH_SERIES_COLORS[i % GRAPH_SERIES_COLORS.length],
+                points: s.timestamp.map((t, j) => {
+                    const v = s.values[j];
+                    const e = sd[j];
+                    const ok = Number.isFinite(v) && Number.isFinite(e);
+                    return { x: t, lo: ok ? v - 2 * e : NaN, hi: ok ? v + 2 * e : NaN };
+                }),
+            });
+        });
+        return out;
+    }, [data]);
+
     const { min, max } = useMemo(() => {
         let min = Infinity;
         let max = -Infinity;
+        let bandMin = Infinity;
+        let bandMax = -Infinity;
         for (const s of data) {
             for (const v of s.values) {
                 if (v < min) min = v;
                 if (v > max) max = v;
             }
+            const sd = s.sd;
+            if (!sd) continue;
+            for (let i = 0; i < s.values.length; i++) {
+                const v = s.values[i];
+                const e = sd[i];
+                if (!Number.isFinite(v) || !Number.isFinite(e)) continue;
+                if (v - 2 * e < bandMin) bandMin = v - 2 * e;
+                if (v + 2 * e > bandMax) bandMax = v + 2 * e;
+            }
         }
         if (!isFinite(min) || !isFinite(max)) return { min: 0, max: 1 };
+        // Widen to the band, but never past BAND_DOMAIN_SLACK of the data span each side: on ~2 % of
+        // rolls the band is many times the range and would flatten the trace to a line.
+        if (isFinite(bandMin)) {
+            const span = max - min || Math.abs(max) || 1;
+            min = Math.max(bandMin, min - span * BAND_DOMAIN_SLACK);
+            max = Math.min(bandMax, max + span * BAND_DOMAIN_SLACK);
+        }
 
         if (min > 0 && min / max < 0.1) min = 0;
         else min = min - (max - min) * 0.1;
@@ -169,6 +209,7 @@ export default memo(({
         <MemoizedAxisLeft scale={yScale} numTicks={Y_TICKS} />
         <GraphLine
             series={series}
+            bands={bands}
             xScale={xScale}
             yScale={yScale}
             width={width}
