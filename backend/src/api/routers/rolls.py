@@ -373,7 +373,8 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
     return get_roll(roll.id, session)
 
 TRACE_SOURCES = ('pnp', 'racebox')     # preference order; racebox serves the rolls with no camera
-ACCEL_COLS = ('a_fwd', 'a_lat', 'sd_a_fwd', 'sd_a_lat')   # camera-sourced traces only
+ACCEL_COLS = ('a_fwd', 'a_lat', 'sd_a_fwd', 'sd_a_lat')   # present on every source's display
+                                                          # artefact; see its accel_note
 
 
 def trace_graph_data(session, roll):

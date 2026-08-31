@@ -495,12 +495,15 @@ def accel_components(t, draws, fc=ACCEL_FC, tq=None):
     return out
 
 
-def accel_roll(roll, rec, n_draws=100, fc=ACCEL_FC):
-    """The acceleration columns and the WNOJ fit that regenerates them.  Same record, CV and sampler
-    as the WNOA fit, at its own dynamics level and with its own per-roll noise inflation."""
+def accel_roll(roll, rec, n_draws=100, fc=ACCEL_FC, s_corr=1.0):
+    """The acceleration columns and the WNOJ fit that regenerates them.  Same record, CV, sampler and
+    `s_corr` as the WNOA fit, at its own dynamics level and with its own per-roll noise inflation.
+    `fc` is the source's declared bandwidth: 1 Hz on both sources, but that buys a 0.575 s
+    half-amplitude event duration on the 10 Hz camera trace and 0.24 s on the 25 Hz racebox one,
+    where the filter and not the estimator is the limit (tmp/rbaccel/FINDINGS.md)."""
     prob = Problem(rec, order=3, aniso=ANISO_JERK)
     q_int = np.full(len(prob.t) - 1, Q_JERK)
-    prob.s = tune_s_roll(prob, q_int, seed=roll)
+    prob.s = tune_s_roll(prob, q_int, seed=roll) * s_corr
     sm, res, info = solve_bounded(prob, q_int)
     draws = gibbs(sm, res['q_int'], res['mean'], n_keep=n_draws,
                   rng=np.random.default_rng([roll, 3]))

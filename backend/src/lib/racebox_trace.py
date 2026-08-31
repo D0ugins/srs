@@ -18,6 +18,7 @@ SIG_POS = 0.012        # m, measured white per-sample horizontal error (9-19 mm 
 SIG_Z = 0.05           # m, DEM profile along the centreline
 PAD_S = 2.0            # window pad each side of [roll_start, roll_end]
 S_CORR = 1.5           # per-frame CV under-estimates the noise level by this much
+ACCEL_FC = 1.0         # Hz, declared acceleration bandwidth (tmp/rbaccel/FINDINGS.md)
 FS = 25.0
 DEM = f'{DATA_PATH}/geo/output_USGS1m.tif'
 

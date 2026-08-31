@@ -48,6 +48,18 @@ ACCEL_NOTE = ('a_fwd/a_lat come from a second, WNOJ fit and are only defined tog
               'two available references (gyro, doppler course rate) disagree there. '
               'a_x/a_y follow by rotating onto the velocity direction stored with the trace.')
 
+ACCEL_NOTE_RACEBOX = ('a_fwd/a_lat come from a second, WNOJ fit and are only defined together with '
+                      'accel_bandwidth_hz.  1 Hz is re-derived for this source, not inherited: at '
+                      '25 Hz and 12 mm the estimator is no longer the limit, so the same cutoff '
+                      "resolves a 0.24 s event to half amplitude against the camera trace's 0.575 s "
+                      '-- but it still under-reads the 0.5-1 Hz band by ~24 %.  a_fwd is the '
+                      'calibrated component (68/95 % coverage 0.66/0.93; the independent camera '
+                      'trace reproduces it at corr 0.96 / slope 0.97 below 0.5 Hz and 0.80/0.82 in '
+                      '0.5-1 Hz).  a_lat under-covers at 0.56/0.85 and the camera reproduces its '
+                      'SCALE only below 0.5 Hz (0.85/0.89, against 0.19/0.22 in 0.5-1 Hz): read it '
+                      'as amplitude-calibrated to 0.5 Hz and shape only above.  a_x/a_y follow by '
+                      'rotating onto the velocity direction stored with the trace.')
+
 EVENT_OF = {'hill_1': ('hill_start', '1'), 'hill_2': ('hill_start', '2'),
             'hill_3': ('hill_start', '3'), 'hill_4': ('hill_start', '4'),
             'hill_5': ('hill_start', '5'), 'freeroll_start': ('freeroll_start', None),
@@ -67,7 +79,9 @@ SOURCES = {
     'racebox': dict(file_type='racebox', subdir='racebox/',
                     calib=('cl_P.npy', 'cl_S.npy', 'qdyn_ext_spectra.npz'),
                     live=('geo/hills.kml', 'geo/output_USGS1m.tif'),
-                    params=rbt.PARAMS, s_corr=rbt.S_CORR),
+                    params=dict(rbt.PARAMS, accel_q_along=es.Q_JERK, accel_aniso=es.ANISO_JERK,
+                                accel_bandwidth_hz=rbt.ACCEL_FC),
+                    s_corr=rbt.S_CORR),
 }
 
 
@@ -221,8 +235,8 @@ def _meta_pnp(con, fit, hashes):
                 file_start_time=str(start) if start else None,
                 local_start_ms=ls, local_end_ms=le, fps=m['video']['fps'],
                 start_ms=m['start_ms'], end_ms=m['end_ms'], calib_version=CALIB_VERSION,
-                accel_bandwidth_hz=es.ACCEL_FC, accel_note=ACCEL_NOTE,
-                bad_loc=bool(fit['bad_loc']), **hashes)
+                accel_bandwidth_hz=SOURCES['pnp']['params']['accel_bandwidth_hz'],
+                accel_note=ACCEL_NOTE, bad_loc=bool(fit['bad_loc']), **hashes)
 
 
 def _meta_racebox(con, fit, hashes):
@@ -241,7 +255,8 @@ def _meta_racebox(con, fit, hashes):
                 start_ms=m['start_ms'], end_ms=m['end_ms'],
                 z_source='dem:geo/output_USGS1m.tif @ centreline',
                 dem_sha256=_sha_file(rbt.DEM), calib_version=CALIB_VERSION,
-                bad_loc=False, **hashes)
+                accel_bandwidth_hz=SOURCES['racebox']['params']['accel_bandwidth_hz'],
+                accel_note=ACCEL_NOTE_RACEBOX, bad_loc=False, **hashes)
 
 
 _META = {'pnp': _meta_pnp, 'racebox': _meta_racebox}
@@ -367,15 +382,16 @@ def compute_roll(con, roll_id, source='pnp'):
                                s_corr=SOURCES[source]['s_corr'])
         q = es.quantities(fit['t'], fit['mean'], fit['draws'], fit['events'], w=WINDOW_S)
         acc, acc_fit, acc_note = None, None, ''
-        if source == 'pnp':          # the WNOJ fit serves acceleration only, and only this source
-            try:
-                acc, acc_fit = es.accel_roll(roll_id, rec, n_draws=N_DRAWS)
-                if acc_fit['implausible']:      # unbounded state: the 25 m/s bound does not
-                    acc_note = f"accel_implausible={acc_fit['a_max']:.0f}m/s2"   # constrain it
-                elif not (acc_fit['converged'] and not acc_fit['bound_failed']):
-                    acc_note = 'accel_fit_degraded'
-            except Exception as e:   # acceleration is an addition: it must not fail the roll
-                acc_note = f'accel_failed: {type(e).__name__}'
+        try:                         # the WNOJ fit serves acceleration only
+            acc, acc_fit = es.accel_roll(roll_id, rec, n_draws=N_DRAWS,
+                                         fc=SOURCES[source]['params']['accel_bandwidth_hz'],
+                                         s_corr=SOURCES[source]['s_corr'])
+            if acc_fit['implausible']:      # unbounded state: the 25 m/s bound does not
+                acc_note = f"accel_implausible={acc_fit['a_max']:.0f}m/s2"   # constrain it
+            elif not (acc_fit['converged'] and not acc_fit['bound_failed']):
+                acc_note = 'accel_fit_degraded'
+        except Exception as e:       # acceleration is an addition: it must not fail the roll
+            acc_note = f'accel_failed: {type(e).__name__}'
         meta = _META[source](con, fit, hashes)
         _write_artefacts(fit, meta, source, acc, acc_fit)
     except Exception:
