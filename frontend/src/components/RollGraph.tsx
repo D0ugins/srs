@@ -77,6 +77,7 @@ export default memo(({
     onMouseLeave,
     showTooltip,
 }: RollGraphProps) => {
+    console.log(title);
     const width = parentWidth - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
     const height = showAxis ? parentHeight - GRAPH_MARGIN.bottom : parentHeight - GRAPH_MARGIN.bottom
 

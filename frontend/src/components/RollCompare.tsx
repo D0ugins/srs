@@ -56,8 +56,9 @@ export interface Derived {
     videoUrl?: string;
     videoStart: number;
     speed?: GraphData;
-    centripetal?: GraphData;
     energy?: GraphData;
+    a_fwd?: GraphData;
+    a_lat?: GraphData;
     positions?: Array<Position>;
     events: Array<RollEvent>;
     tMin: number;
@@ -82,9 +83,6 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
         const gps = graphs?.gps_data;
 
         const speed = gps ? { timestamp: gps.timestamp, values: gps.speed, sd: gps.sd_speed, color, label } : undefined;
-        const centripetal = graphs?.centripetal
-            ? { timestamp: graphs.centripetal.timestamp, values: graphs.centripetal.values, color, label }
-            : undefined;
         const energy = gps
             ? {
                 timestamp: gps.timestamp,
@@ -94,12 +92,18 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
                 color, label,
             }
             : undefined;
+        const a_fwd = gps?.a_fwd
+            ? { timestamp: gps.timestamp, values: gps.a_fwd, sd: gps.sd_a_fwd, color, label }
+            : undefined;
+        const a_lat = gps?.a_lat
+            ? { timestamp: gps.timestamp, values: gps.a_lat, sd: gps.sd_a_lat, color, label }
+            : undefined;
         const positions = gps
             ? gps.timestamp.map((t, j) => ({ lat: gps.lat[j], long: gps.long[j], timestamp: t }))
             : undefined;
 
         const events = roll.roll_events ?? [];
-        const ts = gps?.timestamp ?? graphs?.centripetal?.timestamp ?? [];
+        const ts = gps?.timestamp ?? [];
         const tMin = ts.length ? ts[0] : 0;
         const tMax = ts.length ? ts[ts.length - 1] : 0;
         const rollStart = events.find(e => e.type === 'roll_start')?.timestamp_ms;
@@ -107,7 +111,7 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
 
         return {
             color, label, videoUrl: pickVideoUrl(roll), videoStart: graphs?.video_start ?? 0,
-            speed, centripetal, energy, positions, events, tMin, tMax, rollStart, freerollStart,
+            speed, energy, a_fwd, a_lat, positions, events, tMin, tMax, rollStart, freerollStart,
         };
     }), [rolls]);
 
@@ -238,22 +242,25 @@ export default function RollCompare({ rolls }: { rolls: Array<CompareRoll> }) {
         const shift = (s: GraphData | undefined, off: number) =>
             s ? { ...s, timestamp: s.timestamp.map(t => t - off) } : undefined;
         const speed: GraphData[] = [];
-        const centripetal: GraphData[] = [];
         const energy: GraphData[] = [];
+        const a_fwd: GraphData[] = [];
+        const a_lat: GraphData[] = [];
         derived.forEach((d, i) => {
             const off = offsets[i] ?? 0;
             const sp = shift(d.speed, off); if (sp) speed.push(sp);
-            const ce = shift(d.centripetal, off); if (ce) centripetal.push(ce);
             const en = shift(d.energy, off); if (en) energy.push(en);
+            const af = shift(d.a_fwd, off); if (af) a_fwd.push(af);
+            const al = shift(d.a_lat, off); if (al) a_lat.push(al);
         });
         return {
             speed: speed.length ? speed : undefined,
-            centripetal: centripetal.length ? centripetal : undefined,
             energy: energy.length ? energy : undefined,
+            a_fwd: a_fwd.length ? a_fwd : undefined,
+            a_lat: a_lat.length ? a_lat : undefined,
         };
     }, [derived, offsets]);
 
-    const hasGraphData = graphData.speed || graphData.centripetal || graphData.energy;
+    const hasGraphData = graphData.speed || graphData.energy || graphData.a_fwd || graphData.a_lat;
 
     const mapPaths = useMemo<Array<MapPath>>(() => derived
         .filter(d => d.positions && d.positions.length > 0)

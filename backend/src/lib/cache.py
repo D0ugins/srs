@@ -41,6 +41,13 @@ T0_UTC_NOTE = ('UTC of trace t=0, the source File.start_time as stored (naive, n
 T0_UTC_NOTE_RACEBOX = ('UTC of t=0, exact: itow_to_utc(iTOW[0]) reproduces the racebox '
                        'File.start_time to 0.0 s, because iTOW is GPS time of week.')
 
+ACCEL_NOTE = ('a_fwd/a_lat come from a second, WNOJ fit and are only defined together with '
+              'accel_bandwidth_hz: events shorter than ~0.6 s are attenuated by construction and '
+              'the trace carries no content above ~1 Hz. a_lat is calibrated to a 95 % coverage of '
+              '0.892 against a 0.90 target, and its SCALE above 0.5 Hz is unverified because the '
+              'two available references (gyro, doppler course rate) disagree there. '
+              'a_x/a_y follow by rotating onto the velocity direction stored with the trace.')
+
 EVENT_OF = {'hill_1': ('hill_start', '1'), 'hill_2': ('hill_start', '2'),
             'hill_3': ('hill_start', '3'), 'hill_4': ('hill_start', '4'),
             'hill_5': ('hill_start', '5'), 'freeroll_start': ('freeroll_start', None),
@@ -54,7 +61,9 @@ SOURCES = {
                 calib=('noise_model.json', 'roll_noise.json', 'cl_P.npy', 'cl_S.npy',
                        'qdyn_ext_spectra.npz'),
                 live=('geo/hills.kml', 'archive/roll_videos.json'),
-                params={}, s_corr=1.0),
+                params=dict(accel_q_along=es.Q_JERK, accel_aniso=es.ANISO_JERK,
+                            accel_bandwidth_hz=es.ACCEL_FC),
+                s_corr=1.0),
     'racebox': dict(file_type='racebox', subdir='racebox/',
                     calib=('cl_P.npy', 'cl_S.npy', 'qdyn_ext_spectra.npz'),
                     live=('geo/hills.kml', 'geo/output_USGS1m.tif'),
@@ -212,6 +221,7 @@ def _meta_pnp(con, fit, hashes):
                 file_start_time=str(start) if start else None,
                 local_start_ms=ls, local_end_ms=le, fps=m['video']['fps'],
                 start_ms=m['start_ms'], end_ms=m['end_ms'], calib_version=CALIB_VERSION,
+                accel_bandwidth_hz=es.ACCEL_FC, accel_note=ACCEL_NOTE,
                 bad_loc=bool(fit['bad_loc']), **hashes)
 
 
@@ -243,8 +253,10 @@ def load_record(roll, events, uri, source='pnp'):
             else rbt.rb_record(roll, events, uri))
 
 
-def _write_artefacts(fit, meta, source='pnp'):
-    """`display` at the observation times and `fit`, the source that regenerates the draws."""
+def _write_artefacts(fit, meta, source='pnp', accel=None, accel_fit=None):
+    """`display` at the observation times and `fit`, the source that regenerates the draws.
+    `accel` adds the acceleration columns and `accel_fit` the WNOJ fit behind them; new columns
+    need no schema change."""
     roll = fit['roll']
     t, mean, draws = fit['t'], fit['mean'], fit['draws']
     spd = np.linalg.norm(mean[:, 3:6], axis=1)
@@ -258,12 +270,13 @@ def _write_artefacts(fit, meta, source='pnp'):
                         t=t, x=mean[:, 0], y=mean[:, 1], z=mean[:, 2], speed=spd, energy=energy,
                         sd_x=draws[:, :, 0].std(0, ddof=1), sd_y=draws[:, :, 1].std(0, ddof=1),
                         sd_z=draws[:, :, 2].std(0, ddof=1), sd_speed=dspd.std(0, ddof=1),
-                        sd_energy=denergy.std(0, ddof=1))
+                        sd_energy=denergy.std(0, ddof=1), **(accel or {}))
     np.savez_compressed(resolve_path(fit_uri(roll, source)), meta=np.array(j),
                         roll=roll, mean=fit['mode'], weights=fit['weights'],
                         q_int=fit['q_int'], s_roll=fit['s_roll'], keep=fit['keep'],
                         events=np.array(json.dumps(fit['events'])),
-                        gaps=np.asarray(fit['gaps'], float).reshape(-1, 2))
+                        gaps=np.asarray(fit['gaps'], float).reshape(-1, 2),
+                        **{f'wnoj_{k}': v for k, v in (accel_fit or {}).items()})
 
 
 def restore_draws(roll, events, n_draws=N_DRAWS):
@@ -353,8 +366,18 @@ def compute_roll(con, roll_id, source='pnp'):
         fit = es.estimate_roll(roll_id, ev, n_draws=N_DRAWS, rec=rec,
                                s_corr=SOURCES[source]['s_corr'])
         q = es.quantities(fit['t'], fit['mean'], fit['draws'], fit['events'], w=WINDOW_S)
+        acc, acc_fit, acc_note = None, None, ''
+        if source == 'pnp':          # the WNOJ fit serves acceleration only, and only this source
+            try:
+                acc, acc_fit = es.accel_roll(roll_id, rec, n_draws=N_DRAWS)
+                if acc_fit['implausible']:      # unbounded state: the 25 m/s bound does not
+                    acc_note = f"accel_implausible={acc_fit['a_max']:.0f}m/s2"   # constrain it
+                elif not (acc_fit['converged'] and not acc_fit['bound_failed']):
+                    acc_note = 'accel_fit_degraded'
+            except Exception as e:   # acceleration is an addition: it must not fail the roll
+                acc_note = f'accel_failed: {type(e).__name__}'
         meta = _META[source](con, fit, hashes)
-        _write_artefacts(fit, meta, source)
+        _write_artefacts(fit, meta, source, acc, acc_fit)
     except Exception:
         tb = traceback.format_exc().strip().splitlines()
         return dict(out, status='failed', note=' | '.join(tb[-3:])[:900])
@@ -365,7 +388,7 @@ def compute_roll(con, roll_id, source='pnp'):
         f"gaps={len(fit['gaps'])}" if fit['gaps'] else '',
         f"rejected={fit['n_rejected']}" if fit['n_rejected'] else '',
         'speed_bound_not_met' if fit['bound_failed'] else '',
-        'not_converged' if not fit['converged'] else '') if s)
+        'not_converged' if not fit['converged'] else '', acc_note) if s)
     return dict(out, status='ok', note=note, n_samples=int(len(fit['t'])),
                 event_offset_ms=fit['event_offset_ms'], event_anchor=fit['event_anchor'],
                 bad_loc=bool(fit['bad_loc']), src_file_id=meta['file_id'],
@@ -480,12 +503,20 @@ def write_result(session, res):
 EVENT_SOURCES = ('racebox', 'pnp')   # a roll's computed events come from the first of these it has
 
 
+def has_source(session, roll, source='pnp'):
+    """Whether the roll has this source's input, creating nothing.  `source_file` cannot answer it:
+    it creates the pnp `File` on demand, so using it as a predicate invents rows."""
+    if source == 'pnp':
+        return os.path.exists(resolve_path(trace_uri(roll)))
+    return source_file(session, roll, source) is not None
+
+
 def event_owner(session, roll):
     """The source whose crossings own this roll's computed events.  Unlike RollTrace/RollStat,
     which hold one row per source on purpose, RollEvent is the single annotation set the UI edits,
     so exactly one source may write it.  Racebox wins where present: its clock is the measured one
     (`tmp/rbtrace/FINDINGS.md` §2)."""
-    return next((k for k in EVENT_SOURCES if source_file(session, roll, k) is not None), None)
+    return next((k for k in EVENT_SOURCES if has_source(session, roll, k)), None)
 
 
 def write_events(session, res):

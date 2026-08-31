@@ -1,5 +1,6 @@
 """The adopted trajectory estimator: a robust batch WNOA smoother over one roll's localization
-trace, its Student-t posterior by Gibbs, and the quantities of interest.
+trace, its Student-t posterior by Gibbs, and the quantities of interest.  Acceleration alone comes
+from a second, WNOJ fit of the same record (`accel_roll`), which feeds nothing else.
 
 All times here are trace seconds (video frame 0 = 0); convert with `load_record`'s
 `event_offset_ms` before writing anything back to `RollEvent`."""
@@ -11,6 +12,7 @@ import pandas as pd
 import shapely
 from scipy.linalg import cholesky_banded, cho_solve_banded, solve_banded
 from scipy.ndimage import median_filter, uniform_filter1d
+from scipy.signal import butter, filtfilt
 from scipy.special import ndtr
 from scipy.stats import t as student_t
 
@@ -18,6 +20,9 @@ from lib.paths import DATA_PATH
 from lib.traces import CALIB_PATH, G, NU, load_record
 
 Q_ALONG, ANISO = 0.0999539, 0.9400661  # 'mid' dynamics level: q_c (m^2/s^3) and q_perp / q_along
+Q_JERK, ANISO_JERK = 4.259478, 0.3884259    # 'M2' level of the acceleration-only WNOJ fit
+ACCEL_FC = 1.0                              # Hz, the declared acceleration bandwidth
+AMAX = 50.0        # m/s^2, sanity bound on the acceleration trace (~5 g): a flag, not a filter
 JITTER = (0.0, 1e-12, 1e-10, 1e-8, 1e-6, 1e-4)
 S_GRID = 10 ** np.linspace(np.log10(0.5), np.log10(8.0), 7)
 K_FOLDS, CV_MAXIT = 5, 40
@@ -43,12 +48,21 @@ STORED_QUANTITIES = ['max_energy', 'speed.chute_start',
 # --- sparse batch WNOA smoother: states [p, v] at every frame time, Student-t(3.5) per-axis
 # observations, anisotropic constant-velocity GP prior, banded Cholesky + Takahashi marginals.
 
-def phi_q1(dtau):
-    """Constant-velocity transition and process-noise blocks over each interval (scaled time)."""
+def phi_q1(dtau, order=2):
+    """Transition and process-noise blocks over each interval (scaled time): white noise on
+    acceleration (order 2, state [p, v]) or on jerk (order 3, state [p, v, a])."""
     n = len(dtau)
-    Phi = np.zeros((n, 2, 2)); Phi[:, 0, 0] = Phi[:, 1, 1] = 1; Phi[:, 0, 1] = dtau
-    Q = np.empty((n, 2, 2))
-    Q[:, 0, 0] = dtau ** 3 / 3; Q[:, 0, 1] = Q[:, 1, 0] = dtau ** 2 / 2; Q[:, 1, 1] = dtau
+    if order == 2:
+        Phi = np.zeros((n, 2, 2)); Phi[:, 0, 0] = Phi[:, 1, 1] = 1; Phi[:, 0, 1] = dtau
+        Q = np.empty((n, 2, 2))
+        Q[:, 0, 0] = dtau ** 3 / 3; Q[:, 0, 1] = Q[:, 1, 0] = dtau ** 2 / 2; Q[:, 1, 1] = dtau
+        return Phi, Q
+    Phi = np.zeros((n, 3, 3)); Phi[:, [0, 1, 2], [0, 1, 2]] = 1
+    Phi[:, 0, 1] = Phi[:, 1, 2] = dtau; Phi[:, 0, 2] = dtau ** 2 / 2
+    Q = np.empty((n, 3, 3))
+    Q[:, 0, 0] = dtau ** 5 / 20; Q[:, 0, 1] = Q[:, 1, 0] = dtau ** 4 / 8
+    Q[:, 0, 2] = Q[:, 2, 0] = dtau ** 3 / 6; Q[:, 1, 1] = dtau ** 3 / 3
+    Q[:, 1, 2] = Q[:, 2, 1] = dtau ** 2 / 2; Q[:, 2, 2] = dtau
     return Phi, Q
 
 
@@ -139,11 +153,11 @@ class Smoother:
     """One roll's batch problem.  t: knot times (s, strictly increasing); obs_idx: knot index of each
     observation; z (n,3) world centres; U (n,3,3) body axes as columns; sig (n,3) per-axis scale."""
 
-    def __init__(self, t, obs_idx, z, U, sig, T, aniso=ANISO):
-        self.t = np.asarray(t, float); self.N = len(t); self.D = 6
+    def __init__(self, t, obs_idx, z, U, sig, T, aniso=ANISO, order=2):
+        self.t = np.asarray(t, float); self.N = len(t); self.order = order; self.D = 3 * order
         self.T = float(T)
         self.dtau = np.diff(self.t / self.T)
-        self.Phi1, Q1 = phi_q1(self.dtau)
+        self.Phi1, Q1 = phi_q1(self.dtau, order)
         self.Q1inv = np.linalg.inv(Q1)
         self.A_kk = np.einsum('kba,kbc,kcd->kad', self.Phi1, self.Q1inv, self.Phi1)
         self.A_ko = -np.einsum('kba,kbc->kac', self.Phi1, self.Q1inv)
@@ -152,13 +166,13 @@ class Smoother:
         self.z = np.asarray(z, float); self.U = np.asarray(U, float); self.sig = np.asarray(sig, float)
         self.nobs = len(self.obs_idx)
         self.bd = Banded(self.N, self.D)
-        self.scale = np.r_[np.ones(3), np.full(3, self.T)]
+        self.scale = np.r_[np.ones(3), np.full(3, self.T), np.full(self.D - 6, self.T ** 2)]
         self.aniso = aniso
         self.v_dir = None          # set to freeze the prior's along-motion direction (Gibbs)
         self.z_med = running_median(self.t[self.obs_idx], self.z)
 
     def S_inv(self, q_int, v_dir):
-        qt = np.asarray(q_int, float) * self.T ** 3
+        qt = np.asarray(q_int, float) * self.T ** (2 * self.order - 1)
         I3 = np.eye(3)[None]
         P = np.einsum('ki,kj->kij', v_dir, v_dir)
         ok = (np.linalg.norm(v_dir, axis=1) > 0.5)[:, None, None]
@@ -192,6 +206,7 @@ class Smoother:
         Jd[self.obs_idx, :3, :3] += Winfo
         b[self.obs_idx, :3] += np.einsum('kab,kb->ka', Winfo, self.z - p_obs)
         wk = np.zeros(D); wk[3:6] = (1e-3 / self.T) ** 2      # keeps the system positive definite
+        wk[6:9] = (1e-3 / self.T ** 2) ** 2
         Jd[:, np.arange(D), np.arange(D)] += wk
         b -= wk * xs
         self.Sinv = Sinv
@@ -247,9 +262,9 @@ def interpolate(sm, res, tq):
     tau = (tq - sm.t[k]) / sm.T
     dT = sm.dtau[k]
     S3 = np.linalg.inv(res['Sinv'][k])
-    Phi_t, Q_t = phi_q1(tau)
-    Phi_r, _ = phi_q1(dT - tau)
-    Phi_D, Q_D = phi_q1(dT)
+    Phi_t, Q_t = phi_q1(tau, sm.order)
+    Phi_r, _ = phi_q1(dT - tau, sm.order)
+    Phi_D, Q_D = phi_q1(dT, sm.order)
     Psi1 = np.einsum('kab,kcb,kcd->kad', Q_t, Phi_r, np.linalg.inv(Q_D))
     Lam1 = Phi_t - np.einsum('kab,kbc->kac', Psi1, Phi_D)
     Qc1 = Q_t - np.einsum('kab,kbc,kcd->kad', Psi1, Phi_r, Q_t)
@@ -270,7 +285,7 @@ def interpolate(sm, res, tq):
 class Problem:
     """Knots at every frame time, observations at the usable frames; `s` inflates every sigma."""
 
-    def __init__(self, rec):
+    def __init__(self, rec, order=2, aniso=ANISO):
         ok = rec['ok']
         self.t = rec['t']
         self.obs_idx = np.flatnonzero(ok)
@@ -278,10 +293,12 @@ class Problem:
         self.T = float(np.median(np.diff(self.t[self.obs_idx])))
         self.nobs = int(ok.sum())
         self.s = 1.0
+        self.order, self.aniso = order, aniso
 
     def smoother(self, keep=None):
         m = np.ones(self.nobs, bool) if keep is None else keep
-        return Smoother(self.t, self.obs_idx[m], self.z[m], self.U[m], self.sig0[m] * self.s, self.T)
+        return Smoother(self.t, self.obs_idx[m], self.z[m], self.U[m], self.sig0[m] * self.s, self.T,
+                        aniso=self.aniso, order=self.order)
 
 
 def gap_mask(t, gaps):
@@ -440,6 +457,64 @@ def gibbs(sm, q_int, mean, nu=NU, sweeps=260, burn=60, n_keep=100, rng=None):
             draws[k] = x.reshape(sm.N, sm.D) / sm.scale; k += 1
     sm.v_dir = None
     return draws
+
+
+# --- acceleration: a SECOND fit.  The adopted WNOA state is [p, v], so acceleration has no
+# posterior under it and differentiating its velocity has a 2.06 s half-amplitude bandwidth.  The
+# WNOJ (order-3) state does carry acceleration, but its raw posterior is 2-3x too narrow, so the
+# trace is only defined together with the declared ACCEL_FC low-pass (tmp/estim/out/P6, route A).
+# WNOJ feeds NOTHING else: it produces impossible maxima on 10 rolls and its max-energy rms is
+# 8.61 J/kg against WNOA's 3.00.
+
+def accel_components(t, draws, fc=ACCEL_FC, tq=None):
+    """Forward and lateral acceleration of a WNOJ draw stack, decomposed on the VELOCITY direction
+    (`a_fwd = d|v|/dt`, `a_lat = (v x a)_z / |v|`, positive left) -- not the camera axes, which
+    differ by 6-9 % of component rms at a median 3.0 deg of slip.  The draws go on a uniform grid at
+    the median frame step, are low-passed at `fc` and reduced across draws, then returned at `tq`
+    (the frame times by default).
+    Known limits: `a_lat`'s 95 % coverage is 0.892 against a 0.90 target, and its SCALE above
+    0.5 Hz is unverified -- the two available references disagree with each other there."""
+    t = np.asarray(t, float)
+    tq = t if tq is None else np.asarray(tq, float)
+    dt = float(np.median(np.diff(t)))
+    tu = np.arange(t[0], t[-1] + 0.5 * dt, dt)
+
+    def block(j):
+        return np.stack([np.column_stack([np.interp(tu, t, d[:, j + a]) for a in range(3)])
+                         for d in draws])
+
+    V, A = block(3), block(6)
+    s = np.maximum(np.linalg.norm(V, axis=-1), 1e-9)
+    b, a = butter(2, 2 * fc * dt, 'low')
+    out = {}
+    for name, c in (('a_fwd', np.sum(V * A, -1) / s),
+                    ('a_lat', (V[..., 0] * A[..., 1] - V[..., 1] * A[..., 0]) / s)):
+        f = filtfilt(b, a, c, axis=-1)
+        out[name] = np.interp(tq, tu, f.mean(0))
+        out[f'sd_{name}'] = np.interp(tq, tu, f.std(0, ddof=1))
+    return out
+
+
+def accel_roll(roll, rec, n_draws=100, fc=ACCEL_FC):
+    """The acceleration columns and the WNOJ fit that regenerates them.  Same record, CV and sampler
+    as the WNOA fit, at its own dynamics level and with its own per-roll noise inflation."""
+    prob = Problem(rec, order=3, aniso=ANISO_JERK)
+    q_int = np.full(len(prob.t) - 1, Q_JERK)
+    prob.s = tune_s_roll(prob, q_int, seed=roll)
+    sm, res, info = solve_bounded(prob, q_int)
+    draws = gibbs(sm, res['q_int'], res['mean'], n_keep=n_draws,
+                  rng=np.random.default_rng([roll, 3]))
+    cols = accel_components(prob.t, draws, fc)
+    if info['gaps']:
+        g = gap_mask(prob.t, info['gaps'])
+        for v in cols.values():
+            v[g] = np.nan
+    a_max = max(np.nanmax(np.abs(cols[k])) for k in ('a_fwd', 'a_lat'))
+    return cols, dict(mean=res['mean'], weights=res['weights'], q_int=res['q_int'],
+                      s_roll=prob.s, keep=info['keep'], converged=info['converged'],
+                      bound_failed=info['bound_failed'], n_rejected=info['n_rejected'],
+                      a_max=float(a_max), implausible=bool(a_max > AMAX),
+                      gaps=np.asarray(info['gaps'], float).reshape(-1, 2))
 
 
 # --- course projection and the adopted quantities of interest.

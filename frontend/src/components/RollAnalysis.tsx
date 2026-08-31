@@ -158,7 +158,6 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         sd: graphs.gps_data?.sd_speed
     }), [graphs.gps_data]);
 
-    const centripetalData = useMemo(() => graphs.centripetal ?? { timestamp: [], values: [] }, [graphs.centripetal]);
 
     const energyData = useMemo(() => {
         if (!graphs.gps_data) return { timestamp: [], values: [] };
@@ -171,13 +170,26 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
         };
     }, [graphs.gps_data]);
 
+    const a_fwdData = useMemo(() => ({
+        timestamp: graphs.gps_data?.timestamp ?? [],
+        values: graphs.gps_data?.a_fwd ?? [],
+        sd: graphs.gps_data?.sd_a_fwd
+    }), [graphs.gps_data]);
+
+    const a_latData = useMemo(() => ({
+        timestamp: graphs.gps_data?.timestamp ?? [],
+        values: graphs.gps_data?.a_lat ?? [],
+        sd: graphs.gps_data?.sd_a_lat
+    }), [graphs.gps_data]);
+
     const data = useMemo(() => ({
         speed: speedData.timestamp.length > 0 ? speedData : undefined,
-        centripetal: centripetalData.timestamp.length > 0 ? centripetalData : undefined,
         energy: energyData.timestamp.length > 0 ? energyData : undefined,
-    }), [speedData, centripetalData, energyData]);
+        a_fwd: a_fwdData.timestamp.length > 0 ? a_fwdData : undefined,
+        a_lat: a_latData.timestamp.length > 0 ? a_latData : undefined,
+    }), [speedData, energyData, a_fwdData, a_latData]);
 
-    const hasGraphData = data.speed || data.centripetal || data.energy;
+    const hasGraphData = data.speed || data.energy || data.a_fwd || data.a_lat;
 
     const positions = useMemo(() => {
         if (!graphs.gps_data) return undefined;
@@ -232,20 +244,17 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
     const currentData = useMemo(() => {
         if (!data) return undefined;
         const currentValues: { label: string; value: number }[] = [];
-        if (data.speed) {
-            const index = bisector<number, number>(d => d).left(data.speed.timestamp, timestamp);
-            const speedValue = data.speed.values[index - 1];
-            if (speedValue !== undefined) currentValues.push({ label: "Speed (m/s)", value: speedValue });
-        }
-        if (data.centripetal) {
-            const index = bisector<number, number>(d => d).left(data.centripetal.timestamp, timestamp);
-            const centripetalValue = data.centripetal.values[index - 1];
-            if (centripetalValue !== undefined) currentValues.push({ label: "Centripetal Acceleration (m/s²)", value: centripetalValue });
-        }
-        if (data.energy) {
-            const index = bisector<number, number>(d => d).left(data.energy.timestamp, timestamp);
-            const energyValue = data.energy.values[index - 1];
-            if (energyValue !== undefined) currentValues.push({ label: "Energy (J/kg)", value: energyValue });
+        const labels = {
+            speed: "Speed (m/s)",
+            energy: "Energy (J/kg)",
+            a_fwd: "Forward Acceleration (m/s²)",
+            a_lat: "Lateral Acceleration (m/s²)",
+        };
+        for (const [key, series] of Object.entries(data)) {
+            if (!series) continue;
+            const index = bisector<number, number>(d => d).left(series.timestamp, timestamp);
+            const value = series.values[index - 1];
+            if (value !== undefined) currentValues.push({ label: labels[key as keyof typeof labels], value });
         }
         return {
             timestamp,
@@ -256,9 +265,10 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
     const graphData = useMemo(() => {
         return {
             speed: data.speed && [data.speed],
-            centripetal: data.centripetal && [data.centripetal],
             energy: data.energy && [data.energy],
-        }
+            a_fwd: data.a_fwd && [data.a_fwd],
+            a_lat: data.a_lat && [data.a_lat],
+        };
     }, [data]);
 
     return (

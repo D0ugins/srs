@@ -165,6 +165,11 @@ export interface RollGraphData {
         sd_energy?: number[];
         sd_x?: number[];
         sd_y?: number[];
+        // Currently 1Hz bandwidth
+        a_fwd?: number[];
+        a_lat?: number[];
+        sd_a_fwd?: number[];
+        sd_a_lat?: number[];
     }
     gps_source?: 'trace' | 'racebox' | 'fit' | 'gpx';
     centripetal?: {

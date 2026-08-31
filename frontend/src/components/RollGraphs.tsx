@@ -25,8 +25,9 @@ const tooltipStyles = {
 export interface RollGraphsProps {
     data: {
         speed?: GraphData[];
-        centripetal?: GraphData[];
         energy?: GraphData[];
+        a_fwd?: GraphData[];
+        a_lat?: GraphData[];
     }
     xDomain?: [number, number];
     tooltipLeft?: number;
@@ -98,14 +99,16 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
         }, [registerSetView, xDomain, width, zoom]);
 
         const speedSeries = data.speed;
-        const centripetalSeries = data.centripetal;
         const energySeries = data.energy;
+        const a_fwdSeries = data.a_fwd;
+        const a_latSeries = data.a_lat;
 
         // Stack only the panels that have data, so a missing one (e.g. no centripetal) doesn't leave a gap.
         const panels = [
             speedSeries && { key: "speed", title: "Speed (m/s)", series: speedSeries },
-            centripetalSeries && { key: "centripetal", title: "Centripetal Acceleration (m/s²)", series: centripetalSeries },
             energySeries && { key: "energy", title: "Specific Energy (J/kg)", series: energySeries },
+            a_latSeries && { key: "a_lat", title: "Lateral Acceleration (m/s²)", series: a_latSeries },
+            a_fwdSeries && { key: "a_fwd", title: "Forward Acceleration (m/s²)", series: a_fwdSeries },
         ].filter((p): p is { key: string; title: string; series: Array<GraphData> } => !!p);
 
         const [wasPlaying, setWasPlaying] = useState(false);

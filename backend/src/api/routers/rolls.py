@@ -373,6 +373,7 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
     return get_roll(roll.id, session)
 
 TRACE_SOURCES = ('pnp', 'racebox')     # preference order; racebox serves the rolls with no camera
+ACCEL_COLS = ('a_fwd', 'a_lat', 'sd_a_fwd', 'sd_a_lat')   # camera-sourced traces only
 
 
 def trace_graph_data(session, roll):
@@ -382,7 +383,8 @@ def trace_graph_data(session, roll):
     if source is None:
         return {}
     try:
-        if cache.ensure_fresh(session, roll.id, source).status != 'ok':
+        row = cache.ensure_fresh(session, roll.id, source)
+        if row.status != 'ok':
             return {}
         z = np.load(resolve_path(cache.display_uri(roll.id, source)), allow_pickle=False)
         video_start = -int(json.loads(str(z['meta']))['event_offset_ms'])
@@ -396,6 +398,10 @@ def trace_graph_data(session, roll):
             'lat': lat, 'long': long, 'elevation': z['z'], 'speed': z['speed'],
             'energy': z['energy'], 'sd_speed': z['sd_speed'], 'sd_elevation': z['sd_z'],
             'sd_energy': z['sd_energy'], 'sd_x': z['sd_x'], 'sd_y': z['sd_y'],
+            # The WNOJ fit diverges on a few rolls (up to 2e6 m/s2); the note records it, but a
+            # served number would be plotted.  The artefact keeps the raw values for diagnosis.
+            **{c: (np.full(len(z['t']), np.nan) if 'accel_implausible' in (row.note or '') else z[c])
+               for c in ACCEL_COLS if c in z.files},
         }),
         'gps_source': 'trace' if source == 'pnp' else source,
         'video_start': video_start,

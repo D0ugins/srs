@@ -76,7 +76,8 @@ def main():
 
     t0 = time.time()
     if todo:
-        with mp.Pool(a.workers) as pool:
+        # Recycle workers: the order-3 solve grows RSS across rolls (1.4 -> 2.4 GB over an hour).
+        with mp.Pool(a.workers, maxtasksperchild=25) as pool:
             for i, (roll, status, note) in enumerate(
                     pool.imap_unordered(_work, [(r, a.source) for r in todo]), 1):
                 print(f'[{i}/{len(todo)}] {time.time() - t0:6.1f}s roll {roll} {status} {note or ""}',
