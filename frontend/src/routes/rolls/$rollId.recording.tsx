@@ -135,7 +135,7 @@ function RouteComponent() {
     }
 
     return (
-        <div className="flex flex-col flex-1 p-2">
+        <div className="flex flex-col flex-1 min-w-0 p-2">
             <div className="mb-4 pb-2 border-b border-gray-300 flex justify-between items-center">
                 <RollHeader roll={roll} />
                 <div className="flex gap-2">

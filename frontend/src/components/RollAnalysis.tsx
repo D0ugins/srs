@@ -282,10 +282,14 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                     setDuration={setDuration}
                     setPlaying={setPlaying}
                 />
-                <RollEventList events={events} setEvents={setEvents} updateVideoTime={updateVideoTime} videoTimestamp={timestamp} />
+                {hasGraphData && (
+                    <div className="flex-1 min-h-0 my-4">
+                        <RollMapContainer paths={mapPaths} />
+                    </div>
+                )}
             </div>
             <div className="flex-[2] h-full min-w-0">
-                <div className="h-2/3 pb-2">
+                <div className="h-2/3 pb-2 overflow-y-auto">
                     {hasGraphData ? (
                         <RollGraphsContainer
                             data={graphData}
@@ -315,11 +319,11 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                         </>
                     )}
                 </div>
-                {hasGraphData && (
-                    <div className="flex h-1/3 pl-6 gap-8">
-                        <div className="flex-1 min-w-1/2">
-                            <RollMapContainer paths={mapPaths} />
-                        </div>
+                <div className="flex h-1/3 pl-6 gap-8">
+                    <div className="flex-1 min-w-1/2 flex flex-col min-h-0">
+                        <RollEventList events={events} setEvents={setEvents} updateVideoTime={updateVideoTime} videoTimestamp={timestamp} />
+                    </div>
+                    {hasGraphData && (
                         <div className="overflow-y-auto flex-1 flex-col text-left">
                             <div className="text-s text-neutral-600">Time</div>
                             <div className="font-mono text-m mb-2">{(timestamp / 1000).toFixed(3)}s</div>
@@ -330,8 +334,8 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                                 </div>
                             ))}
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     );

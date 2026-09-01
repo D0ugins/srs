@@ -1,5 +1,11 @@
 export const GRAPH_MARGIN = { top: 25, right: 30, bottom: 12, left: 50 };
 
+// Floor for a single stacked graph panel; below this the graphs area scrolls.
+export const MIN_PANEL_HEIGHT = 140;
+
+// Room below the last panel for its bottom axis, which is drawn past the panel's slot.
+export const AXIS_HEIGHT = 36;
+
 // Default graph colors
 
 export const SRS_GOLD = '#fdb724';

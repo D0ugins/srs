@@ -9,7 +9,7 @@ import { localPoint } from "@visx/event";
 import type { ZoomProps, ZoomState } from "@visx/zoom";
 import RollGraph, { type GraphData, type TooltipData } from "./RollGraph";
 import type { RollEvent } from "@/lib/roll";
-import { EVENT_COLORS, GRAPH_MARGIN } from "@/lib/constants";
+import { AXIS_HEIGHT, EVENT_COLORS, GRAPH_MARGIN, MIN_PANEL_HEIGHT } from "@/lib/constants";
 
 type ZoomType<ElementType extends Element> = ZoomProps<ElementType>['children'] extends (zoom: infer U) => any ? U : never;
 
@@ -111,6 +111,10 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
             a_dragSeries && { key: "a_drag", title: "Drag (m/s²)", series: a_dragSeries },
         ].filter((p): p is { key: string; title: string; series: Array<GraphData> } => !!p);
 
+        // Panels keep a minimum height; the container scrolls once they no longer fit.
+        const panelHeight = Math.max((parent.height - AXIS_HEIGHT) / 4, MIN_PANEL_HEIGHT);
+        const contentHeight = Math.max(parent.height, panels.length * panelHeight + AXIS_HEIGHT);
+
         const [wasPlaying, setWasPlaying] = useState(false);
 
         const handlePlayheadMouseDown = (e: React.MouseEvent) => {
@@ -168,7 +172,7 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
         }
 
         return <div className="relative">
-            <svg width={parent.width} height={parent.height}
+            <svg width={parent.width} height={contentHeight}
                 // Transform ensures pixel alignment
                 className="cursor-move touch-none select-none"
                 ref={zoom.containerRef}
@@ -177,8 +181,8 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                     <RollGraph
                         key={panel.key}
                         parentWidth={parent.width}
-                        parentHeight={parent.height / 4}
-                        top={i * (parent.height / 4)}
+                        parentHeight={panelHeight}
+                        top={i * panelHeight}
                         title={panel.title}
                         xScale={xScale}
                         data={panel.series}
@@ -190,7 +194,7 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                 {tooltipLeft !== undefined && (
                     <Line
                         from={{ x: tooltipLeft, y: 0 }}
-                        to={{ x: tooltipLeft, y: parent.height }}
+                        to={{ x: tooltipLeft, y: contentHeight }}
                         stroke="#666"
                         strokeWidth={1}
                         pointerEvents="none"
@@ -203,10 +207,10 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                             shapeRendering="geometricPrecision" pointerEvents="none" opacity={0.75}
                             style={{ cursor: isDragging ? "grabbing" : "grab", pointerEvents: "all" }}
                             onMouseDown={handlePlayheadMouseDown} >
-                            <RectClipPath id="playhead-clip-path" width={width} height={parent.height} />
+                            <RectClipPath id="playhead-clip-path" width={width} height={contentHeight} />
                             <Line
                                 from={{ x: xScale(videoTime), y: 2 }}
-                                to={{ x: xScale(videoTime), y: parent.height }}
+                                to={{ x: xScale(videoTime), y: contentHeight }}
                                 stroke="#ff0000"
                                 strokeWidth={2}
                                 shapeRendering="geometricPrecision"
