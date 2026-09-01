@@ -327,7 +327,7 @@ export default function RollAnalysis({ roll, graphs, events, setEvents }: RollAn
                         <div className="overflow-y-auto flex-1 flex-col text-left">
                             <div className="text-s text-neutral-600">Time</div>
                             <div className="font-mono text-m mb-2">{(timestamp / 1000).toFixed(3)}s</div>
-                            {currentData?.values.map((v) => (
+                            {currentData?.values.filter(v => v.value).map((v) => (
                                 <div key={v.label} className="mb-1">
                                     <div className="text-s text-neutral-600">{v.label}</div>
                                     <div className="font-mono text-m">{v.value.toFixed(2)}</div>

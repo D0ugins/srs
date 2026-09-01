@@ -255,7 +255,7 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                 >
                     <div>
                         <strong>Time: {(tooltipData.timestamp / 1000).toFixed(3)}s</strong>
-                        {tooltipData.values.map((v, i) => (
+                        {tooltipData.values.filter(v => v.value).map((v, i) => (
                             <div key={i} className="flex items-center gap-1.5">
                                 {v.color && (
                                     <span
