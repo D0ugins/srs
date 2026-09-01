@@ -459,6 +459,54 @@ def gibbs(sm, q_int, mean, nu=NU, sweeps=260, burn=60, n_keep=100, rng=None):
     return draws
 
 
+# --- correlated draw inflation.  The posterior is calibrated per frame (mean IRLS weight 0.977
+# against 1.000) yet 1.66x too narrow for a coasting energy excursion, so the deficit is correlated
+# in time and no white term fixes it.  Two smooth along-track components go on the DRAWS only --
+# the fit and the state mean are untouched.  Amplitudes measured in tmp/mapexc/{c,d,e}: `bad_loc`
+# from the excursion ratio, `good` from racebox, which never touches the map.
+
+INFLATE_TAU = 1.5                                                  # s
+INFLATE_AMP = {'good': 0.158, 'bad_loc': 0.932, 'none': 0.0}       # m along-track; 0.0 == inert
+INFLATE_TAU_HF = 0.30              # the 0.2-2 Hz deficit the 1.5 s term misses; nothing above 2 Hz,
+INFLATE_AMP_HF = {'good': 0.020, 'bad_loc': 0.020, 'none': 0.0}    # where the draws are already wide
+
+
+def inflate_class(rec):
+    """The draw-inflation class of a record.  Calibrated on the localization traces only: a racebox
+    record (`k_roll is None`) carries its own characterised noise and is left alone."""
+    if rec.get('k_roll') is None:
+        return 'none'
+    return 'bad_loc' if rec['bad_loc'] else 'good'
+
+
+def inflate_draws(t, mode, draws, amp, tau=INFLATE_TAU, rng=None):
+    """Add a smooth along-track perturbation of sd `amp` m and correlation time `tau` to each draw,
+    with its exact derivative added to the velocity so position, speed and energy stay mutually
+    consistent.  Centred across draws, so the posterior mean is unchanged."""
+    if not amp:
+        return draws
+    rng = np.random.default_rng(0) if rng is None else rng
+    t = np.asarray(t, float)
+    dt = float(np.median(np.diff(t)))
+    n, half = len(t), int(np.ceil(4 * tau / dt))
+    h = np.arange(-half, half + 1) * dt
+    g = np.exp(-0.5 * (h / tau) ** 2)
+    gd = -h / tau ** 2 * g
+    c = np.sqrt((g ** 2).sum())                    # unit-variance response to unit white noise
+    g, gd = g / c, gd / c
+    u = np.asarray(mode, float)[:, 3:6]
+    nrm = np.linalg.norm(u, axis=1, keepdims=True)
+    u = np.nan_to_num(np.where(nrm > 0.3, u / np.maximum(nrm, 1e-12), 0.0))
+    W = rng.standard_normal((len(draws), n + 2 * half))
+    dp = amp * np.stack([np.convolve(w, g, 'valid') for w in W])
+    dv = amp * np.stack([np.convolve(w, gd, 'valid') for w in W])
+    dp -= dp.mean(0); dv -= dv.mean(0)
+    out = draws.copy()
+    out[:, :, :3] += dp[:, :, None] * u
+    out[:, :, 3:6] += dv[:, :, None] * u
+    return out
+
+
 # --- acceleration: a SECOND fit.  The adopted WNOA state is [p, v], so acceleration has no
 # posterior under it and differentiating its velocity has a 2.06 s half-amplitude bandwidth.  The
 # WNOJ (order-3) state does carry acceleration, but its raw posterior is 2-3x too narrow, so the
@@ -816,6 +864,11 @@ def estimate_roll(roll, events, n_draws=100, rec=None, s_corr=1.0):
     prob.s = s_roll
     sm, res, info = solve_bounded(prob, q_int)
     draws = gibbs(sm, res['q_int'], res['mean'], n_keep=n_draws, rng=np.random.default_rng(roll))
+    cls = inflate_class(rec)
+    draws = inflate_draws(prob.t, res['mean'], draws, INFLATE_AMP[cls],
+                          rng=np.random.default_rng(roll + 1))
+    draws = inflate_draws(prob.t, res['mean'], draws, INFLATE_AMP_HF[cls], tau=INFLATE_TAU_HF,
+                          rng=np.random.default_rng(roll + 10007))   # seed must differ from the LF
     mean = draws.mean(0)
     t100 = np.arange(np.ceil(prob.t[0] * 100) / 100, prob.t[-1], 0.01)
     mean100, var100 = interpolate(sm, res, t100)

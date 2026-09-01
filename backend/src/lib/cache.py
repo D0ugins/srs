@@ -299,13 +299,19 @@ def restore_draws(roll, events, n_draws=N_DRAWS):
     inside a freed link were blanked in the stored mean, so those rolls re-solve for the Gibbs
     seed."""
     z = np.load(resolve_path(fit_uri(roll)), allow_pickle=False)
-    prob = es.Problem(es.load_record(roll, events))
+    rec = es.load_record(roll, events)
+    prob = es.Problem(rec)
     prob.s = float(z['s_roll'])
     sm = prob.smoother(z['keep'].astype(bool))
     q_int, mean = z['q_int'], z['mean']
     if not np.isfinite(mean).all():
         mean = sm.solve(q_int)['mean']
-    return es.gibbs(sm, q_int, mean, n_keep=n_draws, rng=np.random.default_rng(roll))
+    draws = es.gibbs(sm, q_int, mean, n_keep=n_draws, rng=np.random.default_rng(roll))
+    cls = es.inflate_class(rec)
+    draws = es.inflate_draws(prob.t, mean, draws, es.INFLATE_AMP[cls],
+                             rng=np.random.default_rng(roll + 1))
+    return es.inflate_draws(prob.t, mean, draws, es.INFLATE_AMP_HF[cls], tau=es.INFLATE_TAU_HF,
+                            rng=np.random.default_rng(roll + 10007))
 
 
 def _landmarks_of(name):
