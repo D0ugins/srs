@@ -21,6 +21,7 @@ from sqlalchemy import and_, delete, or_, select, text
 
 from db.database import File, RollEvent, RollFile, RollStat, RollTrace
 from lib import estimate as es
+from lib import quantities as qt
 from lib import racebox_trace as rbt
 from lib import traces as tr
 from lib.paths import DATA_PATH, resolve_path
@@ -123,9 +124,21 @@ def params_hash(source='pnp'):
 
 
 def code_hash():
+    """Covers the code that produces the FIT.  `quantities.py` is deliberately excluded: a new or
+    changed quantity must not invalidate a trace that would come back identical."""
     d = os.path.dirname(__file__)
     return _sha(*(open(f'{d}/{n}').read()
                   for n in ('traces.py', 'estimate.py', 'racebox_trace.py', 'cache.py')))
+
+
+def qoi_hash():
+    return _sha(open(f'{os.path.dirname(__file__)}/quantities.py').read())
+
+
+def stats_hash(roll, con=None, source='pnp'):
+    """Stat rows turn stale on either the fit's inputs or the quantity code; traces only on the
+    former, so a QoI edit costs `restore_fit` (~2 s/roll) instead of a refit."""
+    return _sha(inputs_hash(roll, con, source), qoi_hash())
 
 
 def trace_uri(roll):
@@ -294,12 +307,12 @@ def _write_artefacts(fit, meta, source='pnp', accel=None, accel_fit=None):
                         **{f'wnoj_{k}': v for k, v in (accel_fit or {}).items()})
 
 
-def restore_draws(roll, events, n_draws=N_DRAWS):
-    """Regenerate a roll's Gibbs draws from its stored `pnp` `fit` artefact, skipping the CV.  Knots
-    inside a freed link were blanked in the stored mean, so those rolls re-solve for the Gibbs
-    seed."""
-    z = np.load(resolve_path(fit_uri(roll)), allow_pickle=False)
-    rec = es.load_record(roll, events)
+def restore_fit(roll, events, source='pnp', n_draws=N_DRAWS, uri=None):
+    """Regenerate a roll's posterior from its stored `fit` artefact, skipping the CV -- about 2 s
+    against 15 s for a refit.  Knots inside a freed link were blanked in the stored mean, so those
+    rolls re-solve for the Gibbs seed."""
+    z = np.load(resolve_path(fit_uri(roll, source)), allow_pickle=False)
+    rec = load_record(roll, events, uri, source)
     prob = es.Problem(rec)
     prob.s = float(z['s_roll'])
     sm = prob.smoother(z['keep'].astype(bool))
@@ -310,15 +323,17 @@ def restore_draws(roll, events, n_draws=N_DRAWS):
     cls = es.inflate_class(rec)
     draws = es.inflate_draws(prob.t, mean, draws, es.INFLATE_AMP[cls],
                              rng=np.random.default_rng(roll + 1))
-    return es.inflate_draws(prob.t, mean, draws, es.INFLATE_AMP_HF[cls], tau=es.INFLATE_TAU_HF,
-                            rng=np.random.default_rng(roll + 10007))
+    draws = es.inflate_draws(prob.t, mean, draws, es.INFLATE_AMP_HF[cls], tau=es.INFLATE_TAU_HF,
+                             rng=np.random.default_rng(roll + 10007))
+    gaps = np.asarray(z['gaps'], float).reshape(-1, 2)
+    if len(gaps):
+        draws[:, es.gap_mask(prob.t, gaps)] = np.nan
+    return dict(roll=roll, t=prob.t, mean=draws.mean(0), draws=draws,
+                events=json.loads(str(z['events'])) if 'events' in z.files else rec['events'])
 
 
-def _landmarks_of(name):
-    q = name.split('.', 1)
-    if len(q) < 2 or q[0] not in ('speed', 'time', 'eloss'):
-        return []
-    return [n for n in q[1].split('-') if n in es.landmarks()]
+def restore_draws(roll, events, n_draws=N_DRAWS):
+    return restore_fit(roll, events, 'pnp', n_draws)['draws']
 
 
 def _impossible(cross, lm):
@@ -333,24 +348,20 @@ def _impossible(cross, lm):
     return ''
 
 
-def _derived(fit, q):
-    """The stored quantities with a D7 status, and the landmark crossing times.  A landmark the
+def _derived(fit):
+    """Every adopted quantity with a status, plus the landmark crossing times.  A landmark the
     trace never reaches is `outside_trace`, a NaN inside reach is `in_gap`."""
-    arc = es.project(fit['mean'][:, :2])[0]
-    spd = np.linalg.norm(fit['mean'][:, 3:6], axis=1)
-    E = 0.5 * spd ** 2 + G * fit['mean'][:, 2]
-    rs = fit['events'].get('roll_start', -np.inf)
-    win = (fit['t'] >= rs) & np.isfinite(spd) & np.isfinite(E)   # not capped at roll_end, as in quantities()
-    lo, hi = (float(np.nanmin(arc[win])), float(np.nanmax(arc[win]))) if win.any() else (np.nan, np.nan)
-    lm = es.landmarks()
-    cross = {n: es.crossing_time(fit['t'][win], arc[win], L) for n, L in lm.items()}
+    vals, R = qt.evaluate(fit['t'], fit['mean'], fit['draws'], fit['events'])
+    m, lm = R.lmwin, qt.marks()
+    arc = R.arc[0]
+    lo, hi = (float(np.nanmin(arc[m])), float(np.nanmax(arc[m]))) if m.any() else (np.nan, np.nan)
+    cross = {n: (float(R.t_at(n)[0]) if np.isfinite(R.t_at(n)[0]) else None) for n in lm}
     bad = _impossible(cross, lm)
     if bad:
         cross = {n: None for n in cross}
     out = []
-    for name in es.STORED_QUANTITIES:
-        v, sd = float(q.loc[name, 'value']), float(q.loc[name, 'sd'])
-        miss = [n for n in _landmarks_of(name) if not (lo <= lm[n] <= hi)]
+    for name, (v, sd, unit, deps) in vals.items():
+        miss = [n for n in deps if not (lo <= lm[n] <= hi)]
         if bad:                      # a degenerate trajectory poisons every quantity, not just the
             status, note = 'failed', bad         # landmark ones -- max_energy comes out absurd too
             v = sd = np.nan
@@ -363,10 +374,9 @@ def _derived(fit, q):
         else:
             status, note = 'ok', None
         out.append(dict(quantity=name, value=v if np.isfinite(v) else None,
-                        sd=sd if np.isfinite(sd) else None, unit=q.loc[name, 'unit'],
+                        sd=sd if np.isfinite(sd) else None, unit=unit,
                         status=status, note=note))
-    return out, {n: (float(t) if t is not None and np.isfinite(t) else None)
-                 for n, t in cross.items()}
+    return out, cross
 
 
 def compute_roll(con, roll_id, source='pnp'):
@@ -378,15 +388,16 @@ def compute_roll(con, roll_id, source='pnp'):
     try:
         uri = source_uri(con, roll_id, source)
         out['inputs_hash'] = inputs_hash(roll_id, con, source)
+        out['stats_hash'] = stats_hash(roll_id, con, source)
     except (OSError, LookupError) as e:
-        return dict(out, status='failed', note=f'{type(e).__name__}: {e}', inputs_hash=None)
+        return dict(out, status='failed', note=f'{type(e).__name__}: {e}',
+                    inputs_hash=None, stats_hash=None)
     hashes = dict(hashes, inputs_hash=out['inputs_hash'])
     try:
         ev = db_events(con, roll_id)
         rec = load_record(roll_id, ev, uri, source)
         fit = es.estimate_roll(roll_id, ev, n_draws=N_DRAWS, rec=rec,
                                s_corr=SOURCES[source]['s_corr'])
-        q = es.quantities(fit['t'], fit['mean'], fit['draws'], fit['events'], w=WINDOW_S)
         acc, acc_fit, acc_note = None, None, ''
         try:                         # the WNOJ fit serves acceleration only
             acc, acc_fit = es.accel_roll(roll_id, rec, n_draws=N_DRAWS,
@@ -403,7 +414,7 @@ def compute_roll(con, roll_id, source='pnp'):
     except Exception:
         tb = traceback.format_exc().strip().splitlines()
         return dict(out, status='failed', note=' | '.join(tb[-3:])[:900])
-    stats, crossings = _derived(fit, q)
+    stats, crossings = _derived(fit)
     note = '; '.join(s for s in (
         'bad_loc' if fit['bad_loc'] else '', f"anchor={fit['event_anchor']}",
         f"session={meta['session_id']}" if source == 'racebox' else '',
@@ -463,6 +474,22 @@ def _traces_of(session, roll_id, source='pnp'):
         .where(RollTrace.roll_id == roll_id, File.type == SOURCES[source]['file_type']))}
 
 
+def compute_stats(con, roll_id, source='pnp'):
+    """Just the stat rows, from the stored fit artefact.  The path a `qoi_hash` change takes."""
+    out = dict(roll=roll_id, source=source, code_hash=code_hash(), params_hash=params_hash(source))
+    try:
+        out['inputs_hash'] = inputs_hash(roll_id, con, source)
+        out['stats_hash'] = stats_hash(roll_id, con, source)
+        ev = db_events(con, roll_id)
+        fit = restore_fit(roll_id, ev, source, N_DRAWS, source_uri(con, roll_id, source))
+    except Exception:
+        tb = traceback.format_exc().strip().splitlines()
+        return dict(out, status='failed', note=' | '.join(tb[-3:])[:900], inputs_hash=None,
+                    stats_hash=None)
+    stats, crossings = _derived(fit)
+    return dict(out, status='ok', stats=stats, crossings=crossings)
+
+
 def _trace_row(session, roll_id, kind, source_id):
     row = session.scalar(select(RollTrace).where(RollTrace.roll_id == roll_id,
                                                  RollTrace.kind == kind,
@@ -505,21 +532,27 @@ def write_result(session, res):
         row.computed_at = now
         display = display or row
 
-    names = [s['quantity'] for s in res['stats']]
+    _write_stats(session, roll, src.id, res, now)
+    return display
+
+
+def _write_stats(session, roll, src_id, res, now=None):
+    """Replace one roll+source's RollStat rows, keyed on `stats_hash`."""
+    now = now or datetime.now(timezone.utc)
+    names = [q['quantity'] for q in res['stats']]
     session.execute(delete(RollStat).where(RollStat.roll_id == roll,
-                                           RollStat.source_id == src.id,
+                                           RollStat.source_id == src_id,
                                            RollStat.quantity.notin_(names)))
     have = {r.quantity: r for r in session.scalars(
-        select(RollStat).where(RollStat.roll_id == roll, RollStat.source_id == src.id))}
-    for s in res['stats']:
-        row = have.get(s['quantity'])
+        select(RollStat).where(RollStat.roll_id == roll, RollStat.source_id == src_id))}
+    for q in res['stats']:
+        row = have.get(q['quantity'])
         if not row:
-            row = RollStat(roll_id=roll, quantity=s['quantity'], source_id=src.id)
+            row = RollStat(roll_id=roll, quantity=q['quantity'], source_id=src_id)
             session.add(row)
-        row.value, row.sd, row.unit = s['value'], s['sd'], s['unit']
-        row.status, row.note = s['status'], s['note']
-        row.inputs_hash, row.computed_at = res['inputs_hash'], now
-    return display
+        row.value, row.sd, row.unit = q['value'], q['sd'], q['unit']
+        row.status, row.note = q['status'], q['note']
+        row.inputs_hash, row.computed_at = res['stats_hash'], now
 
 
 EVENT_SOURCES = ('racebox', 'pnp')   # a roll's computed events come from the first of these it has
@@ -589,6 +622,40 @@ def ensure_fresh(session, roll_id, source='pnp'):
     row = write_result(session, res)
     session.commit()
     return row
+
+
+def ensure_stats(session, roll_id, source='pnp'):
+    """The roll's RollStat rows for this source, recomputing when `stats_hash` has moved.  Takes
+    the cheap `restore_fit` path when only the quantity code changed and the fit is still good."""
+    src = source_file(session, roll_id, source)
+    if src is None:
+        return []
+    want = None
+    try:
+        want = stats_hash(roll_id, session, source)
+    except (OSError, LookupError):
+        pass
+    rows = list(session.scalars(select(RollStat).where(RollStat.roll_id == roll_id,
+                                                       RollStat.source_id == src.id)))
+    if rows and want is not None and all(r.inputs_hash == want for r in rows):
+        return rows
+    trace = _traces_of(session, roll_id, source)
+    fresh_fit = ('fit' in trace and trace['fit'].inputs_hash is not None
+                 and trace['fit'].inputs_hash == inputs_hash(roll_id, session, source))
+    enable_wal(session)
+    if fresh_fit:
+        res = compute_stats(session, roll_id, source)
+        if res['status'] != 'ok':
+            return rows
+        _write_stats(session, roll_id, src.id, res)
+    else:                            # a refit produces trace artefacts too; dropping them would
+        res = compute_roll(session, roll_id, source)   # leave the fit stale and refit every call
+        if res['status'] != 'ok':
+            return rows
+        write_result(session, res)
+    session.commit()
+    return list(session.scalars(select(RollStat).where(RollStat.roll_id == roll_id,
+                                                       RollStat.source_id == src.id)))
 
 
 def stale_rolls(session, roll_ids, source='pnp'):

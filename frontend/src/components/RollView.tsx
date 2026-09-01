@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 import { transformMediaUrl } from "@/lib/format";
-import type { RollDetails, RollStats } from "@/lib/roll";
+import type { RollDetails, RollStats, StatKey, StatQuantity } from "@/lib/roll";
 
 const VIDEO_CHOICES = ['video_preview', 'edited_vid', 'video_preview_c', 'edited_vid_c', 'follow_car_vid', 'misc_vid'];
 const VIDEO_LABELS: Record<string, string> = {
@@ -12,12 +12,38 @@ const VIDEO_LABELS: Record<string, string> = {
     misc_vid: 'Misc',
 };
 
+const HILL_TIME_KEYS: Array<StatKey> = [
+    'time.hill_1-hill_2',
+    'time.hill_2-crosswalk',
+    'time.hill_3-hill_4',
+    'time.hill_4-hill_5',
+    'time.hill_5-finish_line',
+];
+
+const formatStatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = (seconds - (mins * 60)).toFixed(1);
+    return `${mins}:${secs.padStart(4, '0')}`;
+};
+
+function TimeStat({ q, mmss }: { q?: StatQuantity, mmss?: boolean }) {
+    if (q?.status !== 'ok' || q.value === null) return <span title={q?.note ?? q?.status}>---</span>;
+    return <span>{mmss ? formatStatTime(q.value) : q.value.toFixed(1)}</span>;
+}
+
+function SdStat({ q }: { q?: StatQuantity }) {
+    if (q?.status !== 'ok' || q.value === null) return <span title={q?.note ?? q?.status}>---</span>;
+    return <span>{q.value.toFixed(2)}{q.sd !== null ? ` ± ${(2 * q.sd).toFixed(2)}` : ''} {q.unit}</span>;
+}
+
 export default function RollView({ roll, stats }: { roll: RollDetails, stats?: RollStats }) {
     const availableVideos = VIDEO_CHOICES
         .map(type => roll.roll_files.find(file => file.type === type))
         .filter(f => f !== undefined);
     const [videoType, setVideoType] = useState(availableVideos[0]?.type);
     const video = availableVideos.find(f => f.type === videoType) ?? availableVideos[0];
+
+    const q = (key: StatKey) => stats?.quantities?.[key];
 
     const videoUrl = transformMediaUrl(video?.uri);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -180,13 +206,6 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
         return `${mins}:${secs.toString().padStart(2, '0')}:${frames.toString().padStart(2, '0')}`;
     };
 
-    const formatStatTime = (ms: number) => {
-        const totalSeconds = ms / 1000;
-        const mins = Math.floor(totalSeconds / 60);
-        const secs = (totalSeconds - (mins * 60)).toFixed(1);
-        return `${mins}:${secs.padStart(4, '0')}`;
-    }
-
     useEffect(() => {
         if (videoRef.current) {
             if (stats?.video_roll_start_ms !== undefined) {
@@ -261,12 +280,11 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                         <tbody>
                             {[1, 2, 3, 4, 5].map((hillNumber) => {
                                 const rollHill = roll.roll_hills.find(rh => rh.hill_number === hillNumber);
-                                const time = stats?.[`hill${hillNumber}_time_ms` as keyof RollStats];
                                 return (
                                     <tr key={hillNumber} className="border-b last:border-b-0">
                                         <td className="py-2 w-16 border-l border-r px-2">{hillNumber}</td>
                                         <td className="py-2 border-r px-2">{rollHill?.pusher?.name || ''}</td>
-                                        <td className="py-2 w-24 border-r px-2"> {time !== undefined ? (time / 1000).toFixed(1) : '---'} </td>
+                                        <td className="py-2 w-24 border-r px-2"> <TimeStat q={q(HILL_TIME_KEYS[hillNumber - 1])} /> </td>
                                     </tr>
                                 );
                             })}
@@ -275,11 +293,13 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
                     <div className="mt-4 flex text-center text-lg">
                         <div className="flex-1">
                             <span className="font-semibold">Freeroll Time: </span>
-                            <span>{stats?.freeroll_time_ms !== undefined ? (stats?.freeroll_time_ms / 1000).toFixed(1) : '---'}</span>
+                            <TimeStat q={q('time.crosswalk-hill_3')} />
+                            <span className="text-sm text-neutral-600"> (<TimeStat q={q('time.crosswalk-stop_sign')} />/<TimeStat q={q('time.stop_sign-hill_3')} />)
+                            </span>
                         </div>
                         <div className="flex-1">
                             <span className="font-semibold">Course Time: </span>
-                            <span>{stats?.course_time_ms !== undefined ? formatStatTime(stats.course_time_ms) : '---'}</span>
+                            <TimeStat q={q('time.hill_1-finish_line')} mmss />
                         </div>
                     </div>
 
@@ -289,47 +309,34 @@ export default function RollView({ roll, stats }: { roll: RollDetails, stats?: R
             <div className="mt-8 grid grid-cols-3 gap-4 text-center">
                 <div className="space-y-2">
                     <div>
-                        <span className="font-semibold block">Max Speed</span>
-                        <span>{stats?.max_speed !== undefined ? stats.max_speed.toFixed(2) : '---'} m/s</span>
+                        <span className="font-semibold block">Crosswalk Speed</span>
+                        <SdStat q={q('speed.crosswalk')} />
                     </div>
                     <div>
-                        <span className="font-semibold block">Max Energy</span>
-                        <span>{stats?.max_energy !== undefined ? stats.max_energy.toFixed(2) : '---'} J/kg</span>
+                        <span className="font-semibold block">Chute Speed</span>
+                        <SdStat q={q('speed.chute_start')} />
                     </div>
                 </div>
                 <div className="space-y-2">
                     <div>
-                        <span className="font-semibold block">Pickup Speed</span>
-                        <span>{stats?.pickup_speed !== undefined ? stats.pickup_speed.toFixed(2) : '---'} m/s</span>
+                        <span className="font-semibold block">To Chute Energy Loss</span>
+                        <SdStat q={q('eloss.crosswalk-chute_start')} />
                     </div>
                     <div>
-                        <span className="font-semibold block">Rollup Height</span>
-                        <span>{stats?.rollup_height !== undefined ? stats.rollup_height.toFixed(2) : '---'} m</span>
+                        <span className="font-semibold block">Chute Energy Loss</span>
+                        <SdStat q={q('eloss.chute_start-hill_3')} />
                     </div>
                 </div>
-                {
-                    stats?.to_chute_energy_loss !== undefined ? (
-                        <div className="space-y-2">
-                            <div>
-                                <span className="font-semibold block">To Chute Energy Loss</span>
-                                <span>{stats.to_chute_energy_loss.toFixed(2)} J/kg</span>
-
-                            </div>
-                            <div>
-                                <span className="font-semibold block">Chute Energy Loss</span>
-                                <span>{stats?.chute_energy_loss !== undefined ? stats.chute_energy_loss.toFixed(2) : '---'} J/kg</span>
-                            </div>
-                        </div>
-                    )
-                        : (
-                            <div>
-                                <span className="font-semibold block">Freeroll Energy Loss</span>
-                                <span>{stats?.freeroll_energy_loss !== undefined ? stats.freeroll_energy_loss.toFixed(2) : '---'} J/kg</span>
-                            </div>
-                        )
-
-                }
-
+                <div className="space-y-2">
+                    <div>
+                        <span className="font-semibold block">Hill 3 pickup</span>
+                        <SdStat q={q('pickup.arc')} />
+                    </div>
+                    <div>
+                        <span className="font-semibold block">Pickup speed</span>
+                        <SdStat q={q('pickup.speed')} />
+                    </div>
+                </div>
             </div>
 
             {(roll.driver_notes || roll.mech_notes || roll.pusher_notes) && (

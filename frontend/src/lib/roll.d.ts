@@ -209,25 +209,47 @@ export interface RollEvent {
     updated_at?: string;
 }
 
+export type StatStatus = "ok" | "outside_trace" | "in_gap" | "failed";
+
+export interface StatQuantity {
+    value: number | null;
+    sd: number | null;
+    unit: string;
+    status: StatStatus;
+    note: string | null;
+}
+
+export type StatKey =
+    | "time.hill_1-hill_2"
+    | "time.hill_2-crosswalk"
+    | "time.hill_3-hill_4"
+    | "time.hill_4-hill_5"
+    | "time.hill_5-finish_line"
+    | "time.crosswalk-hill_3"
+    | "time.crosswalk-stop_sign"
+    | "time.stop_sign-hill_3"
+    | "time.crosswalk-chute_start"
+    | "time.chute_start-hill_3"
+    | "time.hill_1-finish_line"
+    | "speed.crosswalk"
+    | "energy.crosswalk"
+    | "speed.chute_start"
+    | "energy.chute_start"
+    | "eloss.crosswalk-hill_3"
+    | "eloss.crosswalk-chute_start"
+    | "eloss.chute_start-hill_3"
+    | "path.crosswalk-hill_3"
+    | "path.crosswalk-chute_start"
+    | "path.chute_start-hill_3"
+    | "pickup.arc"
+    | "pickup.speed"
+    | "max_speed"
+    | "max_energy";
+
 export interface RollStats {
-    hill1_time_ms?: number;
-    hill2_time_ms?: number;
-    freeroll_time_ms?: number;
-    hill3_time_ms?: number;
-    hill4_time_ms?: number;
-    hill5_time_ms?: number;
-    course_time_ms?: number;
+    source: string;
+    quantities?: Partial<Record<StatKey, StatQuantity>>;
 
     video_roll_start_ms?: number;
     video_roll_end_ms?: number;
-
-    max_speed?: number;
-    max_energy?: number;
-
-    to_chute_energy_loss?: number;
-    chute_energy_loss?: number;
-    freeroll_energy_loss?: number;
-
-    pickup_speed?: number;
-    rollup_height?: number;
 }

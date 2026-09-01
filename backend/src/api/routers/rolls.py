@@ -2,7 +2,6 @@ from db import Roll, SessionDep
 from db.database import Buggy, Driver, File, Pusher, RollDate, RollFile, RollHill, RollType, RollEvent, Sensor
 from lib.geo import enu_to_wgs84
 from lib.graphs import get_graph_data, video_roll_file
-from lib.events import calculate_hill_times, calculate_freeroll_stats
 from lib.paths import resolve_path
 from lib import cache
 from lib.drag import a_drag
@@ -373,7 +372,7 @@ def create_roll(roll_data: RollUpdate, session: SessionDep):
     
     return get_roll(roll.id, session)
 
-TRACE_SOURCES = ('pnp', 'racebox')     # preference order; racebox serves the rolls with no camera
+TRACE_SOURCES = ('racebox', 'pnp')     # preference order; racebox wins where a roll has both
 ACCEL_COLS = ('a_fwd', 'a_lat', 'sd_a_fwd', 'sd_a_lat')   # present on every source's display
 
 
@@ -389,6 +388,19 @@ def accel_cols(z):
                                                           # artefact; see its accel_note
 
 
+def video_start_ms(roll_id, source):
+    """The DB-clock time the video begins.  Always the pnp trace's offset when there is one: the
+    racebox clock IS the DB clock (offset 0), so taking it for a dual roll would drop the video
+    alignment entirely."""
+    for src in ('pnp', source):
+        try:
+            z = np.load(resolve_path(cache.display_uri(roll_id, src)), allow_pickle=False)
+            return -int(json.loads(str(z['meta']))['event_offset_ms'])
+        except Exception:
+            continue
+    return 0
+
+
 def trace_graph_data(session, roll):
     """The roll's cached display trace as graph data, on the roll-local clock its events use, or
     `{}` when the roll has no usable trace.  Never raises."""
@@ -400,7 +412,7 @@ def trace_graph_data(session, roll):
         if row.status != 'ok':
             return {}
         z = np.load(resolve_path(cache.display_uri(roll.id, source)), allow_pickle=False)
-        video_start = -int(json.loads(str(z['meta']))['event_offset_ms'])
+        video_start = video_start_ms(roll.id, source)
         lat, long = enu_to_wgs84(z['x'], z['y'], z['z'])
     except Exception:                    # a schema/artefact fault must not look like "no trace"
         logging.exception('trace graph data failed for roll %s', roll.id)
@@ -463,33 +475,22 @@ def update_roll_events(roll_id: int, events: list[RollEventInput], session: Sess
 
 @router.get("/{roll_id}/stats")
 def get_roll_stats(roll_id: int, session: SessionDep):
-    query = select(Roll).options(
-        selectinload(Roll.roll_files).selectinload(RollFile.file),
-          selectinload(Roll.roll_events)
-    ).where(Roll.id == roll_id)
-    
-    roll = session.scalar(query)
+    """The roll's cached quantities of interest, recomputed when the quantity code has moved."""
+    roll = session.get(Roll, roll_id)
     if not roll:
         raise HTTPException(status_code=404, detail="Roll not found")
-    
-    stats = {}
-    roll_starts = [e.timestamp_ms for e in roll.roll_events if e.type == 'roll_start']
-    roll_ends = [e.timestamp_ms for e in roll.roll_events if e.type == 'roll_end']
-    
-    hill_times = calculate_hill_times(roll.roll_events)
-    for hill_num, time_ms in hill_times.items():
-        if time_ms is not None:
-            stats[f'hill{hill_num}_time_ms'] = time_ms
-    
-    if len(roll_starts) == 1 and len(roll_ends) == 1:
-        stats['course_time_ms'] = roll_ends[0] - roll_starts[0]
-        
-    racebox_files = [rf for rf in roll.roll_files if rf.file.type == 'racebox']
-    fit_files = [rf for rf in roll.roll_files if rf.file.type == 'fit']
-    if racebox_files or fit_files:
-        graphs = get_graph_data(roll, include_imu=False, session=session)
-        
-        freeroll_stats = calculate_freeroll_stats(graphs, roll.roll_events)
-        stats.update(freeroll_stats)
-    
-    return stats
+    source = next((k for k in TRACE_SOURCES if roll.id in cache.source_rolls(session, k)), None)
+    if source is None:
+        return {"source": None, "quantities": {}}
+    rows = cache.ensure_stats(session, roll_id, source)
+    out = {"source": source,
+           "quantities": {r.quantity: {"value": r.value, "sd": r.sd, "unit": r.unit,
+                                       "status": r.status, "note": r.note} for r in rows}}
+    try:                             # the video seek needs these; same origin the graphs use
+        start = video_start_ms(roll_id, source)
+        ev = {e.type: e.timestamp_ms for e in roll.roll_events}
+        out['video_roll_start_ms'] = ev['roll_start'] - start
+        out['video_roll_end_ms'] = ev['roll_end'] - start
+    except Exception:
+        pass
+    return out
