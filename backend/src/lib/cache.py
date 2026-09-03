@@ -336,47 +336,8 @@ def restore_draws(roll, events, n_draws=N_DRAWS):
     return restore_fit(roll, events, 'pnp', n_draws)['draws']
 
 
-def _impossible(cross, lm):
-    """A reason string if the crossing times need a speed above VMAX between two landmarks, else
-    ''.  Degenerate localization makes the arc jump the whole course in under a second; the corpus
-    floor for freeroll_start -> hill_5 is 67.7 s against a 39.6 s physical bound."""
-    t = sorted(((lm[n], v) for n, v in cross.items() if v is not None))
-    for (a0, t0), (a1, t1) in zip(t, t[1:]):
-        if t1 - t0 < (a1 - a0) / es.VMAX:
-            return (f'crossings imply {(a1 - a0) / max(t1 - t0, 1e-9):.0f} m/s over {a1 - a0:.0f} m; '
-                    'localization degenerate')
-    return ''
-
-
 def _derived(fit):
-    """Every adopted quantity with a status, plus the landmark crossing times.  A landmark the
-    trace never reaches is `outside_trace`, a NaN inside reach is `in_gap`."""
-    vals, R = qt.evaluate(fit['t'], fit['mean'], fit['draws'], fit['events'])
-    m, lm = R.lmwin, qt.marks()
-    arc = R.arc[0]
-    lo, hi = (float(np.nanmin(arc[m])), float(np.nanmax(arc[m]))) if m.any() else (np.nan, np.nan)
-    cross = {n: (float(R.t_at(n)[0]) if np.isfinite(R.t_at(n)[0]) else None) for n in lm}
-    bad = _impossible(cross, lm)
-    if bad:
-        cross = {n: None for n in cross}
-    out = []
-    for name, (v, sd, unit, deps) in vals.items():
-        miss = [n for n in deps if not (lo <= lm[n] <= hi)]
-        if bad:                      # a degenerate trajectory poisons every quantity, not just the
-            status, note = 'failed', bad         # landmark ones -- max_energy comes out absurd too
-            v = sd = np.nan
-        elif miss:
-            status = 'outside_trace'
-            note = (', '.join(f'{n} at {lm[n]:.1f} m' for n in miss)
-                    + f' outside the trace arc range {lo:.1f}-{hi:.1f} m')
-        elif not np.isfinite(v):
-            status, note = 'in_gap', 'no finite value inside the trace'
-        else:
-            status, note = 'ok', None
-        out.append(dict(quantity=name, value=v if np.isfinite(v) else None,
-                        sd=sd if np.isfinite(sd) else None, unit=unit,
-                        status=status, note=note))
-    return out, cross
+    return qt.derive(fit)
 
 
 def compute_roll(con, roll_id, source='pnp'):

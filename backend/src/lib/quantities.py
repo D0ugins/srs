@@ -5,13 +5,19 @@ posterior mean, the sd the spread across draws.  Adding a quantity here costs a 
 pass (~2 s/roll), not a refit, because `cache.qoi_hash` covers only this file."""
 import numpy as np
 
-from lib.estimate import (G, correction, landmarks, project, search_regions)
+from lib.estimate import (G, VMAX, correction, landmarks, project, search_regions)
+from lib.racebox_trace import centreline_dem
 
 EXTRA_LANDMARKS = {'crosswalk': 233.0, 'stop_sign': 609.0}
 HOLD_S = 2.0       # a crossing counts only if the arc stays past the line this long: pre-roll
                    # motion in the pad and arc noise both produce spurious early crossings
 WINDOW_S = 1.0     # averaging window for extremum estimators, carrying the P5 correction
 TIME_INFLATE = 1.0 # was 1.5 against the un-inflated posterior; re-derive, the draws now carry it
+PICKUP_SPAN = 50.0 # m either side of the hill-3 line the contact search is confined to
+# Gates on the posterior mean, tolerances from the corpus (tmp/gatecal): good rolls sit within 4.7 m
+# of the road at p99 and never rise more than 8.4 J/kg above their crosswalk energy while coasting.
+Z_TOL = 5.0        # m off the DEM road surface
+RISE_TOL = 20.0    # J/kg of coasting energy gain
 
 
 def marks():
@@ -107,6 +113,8 @@ def extremum(R, series, kind='max', mask=None):
     y = _smooth(getattr(R, series), R.k)
     m = _valid(R, mask)
     i = _peak(y, m, kind)
+    if i is None:
+        return (np.nan, np.nan), None
     var_scale = R.speed[0, i[0]] ** 2 if series == 'energy' else 1.0
     c = correction(R.t, y[0], i[0], _span(R.t, m), R.k, kind, var_scale=var_scale)
     return _row(y[R.r, i], sd_extra=c['sd'], offset=c['offset']), i
@@ -115,6 +123,8 @@ def extremum(R, series, kind='max', mask=None):
 def extremum_where(R, series, kind, mask, report):
     """Where a series' extremum happens: `report` is 'arc', 't' or another series."""
     (_, _), i = extremum(R, series, kind, mask)
+    if i is None:
+        return np.nan, np.nan
     y = R.arc if report == 'arc' else (R.t[i] if report == 't' else
                                        _smooth(getattr(R, report), R.k))
     if report == 't':
@@ -140,6 +150,9 @@ def _valid(R, mask=None):
 
 
 def _peak(y, mask, kind):
+    """Per-draw extremum index, or None when nothing is selected (argmin of all-inf is 0)."""
+    if not mask.any():
+        return None
     yy = np.where(mask[None], y, -np.inf if kind == 'max' else np.inf)
     return np.argmax(yy, 1) if kind == 'max' else np.argmin(yy, 1)
 
@@ -168,10 +181,14 @@ def _p(a, b):
 
 
 def _pickup(report):
+    """Contact is the energy minimum near the hill-3 line: the buggy coasts down to it and the
+    push lifts it back.  Confining the search to the line keeps a spurious dip elsewhere out."""
     def fn(R):
-        v, sd = extremum_where(R, 'energy', 'min', R.m_contact, report)
-        return (v - marks()['hill_3'], sd) if report == 'arc' else (v, sd)
-    return dict(fn=fn, unit='m' if report == 'arc' else 'm/s', deps=())
+        h3 = marks()['hill_3']
+        near = (R.arc[0] >= h3 - PICKUP_SPAN) & (R.arc[0] <= h3 + PICKUP_SPAN)
+        v, sd = extremum_where(R, 'energy', 'min', near, report)
+        return (v - h3, sd) if report == 'arc' else (v, sd)
+    return dict(fn=fn, unit='m' if report == 'arc' else 'm/s', deps=('hill_3',))
 
 
 QUANTITIES = {
@@ -215,3 +232,60 @@ def evaluate(t, mean, draws, ev, names=None):
             v, sd = np.nan, np.nan
         out[name] = (v, sd, spec['unit'], spec['deps'])
     return out, R
+
+
+# --- gates.  A degenerate trajectory poisons every quantity, not just the landmark ones, so any
+# of these fails the whole roll with the reason recorded.
+
+def implausible(R):
+    """A reason string when the posterior mean breaks physics, else ''."""
+    lm = R.marks
+    t = sorted((lm[n], float(R.t_at(n)[0])) for n in lm if np.isfinite(R.t_at(n)[0]))
+    for (a0, t0), (a1, t1) in zip(t, t[1:]):
+        if t1 - t0 < (a1 - a0) / VMAX:
+            return (f'crossings imply {(a1 - a0) / max(t1 - t0, 1e-9):.0f} m/s over '
+                    f'{a1 - a0:.0f} m; localization degenerate')
+    ok = R.lmwin & np.isfinite(R.arc[0])
+    if ok.any():
+        arc_g, z_g = centreline_dem()
+        dz = np.abs(R.X[0, ok, 2] - np.interp(R.arc[0][ok], arc_g, z_g))
+        if dz.max() > Z_TOL:
+            return f'{dz.max():.0f} m off the road surface; localization degenerate'
+    t_cw, t_h3 = R.t_at('crosswalk')[0], R.t_at('hill_3')[0]
+    if np.isfinite(t_cw) and np.isfinite(t_h3):
+        coast = R.lmwin & (R.t >= t_cw) & (R.t <= t_h3)
+        e0 = R.at(R.energy, np.full(R.n, t_cw))[0]
+        if coast.any() and np.isfinite(e0):
+            rise = np.nanmax(R.energy[0][coast]) - e0
+            if rise > RISE_TOL:
+                return f'coasting energy rises {rise:.0f} J/kg above the crosswalk; localization degenerate'
+    return ''
+
+
+def derive(fit):
+    """Every adopted quantity with a status, plus the landmark crossing times.  A landmark the
+    trace never reaches is `outside_trace`, a NaN inside reach is `in_gap`."""
+    vals, R = evaluate(fit['t'], fit['mean'], fit['draws'], fit['events'])
+    m, lm = R.lmwin, R.marks
+    arc = R.arc[0]
+    lo, hi = (float(np.nanmin(arc[m])), float(np.nanmax(arc[m]))) if m.any() else (np.nan, np.nan)
+    cross = {n: (float(R.t_at(n)[0]) if np.isfinite(R.t_at(n)[0]) else None) for n in lm}
+    bad = implausible(R)
+    if bad:
+        cross = {n: None for n in cross}
+    out = []
+    for name, (v, sd, unit, deps) in vals.items():
+        miss = [n for n in deps if not (lo <= lm[n] <= hi)]
+        if bad:
+            status, note, v, sd = 'failed', bad, np.nan, np.nan
+        elif miss:
+            status = 'outside_trace'
+            note = (', '.join(f'{n} at {lm[n]:.1f} m' for n in miss)
+                    + f' outside the trace arc range {lo:.1f}-{hi:.1f} m')
+        elif not np.isfinite(v):
+            status, note = 'in_gap', 'no finite value inside the trace'
+        else:
+            status, note = 'ok', None
+        out.append(dict(quantity=name, value=v if np.isfinite(v) else None,
+                        sd=sd if np.isfinite(sd) else None, unit=unit, status=status, note=note))
+    return out, cross
