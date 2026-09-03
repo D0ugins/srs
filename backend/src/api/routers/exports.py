@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from db import SessionDep
 from db.database import File, Roll, RollHill, RollStat
+from lib.traces import roll_noise
 
 router = APIRouter(prefix="/exports", tags=["exports"])
 
@@ -13,15 +14,31 @@ HILL_KEYS = ['time.hill_1-hill_2', 'time.hill_2-crosswalk', 'time.hill_3-hill_4'
 
 
 def _stats(session):
-    """{roll_id: {quantity: value}} from the cached RollStat rows (status ok), racebox preferred.
-    Reads only -- a corpus-wide export must not trigger recomputes."""
+    """{roll_id: (quantity -> value, source)} from the cached RollStat rows (status ok), racebox
+    preferred.  Reads only -- a corpus-wide export must not trigger recomputes."""
     rows = session.execute(select(RollStat.roll_id, RollStat.quantity, RollStat.value, File.type)
                            .join(File, File.id == RollStat.source_id)
                            .where(RollStat.status == 'ok')).all()
     by = {}
     for roll, q, v, ftype in rows:
         by.setdefault((roll, 'racebox' if 'racebox' in ftype else 'pnp'), {})[q] = v
-    return {r: by.get((r, 'racebox')) or by.get((r, 'pnp')) or {} for r, _ in by}
+    out = {}
+    for roll, _ in by:
+        for src in ('racebox', 'pnp'):
+            if by.get((roll, src)):
+                out[roll] = (by[(roll, src)], src)
+                break
+    return out
+
+
+def _bad_loc(noise, roll_id, source):
+    """1 when these numbers come from a trace flagged as poorly localized, else 0; blank when the
+    roll has no noise entry.  Racebox reads 0 -- it carries its own characterised noise, so the
+    pnp trace's quality does not describe the exported values."""
+    if source == 'racebox':
+        return '0'
+    n = noise.get(roll_id)
+    return '' if n is None else ('1' if n['bad_loc'] else '0')
 
 
 def _fmt(q, key, nd=2):
@@ -41,12 +58,14 @@ def export_hills(
     
     rolls = session.scalars(query).all()
     stats = _stats(session)
+    noise = roll_noise()
     
     output = StringIO()
-    output.write("Id,Buggy,Driver,Pusher,Gender,Hill,Date,Time,Roll Type,Roll Number,Roll Start Time UTC\n")
+    output.write("Id,Buggy,Driver,Pusher,Gender,Hill,Date,Time,Roll Type,Roll Number,"
+                 "Roll Start Time UTC,Bad Loc\n")
     
     for roll in rolls:
-        q = stats.get(roll.id, {})
+        q, src = stats.get(roll.id, ({}, None))
         date_str = f"{roll.roll_date.year}/{roll.roll_date.month:02d}/{roll.roll_date.day:02d}"
         start_time = roll.start_time.strftime("%H:%M") if roll.start_time else ""
         roll_number = str(roll.roll_number) if roll.roll_number is not None else ""
@@ -75,6 +94,7 @@ def export_hills(
                 roll.roll_date.type.value,
                 roll_number,
                 start_time,
+                _bad_loc(noise, roll.id, src),
             ]
             output.write(",".join(row) + "\n")
     
@@ -98,18 +118,20 @@ def export_freeroll(
     
     rolls = session.scalars(query).all()
     stats = _stats(session)
+    noise = roll_noise()
     
     output = StringIO()
     output.write("Id,Buggy,Driver,Date,Roll Number,Roll Start Time,Time,Max Speed,Max Energy,"
                  "To Chute Energy Loss,Chute Energy Loss,Freeroll Energy Loss,Pickup Speed,"
-                 "Pickup Arc,Crosswalk Speed,Chute Speed,To Stop Sign Time,From Stop Sign Time\n")
+                 "Pickup Arc,Crosswalk Speed,Chute Speed,To Stop Sign Time,From Stop Sign Time,"
+                 "Bad Loc\n")
     
     for roll in rolls:
         date_str = f"{roll.roll_date.year}/{roll.roll_date.month:02d}/{roll.roll_date.day:02d}"
         start_time = roll.start_time.strftime("%H:%M") if roll.start_time else ""
         roll_number = str(roll.roll_number) if roll.roll_number is not None else ""
         
-        q = stats.get(roll.id, {})
+        q, src = stats.get(roll.id, ({}, None))
         row = [
             str(roll.id), roll.buggy.name, roll.driver.name,
             date_str, roll_number, start_time,
@@ -120,6 +142,7 @@ def export_freeroll(
             _fmt(q, 'pickup.speed'), _fmt(q, 'pickup.arc', 1),
             _fmt(q, 'speed.crosswalk'), _fmt(q, 'speed.chute_start'),
             _fmt(q, 'time.crosswalk-stop_sign', 1), _fmt(q, 'time.stop_sign-hill_3', 1),
+            _bad_loc(noise, roll.id, src),
         ]
         output.write(",".join(row) + "\n")
     
