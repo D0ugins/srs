@@ -24,6 +24,7 @@ const tooltipStyles = {
 
 export interface RollGraphsProps {
     data: {
+        delta?: GraphData[];
         speed?: GraphData[];
         energy?: GraphData[];
         a_drag?: GraphData[];
@@ -38,8 +39,11 @@ export interface RollGraphsProps {
     events?: RollEvent[];
     showTooltip: (args: any) => void;
     handleMouseLeave: () => void;
-    updateVideoTime: (time: number) => void;
+    updateVideoTime?: (time: number) => void;
     setPlaying: (playing: boolean) => void;
+    // Seek in the x axis' own units; defaults to updateVideoTime (which takes seconds).
+    seek?: (value: number) => void;
+    xUnit?: 's' | 'm';
     // Sharing the horizontal zoom/pan with an external view (e.g. the comparison timeline).
     onViewChange?: (view: [number, number]) => void;
     registerSetView?: (setView: (view: [number, number]) => void) => void;
@@ -55,8 +59,8 @@ export function zoomXScale(zoom: ZoomState, scale: ScaleLinear<number, number, n
 
 export default function RollGraphs({ data, events, xDomain, onViewChange, registerSetView,
     tooltipLeft, tooltipTop, tooltipData, playing, isDragging,
-    showTooltip, handleMouseLeave, updateVideoTime, setPlaying, setIsDragging,
-    videoTime, zoom, parent }: RollGraphsProps &
+    showTooltip, handleMouseLeave, updateVideoTime, seek, setPlaying, setIsDragging,
+    videoTime, xUnit = 's', zoom, parent }: RollGraphsProps &
     { zoom: ZoomType<SVGSVGElement>, parent: { width: number; height: number }, isDragging: boolean, setIsDragging: (dragging: boolean) => void }) {
     {
         const width = parent.width - GRAPH_MARGIN.left - GRAPH_MARGIN.right;
@@ -98,6 +102,12 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
             });
         }, [registerSetView, xDomain, width, zoom]);
 
+        const doSeek = seek ?? ((value: number) => updateVideoTime?.(value / 1000));
+        const formatX = xUnit === 'm'
+            ? (value: number) => value.toFixed(0)
+            : (value: number) => (value / 1000).toFixed(3);
+
+        const deltaSeries = data.delta;
         const speedSeries = data.speed;
         const energySeries = data.energy;
         const a_dragSeries = data.a_drag;
@@ -105,14 +115,16 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
 
         // Stack only the panels that have data, so a missing one (e.g. no centripetal) doesn't leave a gap.
         const panels = [
+            deltaSeries && { key: "delta", title: "Time Difference (s)", series: deltaSeries, includeZero: true },
             speedSeries && { key: "speed", title: "Speed (m/s)", series: speedSeries },
             energySeries && { key: "energy", title: "Specific Energy (J/kg)", series: energySeries },
             a_latSeries && { key: "a_lat", title: "Lateral Acceleration (m/s²)", series: a_latSeries },
             a_dragSeries && { key: "a_drag", title: "Drag (m/s²)", series: a_dragSeries },
-        ].filter((p): p is { key: string; title: string; series: Array<GraphData> } => !!p);
+        ].filter((p): p is { key: string; title: string; series: Array<GraphData>; includeZero?: boolean } => !!p);
 
-        // Panels keep a minimum height; the container scrolls once they no longer fit.
-        const panelHeight = Math.max((parent.height - AXIS_HEIGHT) / 4, MIN_PANEL_HEIGHT);
+        // Panels keep a minimum height, and never grow past the four-panel layout; the container
+        // scrolls once they no longer fit.
+        const panelHeight = Math.max((parent.height - AXIS_HEIGHT) / Math.max(4, panels.length), MIN_PANEL_HEIGHT);
         const contentHeight = Math.max(parent.height, panels.length * panelHeight + AXIS_HEIGHT);
 
         const [wasPlaying, setWasPlaying] = useState(false);
@@ -129,8 +141,7 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
             if (!point) return;
 
             const x = point.x - GRAPH_MARGIN.left;
-            const timestamp = xScale.invert(x);
-            updateVideoTime(timestamp / 1000);
+            doSeek(xScale.invert(x));
         };
 
         useEffect(() => {
@@ -142,8 +153,7 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                     if (!point) return;
 
                     const x = point.x - GRAPH_MARGIN.left;
-                    const timestamp = xScale.invert(x); // clamping handled in updateVideoTime
-                    updateVideoTime(timestamp / 1000);
+                    doSeek(xScale.invert(x)); // clamping handled downstream
                 }
             };
 
@@ -185,6 +195,8 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                         top={i * panelHeight}
                         title={panel.title}
                         xScale={xScale}
+                        formatX={formatX}
+                        includeZero={panel.includeZero}
                         data={panel.series}
                         onMouseLeave={handleMouseLeave}
                         showTooltip={showTooltip}
@@ -254,7 +266,11 @@ export default function RollGraphs({ data, events, xDomain, onViewChange, regist
                     style={tooltipStyles}
                 >
                     <div>
-                        <strong>Time: {(tooltipData.timestamp / 1000).toFixed(3)}s</strong>
+                        <strong>
+                            {xUnit === 'm'
+                                ? `Position: ${tooltipData.timestamp.toFixed(1)} m`
+                                : `Time: ${(tooltipData.timestamp / 1000).toFixed(3)}s`}
+                        </strong>
                         {tooltipData.values.filter(v => v.value).map((v, i) => (
                             <div key={i} className="flex items-center gap-1.5">
                                 {v.color && (

@@ -56,6 +56,9 @@ interface RollGraphProps {
     title: string;
     top?: number;
     xScale: ScaleLinear<number, number, never>;
+    formatX?: (value: number) => string;
+    // Keep 0 on the panel even when the data sits well away from it.
+    includeZero?: boolean;
     showAxis?: boolean;
     backgroundColor?: string;
     onMouseMove?: (event: React.MouseEvent | React.TouchEvent) => void;
@@ -70,9 +73,11 @@ export default memo(({
     data,
     title,
     top = 0,
+    includeZero = false,
     showAxis = true,
     backgroundColor,
     xScale,
+    formatX = (value: number) => (value / 1000).toFixed(3),
     onMouseMove,
     onMouseLeave,
     showTooltip,
@@ -134,12 +139,14 @@ export default memo(({
             max = Math.min(bandMax, max + span * BAND_DOMAIN_SLACK);
         }
 
+        if (includeZero) { min = Math.min(min, 0); max = Math.max(max, 0); }
+
         if (min > 0 && min / max < 0.1) min = 0;
         else min = min - (max - min) * 0.1;
 
         max = max + (max - min) * 0.1;
         return { min, max };
-    }, [data]);
+    }, [data, includeZero]);
 
     const yScale = useMemo(() => scaleLinear({
         domain: [min, max],
@@ -204,7 +211,7 @@ export default memo(({
         {showAxis && <AxisBottom<typeof xScale>
             scale={xScale}
             top={height}
-            numTicks={X_TICKS} tickFormat={(value) => (+value / 1000).toFixed(3)}
+            numTicks={X_TICKS} tickFormat={(value) => formatX(+value)}
         />}
         <MemoizedAxisLeft scale={yScale} numTicks={Y_TICKS} />
         <GraphLine

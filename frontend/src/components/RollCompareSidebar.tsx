@@ -8,12 +8,13 @@ import type { CompareRoll, Derived } from "./RollCompare";
 const bisectNumber = bisector<number, number>(d => d).left;
 
 function valueAt(series: GraphData | undefined, t: number): number | undefined {
-    if (!series || series.timestamp.length === 0) return undefined;
+    if (!series || series.timestamp.length === 0 || !isFinite(t)) return undefined;
     const i = bisectNumber(series.timestamp, t);
     return series.values[i - 1];
 }
 
-// Live playhead time (ms) in master coordinates, updated every frame during playback.
+// Live playhead position on the shared axis (master ms, or metres in position mode), updated
+// every frame during playback.
 // Kept in context so each tick only re-renders the time/stat leaves below, not the whole
 // sidebar (videos, headers, checkboxes don't depend on it).
 const TimestampContext = createContext(0);
@@ -23,10 +24,12 @@ interface SidebarProps {
     derived: Array<Derived>;
     showVideo: Array<boolean>;
     setShowVideo: Dispatch<SetStateAction<Array<boolean>>>;
-    offsets: Array<number>;
+    // Shared axis coordinate -> roll i's own timestamp (ms).
+    toNative: (index: number, x: number) => number;
+    toNativeRef: React.RefObject<(index: number, x: number) => number>;
+    positionMode: boolean;
     videoRefs: React.RefObject<Array<HTMLVideoElement | null>>;
     timestampRef: React.RefObject<number>;
-    offsetsRef: React.RefObject<Array<number>>;
     setPlaying: Dispatch<SetStateAction<boolean>>;
     timestamp: number;
 }
@@ -40,7 +43,7 @@ export default function RollCompareSidebar({ timestamp, ...rest }: SidebarProps)
 }
 
 const SidebarBody = memo(function SidebarBody({
-    rolls, derived, showVideo, setShowVideo, offsets, videoRefs, timestampRef, offsetsRef, setPlaying,
+    rolls, derived, showVideo, setShowVideo, toNative, toNativeRef, positionMode, videoRefs, timestampRef, setPlaying,
 }: Omit<SidebarProps, 'timestamp'>) {
     const navigate = useNavigate();
     // rolls are ordered primary-first (index 0 is the primary roll).
@@ -71,8 +74,8 @@ const SidebarBody = memo(function SidebarBody({
     return (
         <div className="flex-[1] flex flex-col min-h-0 min-w-0">
             <div className="shrink-0 mb-2 pb-1 border-b border-gray-300">
-                <span className="text-xs text-neutral-600">Time </span>
-                <LiveTime />
+                <span className="text-xs text-neutral-600">{positionMode ? 'Position ' : 'Time '}</span>
+                <LiveTime positionMode={positionMode} />
             </div>
             <div className="overflow-y-auto flex-1 pr-0.5 divide-y divide-gray-300">
                 {derived.map((d, i) => (
@@ -136,17 +139,17 @@ const SidebarBody = memo(function SidebarBody({
                                     playsInline
                                     onLoadedMetadata={e => {
                                         const v = e.currentTarget;
-                                        const target = (timestampRef.current - (d.videoStart - (offsetsRef.current[i] ?? 0))) / 1000;
-                                        v.currentTime = Math.min(Math.max(0, target), v.duration || 0);
+                                        const target = (toNativeRef.current(i, timestampRef.current) - d.videoStart) / 1000;
+                                        if (isFinite(target)) v.currentTime = Math.min(Math.max(0, target), v.duration || 0);
                                     }}
                                     onClick={() => setPlaying(p => !p)}
                                 />
                                 <div className="absolute inset-x-0 top-0 bg-black/40 px-1 pb-1 pointer-events-none">
-                                    <LiveStats d={d} offset={offsets[i] ?? 0} overlay />
+                                    <LiveStats d={d} nativeAt={x => toNative(i, x)} overlay />
                                 </div>
                             </div>
                         ) : (
-                            <LiveStats d={d} offset={offsets[i] ?? 0} />
+                            <LiveStats d={d} nativeAt={x => toNative(i, x)} />
                         )}
                     </div>
                 ))}
@@ -155,14 +158,16 @@ const SidebarBody = memo(function SidebarBody({
     );
 });
 
-function LiveTime() {
+function LiveTime({ positionMode }: { positionMode: boolean }) {
     const timestamp = useContext(TimestampContext);
-    return <span className="font-mono text-sm">{(timestamp / 1000).toFixed(3)}s</span>;
+    return <span className="font-mono text-sm">
+        {positionMode ? `${timestamp.toFixed(1)} m` : `${(timestamp / 1000).toFixed(3)}s`}
+    </span>;
 }
 
-function LiveStats({ d, offset, overlay = false }: { d: Derived; offset: number; overlay?: boolean }) {
+function LiveStats({ d, nativeAt, overlay = false }: { d: Derived; nativeAt: (x: number) => number; overlay?: boolean }) {
     const timestamp = useContext(TimestampContext);
-    const t = timestamp + offset;
+    const t = nativeAt(timestamp);
     return (
         <div className={`mt-1 grid ${d.a_drag ? 'grid-cols-4' : 'grid-cols-2'} gap-2 text-center`}>
             <Stat label="Speed (m/s)" value={valueAt(d.speed, t)} overlay={overlay} />
