@@ -388,16 +388,23 @@ def accel_cols(z):
                                                           # artefact; see its accel_note
 
 
+def _trace_offset_ms(roll_id, source):
+    """Negated `event_offset_ms` of one source's display artefact, or None."""
+    try:
+        z = np.load(resolve_path(cache.display_uri(roll_id, source)), allow_pickle=False)
+        return -int(json.loads(str(z['meta']))['event_offset_ms'])
+    except Exception:
+        return None
+
+
 def video_start_ms(roll_id, source):
-    """The DB-clock time the video begins.  Always the pnp trace's offset when there is one: the
-    racebox clock IS the DB clock (offset 0), so taking it for a dual roll would drop the video
-    alignment entirely."""
+    """The DB-clock time the video begins -- the pnp trace's offset when there is one, since the
+    racebox clock IS the DB clock (offset 0) and taking it for a dual roll would drop the video
+    alignment.  This is NOT the graph's time origin: see `trace_graph_data`."""
     for src in ('pnp', source):
-        try:
-            z = np.load(resolve_path(cache.display_uri(roll_id, src)), allow_pickle=False)
-            return -int(json.loads(str(z['meta']))['event_offset_ms'])
-        except Exception:
-            continue
+        off = _trace_offset_ms(roll_id, src)
+        if off is not None:
+            return off
     return 0
 
 
@@ -413,13 +420,17 @@ def trace_graph_data(session, roll):
             return {}
         z = np.load(resolve_path(cache.display_uri(roll.id, source)), allow_pickle=False)
         video_start = video_start_ms(roll.id, source)
+        # the graph axis rides the SERVED source's own clock; `video_start` is the video's origin
+        # and differs on a dual roll, where racebox serves the trace but pnp carries the video tie
+        t_origin = _trace_offset_ms(roll.id, source)
+        t_origin = video_start if t_origin is None else t_origin
         lat, long = enu_to_wgs84(z['x'], z['y'], z['z'])
     except Exception:                    # a schema/artefact fault must not look like "no trace"
         logging.exception('trace graph data failed for roll %s', roll.id)
         return {}
     response = {
         'gps_data': pd.DataFrame({
-            'timestamp': np.round(video_start + z['t'] * 1000).astype(int),
+            'timestamp': np.round(t_origin + z['t'] * 1000).astype(int),
             'lat': lat, 'long': long, 'elevation': z['z'], 'speed': z['speed'],
             'energy': z['energy'], 'sd_speed': z['sd_speed'], 'sd_elevation': z['sd_z'],
             'sd_energy': z['sd_energy'], 'sd_x': z['sd_x'], 'sd_y': z['sd_y'],
